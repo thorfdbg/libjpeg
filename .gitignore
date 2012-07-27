@@ -11,5 +11,18 @@
 *.la
 *.a
 
+# Objects from the makefile
+*.list
+
 # CVS repositories
 CVS
+
+# Left over images
+*.jpg
+*.jls
+*.ppm
+*.pgm
+*.out
+
+# core dumps
+core
