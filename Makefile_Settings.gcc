@@ -1,0 +1,35 @@
+#! make
+##
+## Specific GCC project settings.
+##
+## $Id: Makefile_Settings.gcc,v 1.2 2012-02-08 17:29:28 thor Exp $
+##
+
+CXX		= $(COMPILER_CMD)
+DEFINES		= 
+CC		= $(CXX)
+MAKEOBJS	= -x c++ -c
+CFLAGS		= $(BITSIZE) -Wall -W -Wunused -Wpointer-arith -pedantic -Wcast-qual -Wwrite-strings -Wno-long-long -Wredundant-decls -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo -fno-exceptions -Wno-char-subscripts $(INCLUDEOPTS) $(DEFINES) $(ADDOPTS) $(CPU) $(TUNE)
+OPTIMIZER	= -O3 -DDEBUG_LEVEL=0 -DCHECK_LEVEL=0 -funroll-loops -fstrict-aliasing -Wno-redundant-decls -ffast-math #-mfpmath=387 #-maccumulate-outgoing-args -minline-all-stringops -fno-rtti 
+		  #-fschedule-insns # These give "register spill" errors.
+		  #-fschedule-insns2 #-fomit-frame-pointer breaks exception handling for 3.2
+                  # 387 legacy FPU code is faster than SSE for gcc. Wierd.
+                  # -Wconversion is unusable for gcc 4.3 and above.
+#
+# Additional tuning of the template generation by means of -frepo or the like did not at all change the
+# size of the final executable. Thus, it's not done.
+#
+PROFILER	= -O3 -pg -ggdb3 -pg -fno-omit-frame-pointer -fno-inline
+LDPROF		= -pg
+DEBUGGER	= -ggdb3 -fno-omit-frame-pointer -fno-inline -DDEBUG_LEVEL=2 -DCHECK_LEVEL=3
+VERBOSE		= -ggdb3 -fno-inline -DDEBUG_LEVEL=3 -DCHECK_LEVEL=3
+DEBUGINFO	= -ggdb3 -fno-omit-frame-pointer -fno-inline
+TOASM           = -S -fverbose-asm #-fno-unroll-loops
+DBLIBS          = #-lefence # does also break exception handling
+LD		= $(CXX)
+LDFLAGS		= $(BITSIZE) 
+LDLIBS		= -lc -lm $(EXTRA_LIBS) #gcc_s required for long division/multiplication on 32bit
+PROFGEN		= $(OPTIMIZER) -fprofile-arcs
+PROFUSE		= $(OPTIMIZER) -fbranch-probabilities
+COVERAGE	= -ftest-coverage -fprofile-arcs
+LDCOVERAGE	= -lgcov -fprofile-arcs

@@ -1,0 +1,31 @@
+##
+## $Id: automakefile.in,v 1.2 2012-05-20 16:17:27 thor Exp $
+##
+#######################################################################
+## Makefile for the jpeg project,
+## THOR Software, May 20, 2012, Thomas Richter
+#######################################################################
+##
+##
+## The following variable defines the compiler we use
+## for running the code.
+##
+COMPILER_CMD	=	@COMPILER@
+CC_ONLY         =       @CC_ONLY@
+SETTINGS	=	@SETTINGS@
+PREFIX		=	@PREFIX@
+PTHREADCFLAGS	=	@PTHREAD_CFLAGS@
+PTHREADLDFLAGS	=	@PTHREAD_CFLAGS@
+PTHREADLIBS	=	@PTHREAD_LIBS@
+HWTYPE		=	@HARDWARE@
+HAVE_ADDONS	=	@HAVE_ADDONS@
+BITSIZE		=	@BITSIZE@
+##
+## Additional options
+ADDOPTS		=	-DUSE_AUTOCONF @FPU_OPTS@ @HW_DEFINE@ @ASSEMBLY_FLAG@
+LIB_OPTS	=	@LIB_OPTS@ @LIB_PICOPTS@ -DBUILD_LIB
+EXTRA_LIBS	=	@LGCCS_OPTS@ @MALLOC_LIB@
+##
+## Miscellaneous compiler options
+CPU		=	@CPU@
+TUNE		=	@TUNE@

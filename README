@@ -1,0 +1,94 @@
+This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+plus a library that can be used to encode and decode JPEG streams.
+
+Unlike many other implementations, libjpeg also implements:
+
+- 12 bpp image coding for the lossy DCT process,
+- the predictive lossless mode of 10918-1,
+- the hierarchical process of 10918-1,
+- the arithmetic coding option of 10918-1,
+- coding of up to 256 component images
+- upsampling of images for all factors from 1x1 to 4x4
+
+Standard features are of course also supported, such as
+sequential and progressive mode in 8bpp.
+
+
+In addition, this codec provides methods to encode images *without loss*
+using the DCT process in a backwards compatible way. That is, this codec
+can create images such that
+
+- all existing JPEG implementations can decode them, and in addition,
+- this implementation can decode them without loss.
+
+The new feature in release 0.3 is the optional lossy coding of the base layer
+which is controlled by the -Q parameter. The code also includes an
+optional tone mapping curve which can either be specified by the gamma parameter,
+or can be determined by an automatic process implementing a version of the
+exrpptm tone mapper.
+
+*) To compress a HDR image with this version of jpeg:
+
+Use the command line options -q quality -r
+
+*) To specify a separate quality for the extensions layer:
+
+Use the command line options -Q extensionslayerquality -q quality -r
+
+*) To specify an optional tone mapping function to map the HDR input
+to a more useful LDR base layer
+
+Use the command line option -g gamma_value
+
+where the gamma value is the nonlinearity of the LDR signal,
+assuming a linear HDR signal.
+
+*) To use an automatic tone mapping algorithm, set the -g parameter
+to zero.
+
+The following options exist for lossless coding:
+
+*) predictive 10918-1 coding. Note, however, that not many implementations
+are capable of decoding such stream, thus this is probably not a good option
+for all-day purposes.
+
+Use the command line options -p -c
+
+
+*) Residual coding. This embedds a residual error image into the JPEG stream
+that allows this specific codec to reconstruct images without loss. This
+option provides the best coding performance for lossless coding that is still
+backwards compatible to 10918.
+
+Use the command line options -h -q 75 -Q 100 -r 
+
+[Note that this changed in release 0.3]
+
+*) Lossless DCT process coding. This provides progressive/embedded coding from
+lossy to lossless. Its preformance isn't quite as good as that of the residual
+coding, though it creates an embedded bitstream.
+
+Use the command line options -l -q 100 -c
+
+*) Lossless coding with JPEG LS (NOT A 10918 PROCESS, THIS IS A SEPARATE STANDARD)
+
+Use the command line option -ls
+
+Optinally, you may specify the JPEG LS "near" parameter (maximum error) with
+the -m command line switch.
+
+*) Lossless coding with an additional color transformation following JPEG LS
+part-2 (NOT 10918, NOT JPEG LS PART 1):
+
+Use the command line option -ls -cls
+
+
+
+This project is released under the terms of the GPLv3 license, see README.license
+for details. The source code may be obtained under other license conditions, for
+requests and inquiries, please contact me at thor@math.tu-berlin.de.
+
+Finally, I want to thank Accusoft and the Computing Center of the University of
+Stuttgart for sponsoring this project.
+
+Thomas Richter, May 2012

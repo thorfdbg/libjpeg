@@ -1,0 +1,24 @@
+/Makefile/1.10/Sun May 20 16:17:27 2012//
+/actemplate.cpp/1.3/Sat Jun  2 10:27:13 2012//
+/actemplate.hpp/1.2/Sat Jun  2 10:27:13 2012//
+/arithmetictemplate.cpp/1.3/Sat Jun  2 10:27:13 2012//
+/arithmetictemplate.hpp/1.2/Sat Jun  2 10:27:13 2012//
+/arthdeco.cpp/1.3/Sat Jun  2 10:27:13 2012//
+/arthdeco.hpp/1.8/Sat Jun  2 10:27:13 2012//
+/blockrow.cpp/1.2/Sat Jun  2 10:27:13 2012//
+/blockrow.hpp/1.4/Sat Jun  2 10:27:13 2012//
+/decodertemplate.cpp/1.2/Sat Jun  2 10:27:13 2012//
+/decodertemplate.hpp/1.2/Sat Jun  2 10:27:13 2012//
+/huffmancoder.cpp/1.3/Sat Jun  2 10:27:13 2012//
+/huffmancoder.hpp/1.7/Sun Jul 15 11:59:44 2012//
+/huffmandecoder.cpp/1.2/Sat Jun  2 10:27:13 2012//
+/huffmandecoder.hpp/1.6/Sun Jul 15 11:59:44 2012//
+/huffmanstatistics.cpp/1.7/Wed Jul 18 19:35:45 2012//
+/huffmanstatistics.hpp/1.3/Sat Jun  2 10:27:13 2012//
+/huffmantemplate.cpp/1.12/Sat Jun  2 10:27:13 2012//
+/huffmantemplate.hpp/1.8/Sat Jun  2 10:27:13 2012//
+/qmcoder.cpp/1.15/Wed Jul 25 14:06:55 2012//
+/qmcoder.hpp/1.9/Wed Jul 25 14:06:55 2012//
+/quantizedrow.cpp/1.5/Sat Jun  2 10:27:13 2012//
+/quantizedrow.hpp/1.5/Sat Jun  2 10:27:13 2012//
+D

@@ -1,0 +1,218 @@
+#! make
+##
+## $Id: Makefile.template,v 1.9 2012-05-20 16:17:27 thor Exp $
+##
+## This makefile template is included by all sub-directories
+## to shorten the apropriate sub-makefiles to the minimum
+##
+
+.PHONY:		subclean subfinal subprofile suball subvalgrind subvalfinal subcoverage subzip sublib sublibdebug clean
+
+#####################################################################
+##
+## Compiler settings
+##
+## A somewhat hacky solution: If this makefile gets
+## called directly, assume we have been invoked from
+## a recursive directory make file.
+ifndef		COMPILER_SETTINGS
+AUTOMAKEFILE		=	$(shell pwd)/../automakefile
+COMPILER_SETTINGS	=	$(shell pwd)/../Makefile_Settings.$(SETTINGS)
+endif
+
+-include	$(AUTOMAKEFILE)
+include		$(COMPILER_SETTINGS)
+
+##
+## Potentially include addon-settings.
+ifeq ($(HAVE_ADDONS),yes)
+include	$(dir $(COMPILER_SETTINGS))/addons.$(HWTYPE)/Makefile_Settings.$(SETTINGS)
+endif
+##
+##
+#####################################################################
+##
+## Compiler independent commands.
+##
+ECHO		= echo
+ZIP		= zip
+ZIPASCII	= zip -l
+VALGRIND	= -DUSE_VALGRIND=1
+AR		= ar
+AROPTS		= -sr
+CAT		= cat
+
+##
+## Definitions for the headers, object codes, sources,....
+##
+
+HEADERS		=	$(foreach file,$(FILES),$(file).hpp)
+SOURCES		=	$(foreach file,$(FILES),$(file).cpp)
+ASMSOURCES	=	$(foreach file,$(ASMFILES),$(file)_$(HWTYPE).S)
+SUBHEADERS	=	$(foreach file,$(FILES),$(DIRNAME)/$(file).hpp)
+SUBSOURCES	=	$(foreach file,$(FILES),$(DIRNAME)/$(file).cpp)
+SUBASMSOURCES	=	$(foreach file,$(ASMFILES),$(DIRNAME)/$(file)_$(HWTYPE).S)
+SUBDIST         =       $(foreach file,$(XDIST),$(DIRNAME)/$(file))
+OBJECTS		=	$(foreach file,$(FILES),$(file).o)
+ASMOBJECTS	=	$(foreach file,$(ASMFILES),$(file)_$(HWTYPE).o)
+XHEADERS	=	$(foreach file,$(XFILES),$(file).hpp)
+XSOURCES	=	$(foreach file,$(XFILES),$(file).cpp)
+SUBXHEADERS	=	$(foreach file,$(XFILES),$(DIRNAME)/$(file).hpp)
+SUBXSOURCES	=	$(foreach file,$(XFILES),$(DIRNAME)/$(file).cpp)
+XOBJECTS	=	$(foreach file,$(XFILES),$(file).o)
+LIBNAME		=	lib$(DIRNAME).a
+SLIBNAME	=	lib_$(DIRNAME).a
+
+##
+## Definitions for directories. These are required since
+## directories are global.
+##
+
+DIRS		=	std cmd io tools interface codestream marker coding dct colortrafo upsampling control
+
+INCLUDEOPTS	=	-I ..
+
+##
+## Automatic dependency checking for the GNU environment
+##
+-include $(OBJECTS:.o=.d) $(CMDOBJ:.o=.d)
+
+%.d: %.cpp
+	@ $(SHELL) -ec 'gcc $(INCLUDEOPTS) $(DEFINES) $(ADDOPTS) -MM $< \
+		| sed '\''s/\($*\)\.o[ :]*/\1.o $@ : /g'\'' > $@; \
+		[ -s $@ ] || rm -f $@'
+
+##
+## Default rules for creating files, and assembly...
+##
+
+%.o: %.cpp %.hpp
+	@ $(ECHO) "Compiling" $(DIRNAME)/$*.cpp
+	@ $(CXX) $(MAKEOBJS) $(INCLUDEOPTS) $(CFLAGS) $(PTHREADCFLAGS) $(ADDFLAGS) $*.cpp
+
+%.o: %.cpp
+	@ $(ECHO) "Compiling" $(DIRNAME)/$*.cpp
+	@ $(CXX) $(MAKEOBJS) $(INCLUDEOPTS) $(CFLAGS) $(PTHREADCFLAGS) $(ADDFLAGS) $*.cpp
+
+%.s: %.cpp %.hpp
+	@ $(ECHO) "Compiling" $(DIRNAME)/$*.cpp
+	@ $(CXX) $(INCLUDEOPTS) $(CFLAGS) $(PTHREADCFLAGS) $(ADDFLAGS) $(OPTIMIZER) $(TOASM) $*.cpp
+
+%.s: %.cpp
+	@ $(ECHO) "Compiling" $(DIRNAME)/$*.cpp
+	@ $(CXX) $(INCLUDEOPTS) $(CFLAGS) $(PTHREADCFLAGS) $(ADDFLAGS) $(OPTIMIZER) $(TOASM) $*.cpp
+
+%.o: %.S
+	@ $(ECHO) "Assembling" $(DIRNAME)/$*.S
+	@ $(AS) $(INCLUDEOPTS) $(DEFINES) $(ASFLAGS) $*.S
+
+%.asm: %.s
+	@ c++filt >$*.asm <$*.s
+
+##
+## The object list for this subdirectory
+##
+
+ifeq ($(HAVE_ADDONS),yes)
+SUBOBJECTLIST	=	$(foreach object,$(OBJECTS) $(ASMOBJECTS),$(DIRNAME)/$(object))
+else
+SUBOBJECTLIST	=	$(foreach object,$(OBJECTS),$(DIRNAME)/$(object))
+endif
+
+SUBXOBJECTLIST	=	$(foreach object,$(XOBJECTS),$(DIRNAME)/$(object))
+
+##
+## Various targets
+##
+
+clean		:	subclean
+
+subclean	:
+	@ rm -rf $(OBJECTS) $(ASMOBJECTS) $(OBJECTS:.o=.s) $(CMDOBJ:.o=.s) $(OBJECTS:.o=.d) $(CMDOBJ:.o=.d) \
+	$(OBJECTS:.o=.il) $(CMDOBJ:.o=.il) *.a *.rpo *.list
+	@ rm -rf $(XOBJECTS) $(XOBJECTS:.o=.s) $(XOBJECTS:.o=.d) \
+	$(XOBJECTS:.o=.il) $(XCMDOBJ:.o=.il)
+
+suball		:	$(OBJECTS) $(XOBJECTS) $(ASMOBJECTS)
+	@ $(AR) $(AROPTS) $(LIBNAME) $(OBJECTS) $(XOBJECTS) $(ASMOBJECTS)
+	@ $(ECHO) >objects.list $(SUBOBJECTLIST) $(SUBXOBJECTLIST)
+
+subliball	:	$(OBJECTS) $(ASMOBJECTS)
+	@ $(AR) $(AROPTS) $(SLIBNAME) $(OBJECTS) $(ASMOBJECTS)
+	@ $(ECHO) >libobjects.list $(SUBOBJECTLIST)
+
+subdebug	:	
+	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \
+	ADDFLAGS="$(DEBUGGER)" ADDLIBS="$(DBLIBS)"
+
+subverbose	:	
+	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \
+	ADDFLAGS="$(VERBOSE)" ADDLIBS="$(DBLIBS)"
+
+subfinal	:
+	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \
+	ADDFLAGS="$(OPTIMIZER)" ADDLIBS=""
+
+subglobal	:	
+	@ $(MAKE) -f $(MAKEFILE) suball \
+	ADDFLAGS="$(OPTIMIZER) $(GLOBFLAGS)" ADDLIBS=""
+
+subprofgen	:	
+	@ $(MAKE) -f $(MAKEFILE) suball \
+	ADDFLAGS="$(OPTIMIZER) $(PROFGEN)" ADDLIBS=""
+
+subprofuse	:	
+	@ $(MAKE) -f $(MAKEFILE) suball \
+	ADDFLAGS="$(OPTIMIZER) $(GLOBFLAGS) $(PROFUSE)" ADDLIBS=""
+
+subprofile	:
+	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \
+	ADDFLAGS="$(OPTIMIZER) $(PROFILER)" ADDLIBS="$(LDPROF)"
+
+subvalgrind	:
+	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \
+	ADDFLAGS="$(DEBUGGER) $(VALGRIND)" ADDLIBS="$(LDPROF)"
+
+subvalfinal	:
+	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \
+	ADDFLAGS="$(DEBUGINFO) $(VALGRIND) $(OPTIMIZER)" ADDLIBS="$(LDPROF)"
+
+subcoverage	:
+	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \
+	ADDFLAGS="$(DEBUGGER) $(COVERAGE)" ADDLIBS="$(LDPROF)"
+
+sublib		:
+	@ $(MAKE) -f $(MAKEFILE) subliball SUPER="../" \
+	ADDFLAGS="$(OPTIMIZER) $(LIB_OPTS)" ADDLIBS=""
+
+sublibstatic	:
+	@ $(MAKE) -f $(MAKEFILE) subliball SUPER="../" \
+	ADDFLAGS="$(OPTIMIZER) $(LIB_OPTS)" ADDLIBS=""
+
+sublibdebug	:
+	@ $(MAKE) -f $(MAKEFILE) subliball SUPER="../" \
+	ADDFLAGS="$(DEBUGGER) $(LIB_OPTS)" ADDLIBS=""
+
+
+#
+# The next adds the .cpp and .hpp files into the
+# sources expanding TABs to spaces. This is a wierd hack
+# since we must make "zip" believe that it operates on the
+# same local directory.
+subzip		:	$(SOURCES) $(HEADERS) $(XHEADERS) $(XSOURCES)
+	@ echo "Adding" $(SUBSOURCES) $(SUBHEADERS) $(SUBXSOURCES) $(SUBXHEADERS) \
+			$(DIRNAME)/Makefile /tmp/$(DIRNAME)
+	@ rm -rf /tmp/__out__
+	@ rm -rf /tmp/$(DIRNAME)
+	@ mkdir /tmp/$(DIRNAME)
+	@ cd .. && cp $(SUBSOURCES) $(SUBHEADERS) $(SUBXSOURCES) $(SUBXHEADERS) $(SUBDIST) \
+		$(DIRNAME)/Makefile /tmp/$(DIRNAME)
+	@ cd .. && for i in $(DIRNAME)/Makefile.*[!~];do if test -f $$i; then cp $$i /tmp/$(DIRNAME); fi; done
+	@ find /tmp/$(DIRNAME) -name "*.hpp" -exec echo pr -e -t {} \>/tmp/__out__ \&\& cp /tmp/__out__ {} \; | sh
+	@ find /tmp/$(DIRNAME) -name "*.cpp" -exec echo pr -e -t {} \>/tmp/__out__ \&\& cp /tmp/__out__ {} \; | sh
+	@ find /tmp/$(DIRNAME) -name "*.asm" -exec echo pr -e -t {} \>/tmp/__out__ \&\& cp /tmp/__out__ {} \; | sh
+	@ rm -rf /tmp/__out__
+	@ cd /tmp && $(ZIP) -r $(shell pwd)/../Distrib.zip \
+		$(SUBSOURCES) $(SUBHEADERS) $(SUBXSOURCES) $(SUBXHEADERS) \
+		$(SUBDIST) $(DIRNAME)/Makefile*
+	@ rm -rf /tmp/$(DIRNAME)

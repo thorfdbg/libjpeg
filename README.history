@@ -1,0 +1,47 @@
+Revision 0.10
+-----------------------------
+
+First release of libjpeg to the public.
+
+
+Revision 0.11
+-----------------------------
+
+Apparently, the demo frontend code used the 
+non-binary mode to open the output files,
+creating corrupt files under platforms where
+such modes include a text conversion. Fixed.
+
+The configure script that tested for the avail-
+ibility of setjmp did not work on those platforms
+where setjmp is a macro rather than a function.
+The test for setjmp is now omitted, depending solely
+on the availibility of longjmp.
+
+
+Revision 0.20
+-----------------------------
+
+This release fixes a bug in the residual huffman decoder
+scan where I forgot to multiply the residuals with the
+quantization size. This did not affect lossless coding,
+but only near-lossless coding.
+Furthermore, this release adds coding of high-bitdepth
+images with a standard 8bpp JPEG fallback stream. For
+that, simply supply the image to be coded on the command
+line and add the "-r" option to enable residual coding.
+To use the conforming, but typically ill-supported 12bpp
+mode of JPEG, do not use "-r".
+
+
+Revision 0.30
+-----------------------------
+
+This release introduces a new coding strategy for lossless
+and high-dynamic range coding. Unlike former releases,
+this release runs an additional reversible color transformation
+on the residual data, followed by a lossless (scaled) Hadamard
+transformation to avoid color banding in extreme cases. It
+also adds an additional tone mapping curve (or curves) to be
+specified on encoding that allow a higher quality of the
+LDR base layer.

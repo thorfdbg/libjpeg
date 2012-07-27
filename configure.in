@@ -1,0 +1,1004 @@
+#/*************************************************************************
+#** Copyright (c) 2011-2012 Accusoft                                     **
+#** This program is free software, licensed under the GPLv3              **
+#** see README.license for details                                       **
+#**									 **
+#** For obtaining other licenses, contact the author at                  **
+#** thor@math.tu-berlin.de                                               **
+#**                                                                      **
+#** Written by Thomas Richter (THOR Software)                            **
+#** Sponsored by Accusoft, Tampa, FL and				 **
+#** the Computing Center of the University of Stuttgart                  **
+#**************************************************************************
+#
+#This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
+#also known as JPEG. It implements the standard in all its variations,
+#including lossless coding, hierarchical coding, arithmetic coding and
+#DNL, restart markers and 12bpp coding.
+#
+#In addition, it includes support for new proposed JPEG technologies that
+#are currently under discussion in the SC29/WG1 standardization group of
+#the ISO (also known as JPEG). These technologies include lossless coding
+#of JPEG backwards compatible to the DCT process, and various other
+#extensions.
+#
+#The author is a long-term member of the JPEG committee and it is hoped that
+#this implementation will trigger and facilitate the future development of
+#the JPEG standard, both for private use, industrial applications and within
+#the committee itself.
+#
+#  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#***********************************************************************************
+#** Configuration script for the jpeg project,
+#** THOR Software, Thomas Richter
+#**
+#** $Id: configure.in,v 1.5 2012-06-02 18:24:12 thor Exp $
+#**
+#** In this module: autoconf script for libjpeg
+#**********************************************************************************/
+#
+# Process this file with autoconf to produce a configure script.
+AC_INIT(jpeg,thor@math.tu-berlin.de)
+AC_CONFIG_SRCDIR([config.h])
+AC_CONFIG_HEADER([autoconfig.h])
+AC_PREFIX_DEFAULT([$HOME/bin/wavelet])
+#
+#
+CFLAGS="$machine_option $CFLAGS"
+CXXFLAGS="$machine_option $CXXFLAGS"
+LDFLAGS="$machine_option $LDFLAGS"
+#
+AC_SUBST(BITSIZE,${machine_option})
+#
+# Checks for programs.
+AC_PROG_CXX([g++-4.4 g++-4.3 g++-4.2 g++-4.1 g++-4.0 g++-3.4 g++-3.3 g++-3.2 g++ icc c++ gpp cxx cc++])
+AC_PROG_CC
+AC_PROG_CC_STDC
+AC_C_BIGENDIAN([AC_DEFINE(JPG_BIG_ENDIAN,[1],[Define to 1 for big endian])],[AC_DEFINE(JPG_LIL_ENDIAN,[1],[Define to 1 for little endian])])
+#
+# Set some compiler specific macros, dependent on whether we have a GNU C
+# or a generic compiler
+if test "$ac_compiler_gnu" = "yes"; then
+# Define a couple of options concerning the compiler
+  ac_cccmd=`echo ${CC} | cut -f 1 -d ' '`
+  if test "$ac_cccmd" = "icpc"; then
+     ac_cccmd="icc"
+  fi
+  AC_SUBST(SETTINGS,${ac_cccmd})
+else
+  ac_cccmd=`echo ${CXX} | cut -f 1 -d ' '`
+  AC_SUBST(SETTINGS,${ac_cccmd})
+fi
+AC_SUBST(COMPILER,${CXX})
+AC_SUBST(CC_ONLY,${CC})
+AC_SUBST(PREFIX,${ac_default_prefix})
+#
+# We first check in the C language as autoconf seems to expect that
+# the compiler accepts conflicting prototypes. Wierd.
+AC_LANG(C)
+
+#
+# Check whether the compiler supports -march. If not, try whether it supports
+# -mcpu.
+if test "$cputype_option" != ""; then
+   ac_SAVE_CFLAGS="$CFLAGS"
+   ac_SAVE_LDFLAGS="$LDFLAGS"
+   ac_SAVE_CXXFLAGS="$CXXFLAGS"
+   AC_MSG_CHECKING([whether the compiler supports -march])
+   #
+   CFLAGS="-march=$cputype_option $CFLAGS"
+   AC_TRY_COMPILE([],[],[ac_have_march='yes';AC_SUBST(CPU,"-march=$cputype_option")],
+	[ac_have_march='no'])
+   AC_MSG_RESULT($ac_have_march)
+   #
+   CFLAGS="$ac_SAVE_CFLAGS"
+   LDFLAGS="$ac_SAVE_LDFLAGS"
+   CXXFLAGS="$ac_SAVE_CXXFLAGS"
+   #
+   if test "$ac_have_march" = "yes"; then
+      CFLAGS="-march=$cputype_option $CFLAGS"
+      CXXFLAGS="-march=$cputype_option $CXXFLAGS"
+      LDFLAGS="-march=$cputype_option $LDFLAGS"
+   else
+      AC_MSG_CHECKING([whether the compiler supports -mcpu])
+      #
+      CFLAGS="-mcpu=$cputype_option $CFLAGS"
+      AC_TRY_COMPILE([],[],[ac_have_mcpu='yes';AC_SUBST(CPU,"-mcpu=$cputype_option")],
+	[ac_have_mcpu='no'])
+      AC_MSG_RESULT($ac_have_mcpu)
+      #
+      CFLAGS="$ac_SAVE_CFLAGS"
+      LDFLAGS="$ac_SAVE_LDFLAGS"
+      CXXFLAGS="$ac_SAVE_CXXFLAGS"
+      #
+      if test "$ac_have_mcpu" = "yes"; then
+      	 CFLAGS="-mcpu=$cputype_option $CFLAGS"
+      	 CXXFLAGS="-mcpu=$cputype_option $CXXFLAGS"
+      	 LDFLAGS="-mcpu=$cputype_option $LDFLAGS"
+      else
+         AC_SUBST(CPU,"")
+      fi	 
+   fi
+else
+   AC_SUBST(CPU,"")
+fi
+#
+# Enable CPU tune
+if test "$tunetype_option" != ""; then
+   ac_SAVE_CFLAGS="$CFLAGS"
+   ac_SAVE_LDFLAGS="$LDFLAGS"
+   ac_SAVE_CXXFLAGS="$CXXFLAGS"
+   AC_MSG_CHECKING([whether the compiler supports -mtune])
+   #
+   CFLAGS="-mtune=$tunetype_option $CFLAGS"
+   AC_TRY_COMPILE([],[],[ac_have_mtune='yes';AC_SUBST(TUNE,"-mtune=$tunetype_option")],
+	[ac_have_mtune='no'])
+   AC_MSG_RESULT($ac_have_mtune)
+   #
+   CFLAGS="$ac_SAVE_CFLAGS"
+   LDFLAGS="$ac_SAVE_LDFLAGS"
+   CXXFLAGS="$ac_SAVE_CXXFLAGS"
+   #
+   if test "$ac_have_mtune" = "yes"; then
+      CFLAGS="-mtune=$tunetype_option $CFLAGS"
+      CXXFLAGS="-mtune=$tunetype_option $CXXFLAGS"
+      LDFLAGS="-mtune=$tunetype_option $LDFLAGS"
+   else
+      AC_SUBST(TUNE,"")
+   fi
+else
+   AC_SUBST(TUNE,"")
+fi
+#
+# Check compiler features. We need long long and unsigned long long
+AC_CHECK_TYPES([long long])
+AC_CHECK_TYPES([unsigned long long])
+AC_CHECK_TYPES([__int64])
+if test "$ac_cv_type___int64" = "no"; then
+ if test "$ac_cv_type_long_long" = "no"; then
+  AC_MSG_ERROR([your compiler must support a signed 64 bit data type. jpeg cannot be build without it.])
+ fi
+ if test "$ac_cv_type_unsigned_long_long" = "no"; then
+  AC_MSG_ERROR([your compiler must support an unsigned 64 bit data type. jpeg cannot be build without it.])
+ fi
+fi
+#
+# Get type sizes
+AC_CHECK_SIZEOF([char])
+AC_CHECK_SIZEOF([short])
+AC_CHECK_SIZEOF([int])
+AC_CHECK_SIZEOF([long])
+AC_CHECK_SIZEOF([long long])
+AC_CHECK_SIZEOF([__int64])
+AC_CHECK_SIZEOF([void *])
+#
+#
+# Checks for header files.
+AC_HEADER_STDC
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_HEADER_STAT
+AC_CHECK_HEADERS([fcntl.h stdlib.h string.h strings.h signal.h unistd.h stdarg.h errno.h stdio.h])
+AC_CHECK_HEADERS([bstring.h bstrings.h ctype.h setjmp.h stddef.h])
+AC_CHECK_HEADERS([time.h sys/time.h sys/times.h sys/param.h assert.h math.h netinet/in.h])
+AC_CHECK_HEADERS([stdint.h],[ac_have_stdint_h='yes'],[ac_have_stdint_h='no'])
+if test "$ac_have_stdint_h" = "yes"; then
+   AC_CHECK_TYPE([int8_t],[AC_DEFINE(HAS_INT8_T,[1],[Define to 1 if the C99 type int8_t is available])],[],[#include<stdint.h>])
+   AC_CHECK_TYPE([int16_t],[AC_DEFINE(HAS_INT16_T,[1],[Define to 1 if the C99 type int16_t is available])],[],[#include<stdint.h>])
+   AC_CHECK_TYPE([int32_t],[AC_DEFINE(HAS_INT32_T,[1],[Define to 1 if the C99 type int32_t is available])],[],[#include<stdint.h>])
+   AC_CHECK_TYPE([int64_t],[AC_DEFINE(HAS_INT64_T,[1],[Define to 1 if the C99 type int64_t is available])],[],[#include<stdint.h>])
+   AC_CHECK_TYPE([uint8_t],[AC_DEFINE(HAS_UINT8_T,[1],[Define to 1 if the C99 type uint8_t is available])],[],[#include<stdint.h>])
+   AC_CHECK_TYPE([uint16_t],[AC_DEFINE(HAS_UINT16_T,[1],[Define to 1 if the C99 type uint16_t is available])],[],[#include<stdint.h>])
+   AC_CHECK_TYPE([uint32_t],[AC_DEFINE(HAS_UINT32_T,[1],[Define to 1 if the C99 type uint32_t is available])],[],[#include<stdint.h>])
+   AC_CHECK_TYPE([uint64_t],[AC_DEFINE(HAS_UINT64_T,[1],[Define to 1 if the C99 type uint64_t is available])],[],[#include<stdint.h>])
+fi
+#
+#
+# Checks for library functions.
+AC_FUNC_ERROR_AT_LINE
+AC_PROG_GCC_TRADITIONAL
+#
+#
+# A GNU compliant malloc is not available on AIX, but isn't needed
+# in first place....
+# AC_FUNC_MALLOC
+AC_FUNC_MEMCMP
+AC_TYPE_SIGNAL
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS([gettimeofday memchr memmove memset strchr strerror strrchr strtol strtod])
+AC_CHECK_FUNCS([time snprintf vsnprintf clock gettimeofday])
+AC_CHECK_FUNCS([isspace longjmp malloc free])
+AC_CHECK_FUNCS([open close read write lseek rename signal sleep])
+AC_CHECK_FUNCS([fopen64])
+#
+# Test whether builtin functions are available.
+CFLAGS_KEEP="${CFLAGS}"
+CFLAGS="${CFLAGS} -Werror"
+#
+AC_MSG_CHECKING([for __builtin_memset])
+AC_TRY_COMPILE([],[
+void *s;
+__builtin_memset(&s,0,sizeof(s));
+],[ac_have_builtin_memset='yes';AC_DEFINE(HAVE_BUILTIN_MEMSET,[1],[Define to 1 if __builtin_memset is available])],[ac_have_builtin_memset='no'])
+AC_MSG_RESULT($ac_have_builtin_memset)
+#
+AC_MSG_CHECKING([for __builtin_memcpy])
+AC_TRY_COMPILE([],[
+void *s;
+void *t;
+__builtin_memcpy(&s,&t,sizeof(s));
+],[ac_have_builtin_memcpy='yes';AC_DEFINE(HAVE_BUILTIN_MEMCPY,[1],[Define to 1 if __builtin_memcpy is available])],[ac_have_builtin_memcpy='no'])
+AC_MSG_RESULT($ac_have_builtin_memcpy)
+#
+AC_MSG_CHECKING([for __builtin_memmove])
+AC_TRY_COMPILE([],[
+void *s;
+void *t;
+__builtin_memmove(&s,&t,sizeof(s));
+],[ac_have_builtin_memmove='yes';AC_DEFINE(HAVE_BUILTIN_MEMMOVE,[1],[Define to 1 if __builtin_memmove is available])],[ac_have_builtin_memmove='no'])
+AC_MSG_RESULT($ac_have_builtin_memmove)
+#
+AC_MSG_CHECKING([for __builtin_expect])
+AC_TRY_COMPILE([],[
+int s = 1;
+int t = 2;
+if (__builtin_expect(s != t,1))
+   t++;
+],[ac_have_builtin_expect='yes';AC_DEFINE(HAVE_BUILTIN_EXPECT,[1],[Define to 1 if __builtin_expect is available])],[ac_have_builtin_expect='no'])
+AC_MSG_RESULT($ac_have_builtin_expect)
+#
+CFLAGS="${CFLAGS_KEEP}"
+#
+# The test for llseek and lseek64 does not seem to work properly unless we try to compile...
+# yuck!
+AC_LANG(C++)
+AC_MSG_CHECKING([for llseek])
+AC_TRY_COMPILE([
+#define _LARGEFILE64_SOURCE
+#include<sys/types.h>
+#include<unistd.h>
+],[loff_t res = llseek(0,0,0);],
+[ac_have_llseek='yes';AC_DEFINE(HAVE_LLSEEK,[1],[Define to 1 if llseek is available])],[ac_have_llseek='no'])
+AC_MSG_RESULT($ac_have_llseek)
+#
+AC_MSG_CHECKING([for lseek64])
+AC_TRY_COMPILE([
+#define _LARGEFILE64_SOURCE
+#include<sys/types.h>
+#include<unistd.h>
+],[off64_t res = lseek64(0,0,0);],
+[ac_have_lseek64='yes';AC_DEFINE(HAVE_LSEEK64,[1],[Define to 1 if lseek64 is available])],[ac_have_lseek64='no'])
+AC_MSG_RESULT($ac_have_lseek64)
+AC_LANG(C)
+#
+# The following extras are only for the test sources
+AC_CHECK_FUNCS([htonl htons ntohl ntohs])
+AC_CHECK_FUNCS([signal sigaction sigemptyset pipe dup dup2 execve fork fstat system kill sleep])
+#
+AC_CHECK_TYPE([struct timeval],[AC_DEFINE(HAS_STRUCT_TIMEVAL,[1],[Define to 1 if struct timeval is available])])
+AC_CHECK_TYPE([ptrdiff_t],[AC_DEFINE(HAS_PTRDIFF_T,[1],[Define to 1 if ptrdiff_t type is available])])
+#
+# Checks for extended timing methods
+AC_CHECK_FUNCS([sysconf times])
+AC_CHECK_TYPE([struct tms],[AC_DEFINE(HAS_STRUCT_TMS,[1],[Define to 1 if struct tms is available])],[],[#include<sys/times.h>])
+AC_CHECK_DECL([_SC_CLK_TCK],[AC_DEFINE(HAS_SC_CLK_TCK,[1],[Define to 1 if _SC_CLK_TCK is available for sysconf])],[],[#include<unistd.h>])
+AC_CHECK_DECL([CLK_TCK],[AC_DEFINE(HAS_CLK_TCK,[1],[Define to 1 if the variable CLK_TCK is available])],[],[#include<sys/time.h>])
+AC_CHECK_DECL([HZ],[AC_DEFINE(HAS_HZ,[1],[Define to 1 if the variable HZ is available])],[],[#include<sys/param.h>])
+#
+# Checks for IO file descriptors
+AC_CHECK_DECL([STDIN_FILENO],[AC_DEFINE(HAS_STDIN_FILENO,[1],[Define to 1 if the STDIN_FILENO define is available])],[],[#include<unistd.h>])
+AC_CHECK_DECL([STDOUT_FILENO],[AC_DEFINE(HAS_STDOUT_FILENO,[1],[Define to 1 if the STDOUT_FILENO define is available])],[],[#include<unistd.h>])
+AC_CHECK_DECL([STDERR_FILENO],[AC_DEFINE(HAS_STDERR_FILENO,[1],[Define to 1 if the STDERR_FILENO define is available])],[],[#include<unistd.h>])
+#
+# Checks for libraries
+# These tests must go here as otherwise they break the standard header tests for
+# reasons beyond me.
+AC_SEARCH_LIBS([exp],[m])
+#
+# libgcc_s required for 64 bit arithmetic on 64 bit.
+AC_CHECK_LIB(gcc_s,__muldc3,[AC_SUBST(LGCCS_OPTS,"-lgcc_s")],[AC_SUBST(LGCCS_OPTS,"")])
+#
+AC_SUBST(MALLOC_LIB,"")
+#
+#
+# check for argument type for a signal handler: These tests have to run with a C++ compiler
+AC_LANG(C++)
+# The first test checks whether a signal handler takes an "int" as argument.
+AC_MSG_CHECKING([whether argument type for signal handlers is "int"])
+AC_TRY_RUN([
+extern "C" {
+#include<signal.h>
+}
+RETSIGTYPE sh(int a) { } void si(void) { signal(SIGINT, sh);}
+int main(int argc,char **argv)
+{
+return 0;
+}
+],
+[ac_arg_type_int='yes';AC_DEFINE(SIG_ARG_TYPE_INT,[1],[Define to 1 if required argument to signal handlers is int])],
+[ac_arg_type_int='no'])
+AC_MSG_RESULT($ac_arg_type_int)
+#
+# Ditto for ... instead
+AC_MSG_CHECKING([whether argument type for signal handlers is "..."])
+AC_TRY_RUN([
+extern "C" {
+#include<signal.h>
+}
+RETSIGTYPE sh(...) { } void si(void) { signal(SIGINT, sh);}
+int main(int argc,char **argv)
+{
+return 0;
+}
+],
+[ac_arg_type_dots='yes';AC_DEFINE(SIG_ARG_TYPE_DOTS,[1],[Define to 1 if required argument to signal handlers is "..."])],
+[ac_arg_type_dots='no'])
+AC_MSG_RESULT($ac_arg_type_dots)
+#
+#
+# Test whether we have the GNU __attribute__ extension
+AC_MSG_CHECKING([whether the GNU __attribute__ extension is available])
+AC_TRY_COMPILE([],[extern void test(const char *fmt,...) __attribute__ (( format(printf,1,2) ));],
+[ac_has_attributes='yes';AC_DEFINE(HAS_ATTRIBUTES,[1],[Define to 1 if the GNU __attribute__ extension is available])],
+[ac_has_attributes='no'])
+AC_MSG_RESULT($ac_has_attributes)
+#
+#
+# Check for the __null GNU provides. We try to use it if possible.
+AC_MSG_CHECKING([for the __null keyword])
+AC_TRY_COMPILE([],[int *n = __null;],[ac_has_null='yes';AC_DEFINE(HAS__NULL_TYPE,[1],[Define to 1 if the __null keyword is available])],[ac_has_null='no'])
+AC_MSG_RESULT($ac_has_null)
+#
+# Check whether integers work as template arguments. This is required
+# for several classes, but not all compilers accept it.
+AC_MSG_CHECKING([whether integer constants are valid template arguments])
+AC_TRY_RUN([
+template<int a>
+struct A {
+ int b;
+ A() : b(a) {}
+};
+int main(int,char **)
+{
+A<1> a;
+return 0;
+}
+],[ac_int_template_args='yes';AC_DEFINE(HAS_INT_TEMPLATE_ARGS,[1],[Define to 1 if integer constants are valid template arguments])],
+[ac_int_template_args='no'])
+AC_MSG_RESULT($ac_int_template_args)
+if test "$ac_int_template_args" = "no"; then
+ AC_MSG_ERROR([your compiler must support constant integers as template arguments. jpeg cannot be build without it.])
+fi
+#
+# Check whether we can catch segfaults. Requires as condition for the next test.
+AC_MSG_CHECKING([for SIGSEGV and SIGILL signals])
+AC_TRY_RUN([
+extern "C" {
+#include <signal.h>
+}
+#include <stdlib.h>
+#if defined(SIG_ARG_TYPE_INT)
+RETSIGTYPE sig_handler(int)
+#elif defined(SIG_ARG_TYPE_DOTS)
+RETSIGTYPE sig_handler(...)
+#endif
+{
+  exit(0);
+}
+int main(int argc,char **argv)
+{
+ char *f = 0;
+ signal(SIGILL,&sig_handler);
+ signal(SIGSEGV,&sig_handler);
+ *f = 0;
+ return 10;
+}
+],
+[ac_sigseg_works='yes';AC_DEFINE(HAVE_SIGSEGV,[1],[Define to 1 if SIGSEGV signal works])],
+[ac_sigseg_works='no'])
+AC_MSG_RESULT($ac_sigseg_works)
+#
+#
+# Check for atomic increment and decrement instructions. These are not really
+# needed except for the debugging code. Everything else is done much less
+# compiler dependent with mutexes.
+AC_MSG_CHECKING([for atomic arithmetic functions __sync_add_and_fetch and __sync_fetch_and_sub])
+AC_TRY_RUN([
+int main(int argc,char **argv)
+{
+ unsigned long v = 0;
+
+ if (__sync_add_and_fetch(&v,1) != 1)
+  return 10;
+ if (__sync_fetch_and_sub(&v,1) != 1)
+  return 10;
+ if (v != 0)
+  return 10;
+ return 0;
+}
+],
+[ac_atomic_addsub='yes';AC_DEFINE(HAVE_ATOMIC_ADDSUB,[1],[Define to 1 if __sync arithmetic functions are available])],
+[ac_atomic_addsub='no'])
+AC_MSG_RESULT($ac_atomic_addsub)
+#
+# Check for locked conditional move, required for nonblocking stack
+# implementations
+AC_MSG_CHECKING([for atomic __sync_val_compare_and_swap])
+AC_TRY_RUN([
+int main(int argc,char **argv)
+{
+ unsigned long v = 0;
+ unsigned long w = 0;
+ unsigned long r = 1;
+
+ if (__sync_val_compare_and_swap(&v,w,r) != w)
+    return 10;
+ return 0;
+}
+],
+[ac_atomic_compare_and_swap='yes';AC_DEFINE(HAVE_ATOMIC_COMPARE_AND_SWAP,[1],[Define to 1 if __sync_val_compare_and_swap is available])],
+[ac_atomic_compare_and_swap='no'])
+AC_MSG_RESULT($ac_atomic_compare_and_swap)
+#
+# Check for a reasonable alignment for data structures. This should be a) a power of two,
+# and b) large enough, and c) cover the alignment constraints of all basic types. This
+# is required for the built-in memory manager
+AC_MSG_CHECKING([for worst-case structural alignment])
+AC_TRY_RUN([
+int main(int argc,char **argv)
+{
+  union Align {
+    char    a_byte;
+    short   a_word;
+    long    a_int;
+    float   a_float;
+    double  a_double;
+#if SIZEOF_LONG_LONG > 0
+    long long a_quad;
+#elif SIZEOF___INT64 > 0
+    __int64   a_quad;
+#endif
+    void   *a_ptr;
+    struct {
+      void *b_ptr;
+    } a_struct;
+  };
+  union Align a[2];
+  unsigned long s = (sizeof(a) >> 1) - 1;
+  unsigned long p = 0;
+
+  while(s) {
+   s >>= 1;
+   p++;
+  }
+
+  if (p < 4)
+    p = 4;
+
+  return p;
+}
+],[ac_natural_alignment='no'],[ac_natural_alignment=$?;AC_DEFINE_UNQUOTED(NATURAL_ALIGNMENT,[$ac_natural_alignment],[Define to the exponent of a power of two giving the worst-case alignment of components])])
+AC_MSG_RESULT($ac_natural_alignment)
+#
+# Check whether private subclasses have access to private members.
+# According to the C++ standard, they should, but for some compilers,
+# they don't. This is a bug in g++ 2.95.4 and before, got fixed in 3.2
+AC_MSG_CHECKING([whether private subclasses have access to private members])
+AC_TRY_COMPILE([],[
+class A {
+ int a;
+ class B {
+  B(class A *a)
+  {a->a = 0;}
+ };
+};
+],[ac_private_access='yes';AC_DEFINE(HAS_PRIVATE_ACCESS,[1],[Define to 1 if subclasses have access to private members])],
+[ac_private_access='no'])
+AC_MSG_RESULT($ac_private_access)
+#
+# Check whether templated subclasses used in subclasses require explicitly the name space
+# of the parent class to work. This should not happen, but gcc 2.95 has a bug here.
+AC_MSG_CHECKING([whether templates are in local namespace])
+AC_TRY_RUN([
+class A {
+ template<int a>
+ class B {
+ int b;
+ B() : b(a) {}
+ };
+ class C {
+ B<0> b;
+ };
+};
+int main(int,char **){return 0;}
+],[ac_local_templates='yes';AC_DEFINE(HAS_LOCAL_TEMPLATES,[1],[Define to 1 if templated subclasses are correctly in the namespace of the parent class])],
+[ac_local_templates='no'])
+AC_MSG_RESULT($ac_local_templates)
+#
+#
+# Check whether static const integral initializers work
+# Some compilers don't support them properly, but gcc does.
+AC_MSG_CHECKING([whether initializers of static const integral members work])
+AC_TRY_RUN([
+class A {
+ static const int a=0;
+};
+int main(int,char**){return 0;}
+],[ac_member_init='yes';AC_DEFINE(HAS_MEMBER_INIT,[1],[Define to 1 if initializers of static const integral members work])],
+[ac_member_init='no'])
+AC_MSG_RESULT($ac_member_init)
+#
+# Check whether casting works in template arguments. This doesn't seem to apply for 
+# all compiles, so be a bit careful.
+AC_MSG_CHECKING([whether casting works in template arguments])
+AC_TRY_RUN([
+typedef unsigned char UC;
+template<UC a>
+struct A {
+ int b;
+ A() : b(a) {}
+};
+int main(int,char **)
+{
+A<UC(~1)> a;
+return 0;
+}
+],[ac_template_casts='yes';AC_DEFINE(HAS_TEMPLATE_CASTS,[1],[Define to 1 if casting in template arguments work])],
+[ac_template_casts='no'])
+AC_MSG_RESULT($ac_template_casts)
+#
+#
+# Check whether the NORETURN attribute is available
+CXXFLAGS_KEEP="${CXXFLAGS}"
+CXXFLAGS="${CXXFLAGS} -Werror"
+AC_MSG_CHECKING([whether the noreturn attribute is available])
+AC_TRY_RUN([
+#include <stdlib.h>
+void leave(int code) __attribute__ ((noreturn));
+void leave(int code)
+{
+ exit(code);
+}
+int main(int,char**)
+{
+ leave(0);
+ return 10;
+}
+],[ac_have_noreturn='yes';AC_DEFINE(HAVE_NORETURN,[1],[Define to 1 if the noreturn attribute is available])],
+[ac_have_noreturn='no'])
+AC_MSG_RESULT($ac_have_noreturn)
+#
+# Check whether the ALWAYS_INLINE attribute is available
+AC_MSG_CHECKING([whether the always_inline attribute is available])
+AC_TRY_RUN([
+int test(int code) __attribute__ ((always_inline));
+int test(int code)
+{
+ return code;
+}
+int main(int,char**)
+{
+ return test(0);
+ return 10;
+}
+],[ac_have_always_inline='yes';AC_DEFINE(HAVE_ALWAYS_INLINE,[1],
+[Define to 1 if the always_inline attribute is available])],[ac_have_always_inline='no'])
+AC_MSG_RESULT($ac_have_always_inline)
+#
+# Check for the "hidden" attribute to remove symbols from the list of
+# symbols exported by a library.
+AC_MSG_CHECKING([whether __attribute__((visibility("hidden"))) is available for types])
+AC_TRY_COMPILE([struct A { static void f(void); }; void __attribute__ ((visibility ("hidden"))) A::f(void){}],[],[ac_visibility_hidden='yes';AC_DEFINE(HAS_VISIBILITY_HIDDEN,[1],[Define to 1 if __attribute((visibility("hidden"))) works])],[ac_visibility_hidden='no'])
+AC_MSG_RESULT($ac_visibility_hidden)
+#
+# Check for the "internal" attribute to remove symbols from the list of
+# symbols exported by a library.
+AC_MSG_CHECKING([whether __attribute__((visibility("internal"))) is available for types])
+AC_TRY_COMPILE([],[struct __attribute__ ((visibility ("internal"))) A { int x;};],[ac_visibility_internal='yes';AC_DEFINE(HAS_VISIBILITY_INTERNAL,[1],[Define to 1 if __attribute((visibility("internal"))) works])],[ac_visibility_internal='no'])
+AC_MSG_RESULT($ac_visibility_internal)
+#
+# Check for the "default" attribute to remove symbols from the list of
+# symbols exported by a library.
+AC_MSG_CHECKING([whether __attribute__((visibility("default"))) is available for types])
+AC_TRY_COMPILE([],[struct __attribute__ ((visibility ("default"))) A { int x;};],[ac_visibility_default='yes';AC_DEFINE(HAS_VISIBILITY_DEFAULT,[1],[Define to 1 if __attribute((visibility("default"))) works])],[ac_visibility_default='no'])
+AC_MSG_RESULT($ac_visibility_default)
+#
+# Check for the "may_alias" attribute to indicate types that may alias
+AC_MSG_CHECKING([whether __attribute__((may_alias)) is available for types])
+AC_TRY_COMPILE([],[typedef short __attribute__((may_alias)) a_short;a_short a],[ac_may_alias='yes';AC_DEFINE(HAS_MAY_ALIAS,[1],[Define to 1 if __attribute((may_alias)) works])],[ac_may_alias='no'])
+AC_MSG_RESULT($ac_may_alias)
+#
+# Check for the "aligned" attribute
+AC_MSG_CHECKING([whether __attribute__((aligned)) is available for types])
+AC_TRY_COMPILE([],[float x __attribute__((aligned));],[ac_aligned='yes';AC_DEFINE(HAS_ALIGNED,[1],[Define to 1 if __attribute((aligned)) works])],[ac_aligned='no'])
+AC_MSG_RESULT($ac_aligned)
+#
+CXXFLAGS="${CXXFLAGS_KEEP}"
+#
+#
+# Check for working const_cast: I'm not aware of a compiler
+# that breaks this, but better keep care.
+AC_MSG_CHECKING([for working const_cast<> capability])
+AC_TRY_COMPILE([],[const char *a = 0;delete const_cast<char *>(a);],[ac_const_cast='yes';AC_DEFINE(HAS_CONST_CAST,[1],[Define to 1 if const_cast<> works])],[ac_const_cast='no'])
+AC_MSG_RESULT($ac_const_cast)
+#
+# Check for working reinterpret_cast: I'm not aware of a compiler
+# that breaks this, but better keep care.
+AC_MSG_CHECKING([for working reinterpret_cast<> capability])
+AC_TRY_COMPILE([],[float a = 0;int b = reinterpret_cast<int &>(a);],[ac_reinterpret_cast='yes';AC_DEFINE(HAS_REINTERPRET_CAST,[1],[Define to 1 if reinterpret_cast<> works])],[ac_reinterpret_cast='no'])
+AC_MSG_RESULT($ac_reinterpret_cast)
+##
+# Check for non-ambiguity of static member functions thru various bases.
+AC_MSG_CHECKING([for uniqueness of static members thru various derivation paths])
+AC_TRY_COMPILE([],[
+struct Base {
+	static void operator delete(void *) { }
+};
+struct Path1 : public Base {
+	int a;
+};
+struct Path2 : public Base {
+	int b;
+};
+struct Final : public Path1, public Path2 {
+	int c;
+~Final() { }
+};
+],[ac_non_ambigious='yes'],[ac_non_ambigious='no';AC_DEFINE(AMBIGIOUS_NEW_BUG,[1],[Define to 1 if compiler threads static member derived from same base thru multiple paths as ambigious])])
+AC_MSG_RESULT($ac_non_ambigious)
+#
+# Check whether we support restricted (non-aliasing) pointers.
+AC_MSG_CHECKING([whether __restrict__ pointers are available])
+AC_TRY_COMPILE([],[
+struct SmartCopy {
+	void mycopy(char * __restrict__ a,char * __restrict b)
+	{
+		while(*a++ = *b++);
+	}
+}
+],[ac_have_restrict='yes';AC_DEFINE(HAVE_RESTRICTED_PTRS,[1],
+[Define to 1 if the __restrict__ pointer attribute is available])],[ac_have_restrict='no'])
+AC_MSG_RESULT($ac_have_restrict)
+#
+if test "$ac_arg_SIMD" = "yes"; then
+# Check whether we have SIMD instructions for floating point. This can speed up at
+# least the vertical lifting steps on some machines.
+AC_MSG_CHECKING([for float SIMD instructions])
+AC_TRY_RUN([
+typedef float vector4 __attribute__ ((vector_size (16)));
+typedef float vectorbase;
+void vectorlift(vectorbase *top,vectorbase *center,vectorbase *bottom,int len)
+{
+  vector4 *tv = (vector4 *)top;
+  vector4 *cv = (vector4 *)center;
+  vector4 *bv = (vector4 *)bottom;
+  const vector4 three = {3,3,3,3};
+  
+  len >>= 2;
+  do {
+    *cv  = (*bv + *tv) * three;
+    cv++,bv++,tv++;
+  } while(--len);
+}
+int main(int argc,char **argv)
+{
+return 0;
+}
+],[ac_have_float_simd='yes';AC_DEFINE(HAVE_FLOAT_SIMD,[1],
+[Define to 1 if float SIMD data types are available])],[ac_have_float_simd='no'])
+AC_MSG_RESULT($ac_have_float_simd)
+fi
+#
+# Check whether we are able to use some compile time options, as for example the
+# traditional x87 FPU instruction set which is faster for the AMDs.
+save_CFLAGS="$CFLAGS"
+AC_LANG(C)
+#
+AC_MSG_CHECKING([for the -mfpmath=387 compiler switch])
+CFLAGS="-mfpmath=387 $CFLAGS"
+AC_TRY_COMPILE([],[],[ac_have_x87FPU='yes';AC_SUBST(FPU_OPTS,"-mfpmath=387")],[ac_have_x87FPU='no'])
+AC_MSG_RESULT($ac_have_x87FPU)
+#
+# Check whether the -fvisibility option is available. Can reduce the size of the library.
+AC_MSG_CHECKING([for the -fvisibility=internal compiler switch])
+CFLAGS="-fvisibility=internal -Werror $save_CFLAGS"
+AC_TRY_COMPILE([],[],[ac_have_fvisibility='yes';AC_SUBST(LIB_OPTS,"-fvisibility=internal")],[ac_have_fvisibility='no'])
+AC_MSG_RESULT($ac_have_fvisibility)
+#
+# Check whether we can generate position-independent code. This is sometimes required for
+# library building
+AC_MSG_CHECKING([for the -fPIC compiler switch])
+CFLAGS="-fPIC $save_CFLAGS"
+AC_TRY_COMPILE([],[],[ac_have_fpic='yes';AC_SUBST(LIB_PICOPTS,"-fPIC")],[ac_have_fpic='no'])
+AC_MSG_RESULT($ac_have_fpic)
+#
+#
+CFLAGS="$save_CFLAGS"
+AC_LANG(C++)
+#
+# Check for additional features for this hardware.
+# Check whether we have a processor type. If not, set to
+# "unknown" and check for uname -m.
+HARDWARE=`(uname -p) 2>/dev/null || echo unknown`
+if test "$HARDWARE" = "unknown"; then
+   HARDWARE=`(uname -m) 2>/dev/null || echo unknown`
+fi
+#
+# For hysterical raisons, "sparc" is kept here as "sun4u" Yuck.
+if test "$HARDWARE" = "sparc"; then
+   HARDWARE="sun4u"
+fi
+#
+host_os=`(uname -s) 2>/dev/null || echo unknown`
+host_cpu=${HARDWARE}
+#
+# Check for a suitable libpthread and the required compiler flags to make it working.
+# Adapted from the autoconf code by Steven G. Johnson and Alejandro Forero Cuervo
+# All this requires C linkage, so switch over for the next test.
+if test "$ac_arg_THREADING" = "yes"; then
+AC_LANG(C)
+cx_pthread_ok=no
+# We used to check for pthread.h first, but this fails if pthread.h
+# requires special compiler flags (e.g. on True64 or Sequent).
+# It gets checked for in the link test anyway.
+# First of all, check if the user has set any of the PTHREAD_LIBS,
+# etcetera environment variables, and if threads linking works using
+# them:
+if test "$PTHREAD_LIBS$PTHREAD_CFLAGS" != ""; then
+   save_CFLAGS="$CFLAGS"
+   CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+   save_LIBS="$LIBS"
+   LIBS="$PTHREAD_LIBS $LIBS"
+   AC_MSG_CHECKING([for pthread_join in LIBS=$PTHREAD_LIBS with CFLAGS=$PTHREAD_CFLAGS])
+   AC_TRY_LINK_FUNC(pthread_join, acx_pthread_ok=yes)
+   AC_MSG_RESULT($acx_pthread_ok)
+   if test "$acx_pthread_ok" = "no"; then
+      PTHREAD_LIBS=""
+      PTHREAD_CFLAGS=""
+   fi
+   LIBS="$save_LIBS"
+   CFLAGS="$save_CFLAGS"
+fi
+# We must check for the threads library under a number of different
+# names; the ordering is very important because some systems
+# (e.g. DEC) have both -lpthread and -lpthreads, where one of the
+# libraries is broken (non-POSIX).
+
+# Create a list of thread flags to try.  Items starting with a "-" are
+# C compiler flags, and other items are library names, except for "none"
+# which indicates that we try without any flags at all.
+
+acx_pthread_flags="pthreads none -Kthread -kthread lthread -pthread -pthreads -mthreads pthread --thread-safe -mt"
+
+# The ordering *is* (sometimes) important.  Some notes on the
+# individual items follow:
+
+# pthreads: AIX (must check this before -lpthread)
+# none: in case threads are in libc; should be tried before -Kthread and
+#       other compiler flags to prevent continual compiler warnings
+# -Kthread: Sequent (threads in libc, but -Kthread needed for pthread.h)
+# -kthread: FreeBSD kernel threads (preferred to -pthread since SMP-able)
+# lthread: LinuxThreads port on FreeBSD (also preferred to -pthread)
+# -pthread: Linux/gcc (kernel threads), BSD/gcc (userland threads)
+# -pthreads: Solaris/gcc
+# -mthreads: Mingw32/gcc, Lynx/gcc
+# -mt: Sun Workshop C (may only link SunOS threads [-lthread], but it
+#      doesn't hurt to check since this sometimes defines pthreads too;
+#      also defines -D_REENTRANT)
+# pthread: Linux, etcetera
+# --thread-safe: KAI C++
+case "${host_cpu}-${host_os}" in
+     *sun4u*)
+     # On Solaris (at least, for some versions), libc contains stubbed
+     # (non-functional) versions of the pthreads routines, so link-based
+     # tests will erroneously succeed.	(We need to link with -pthread or
+     # -lpthread.)  (The stubs are missing pthread_cleanup_push, or rather
+     # a function called by this macro, so we could check for that, but
+     # who knows whether they'll stub that too in a future libc.)  So,
+     # we'll just look for -pthreads and -lpthread first:
+     acx_pthread_flags="-pthread -pthreads pthread -mt $acx_pthread_flags"
+     ;;
+esac
+
+if test "$acx_pthread_ok" = ""; then
+for flag in $acx_pthread_flags; do
+    case $flag in
+	 none)
+		AC_MSG_CHECKING([whether pthreads work without any flags])
+		;;
+
+	-*)
+		AC_MSG_CHECKING([whether pthreads work with $flag])
+		PTHREAD_CFLAGS="$flag"
+		;;
+
+	*)
+		AC_MSG_CHECKING([for the pthreads library -l$flag])
+		PTHREAD_LIBS="-l$flag"
+		;;
+	esac
+
+	save_LIBS="$LIBS"
+	save_CFLAGS="$CFLAGS"
+	LIBS="$PTHREAD_LIBS $LIBS"
+	CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+
+	# Check for various functions.	We must include pthread.h,
+	# since some functions may be macros.  (On the Sequent, we
+	# need a special flag -Kthread to make this header compile.)
+	# We check for pthread_join because it is in -lpthread on IRIX
+	# while pthread_create is in libc.  We check for pthread_attr_init
+	# due to DEC craziness with -lpthreads.	 We check for
+	# pthread_cleanup_push because it is one of the few pthread
+	# functions on Solaris that doesn't have a non-functional libc stub.
+	# We try pthread_create on general principles.
+	AC_TRY_LINK([#include <pthread.h>],
+		    [pthread_t th; pthread_join(th, 0);
+		     pthread_attr_init(0); pthread_cleanup_push(0, 0);
+		     pthread_create(0,0,0,0); pthread_cleanup_pop(0); ],
+		    [acx_pthread_ok=yes])
+
+	LIBS="$save_LIBS"
+	CFLAGS="$save_CFLAGS"
+
+	AC_MSG_RESULT($acx_pthread_ok)
+	if test "$acx_pthread_ok" = "yes"; then
+		break;
+	fi
+
+	PTHREAD_LIBS=""
+	PTHREAD_CFLAGS=""
+done
+fi
+#
+# Various other checks:
+if test "$acx_pthread_ok" = "yes"; then
+        save_LIBS="$LIBS"
+        LIBS="$PTHREAD_LIBS $LIBS"
+        save_CFLAGS="$CFLAGS"
+        CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+
+        # Detect AIX lossage: threads are created detached by default
+        # and the JOINABLE attribute has a nonstandard name (UNDETACHED).
+        AC_MSG_CHECKING([for joinable pthread attribute])
+        AC_TRY_LINK([#include <pthread.h>],
+                    [int attr=PTHREAD_CREATE_JOINABLE;],
+                    ok=PTHREAD_CREATE_JOINABLE, ok=unknown)
+        if test "$ok" = "unknown"; then
+                AC_TRY_LINK([#include <pthread.h>],
+                            [int attr=PTHREAD_CREATE_UNDETACHED;],
+                            ok=PTHREAD_CREATE_UNDETACHED, ok=unknown)
+        fi
+        if test "$ok" != "PTHREAD_CREATE_JOINABLE"; then
+                AC_DEFINE(PTHREAD_CREATE_JOINABLE, $ok,
+                          [Define to the necessary symbol if this constant
+                           uses a non-standard name on your system.])
+        fi
+        AC_MSG_RESULT(${ok})
+        if test "$ok" = "unknown"; then
+                AC_MSG_WARN([we do not know how to create joinable pthreads])
+        fi
+	#
+	# Detect whether we can create pthreads in detached state
+        AC_MSG_CHECKING([for detached pthread attribute])
+        AC_TRY_LINK([#include <pthread.h>],
+                    [int attr=PTHREAD_CREATE_DETACHED;],
+                    ok=PTHREAD_CREATE_DETACHED, ok=unknown)
+	if test "$ok" = "PTHREAD_CREATE_DETACHED"; then
+	   AC_DEFINE(HAVE_PTHREAD_CREATE_DETACHED,1,[Define to 1 if PTHREAD_CREATE_DETACHED is available])
+	fi						   
+	AC_MSG_RESULT(${ok})
+
+        AC_MSG_CHECKING([if more special flags are required for pthreads])
+        flag=no
+        case "${host_cpu}-${host_os}" in
+                *-AIX* | *-freebsd*)     flag="-D_THREAD_SAFE";;
+                *sun4u* | *-osf* | *-hpux*) flag="-D_REENTRANT";;
+        esac
+        AC_MSG_RESULT(${flag})
+        if test "$flag" != "no"; then
+                PTHREAD_CFLAGS="$flag $PTHREAD_CFLAGS"
+        fi
+
+        LIBS="$save_LIBS"
+        CFLAGS="$save_CFLAGS"
+
+        # More AIX lossage: must compile with cc_r
+        AC_CHECK_PROG(PTHREAD_CC, cc_r, cc_r, ${CC})
+else
+        PTHREAD_CC="$CC"
+fi
+#
+# Bummer! We cannot really use the CC command here since this is C++ code.
+# Keep this set for future extensions/workarounds.
+AC_SUBST(PTHREAD_CC)
+#
+if test "$acx_pthread_ok" = "yes"; then
+   # Check for semaphore operations
+   CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+   CC=$PTHREAD_CC
+   AC_DEFINE(HAVE_PTHREAD,1,[Define if you have POSIX threads libraries and header files.])
+   AC_DEFINE(USE_MULTITHREADING,1,[Define if you want to use multithreading.])
+   if test "$PTHREAD_LIBS" = ""; then
+      ac_pthread_libs=""
+   else
+      ac_pthread_libs=`echo $PTHREAD_LIBS | sed 's/^-l//' | sed 's/ -l/ /g'`
+   fi
+   AC_SEARCH_LIBS([pthread_create],[$ac_pthread_libs])
+   # Solaris has sem_init in a separate library
+   save_LIBS="$LIBS"
+   LIBS=""
+   AC_SEARCH_LIBS([sem_init],[rt],[],[],[$save_LIBS])
+   PTHREAD_LIBS="$PTHREAD_LIBS $LIBS"	
+   LIBS="$PTHREAD_LIBS $LIBS"
+   AC_CHECK_HEADERS([pthread.h semaphore.h])
+   AC_CHECK_FUNCS([pthread_mutex_init pthread_create pthread_detach pthread_mutexattr_init sem_init])
+   AC_CHECK_FUNCS([pthread_self pthread_equal])
+   LIBS="$save_LIBS"
+else   
+   AC_MSG_ERROR(["pthreads not available, make sure that libpthread is in the LD_LIBRARY_PATH"])
+   acx_pthread_ok=no
+fi
+AC_SUBST(PTHREAD_LIBS)
+AC_SUBST(PTHREAD_CFLAGS)
+#
+if test "$ac_arg_ASSEMBLY" = "yes"; then
+   ASSEMBLY_FLAG="-DUSE_ASSEMBLY=1"
+else
+   ASSEMBLY_FLAG="-DUSE_ASSEMBLY=1"
+fi
+AC_SUBST(ASSEMBLY_FLAG)
+#
+# Additional feature selection
+#
+AC_DEFINE(HAVE_FEATURE_SELECTION,1,[Define to 1 to use the autoconfig feature selection])
+#
+#
+AC_MSG_CHECKING([for additional settings for ${HARDWARE}])
+AC_SUBST(HARDWARE)
+AC_DEFINE_UNQUOTED(HARDWARE,${HARDWARE},[Define for short name of hardware platform])
+HW_DEFINE="-D__IS_${HARDWARE}__"
+AC_SUBST(HW_DEFINE)
+ADDON_FILE="addons.$HARDWARE"
+if test -d "$ADDON_FILE"; then
+   ac_have_settings='yes'
+   AC_DEFINE(HAVE_ADDONS,1,[Define if additional settings are required for this architecture])
+   AC_DEFINE_UNQUOTED(ADDON_FILE,${ADDON_FILE},[Define to path for platform specific include file])
+   # Create a symbolic link to the addons we use for easier inclusion
+   rm -rf addons
+   ln -s $ADDON_FILE addons
+else
+   rm -rf addons
+   ac_have_settings='no'
+fi
+AC_SUBST(HAVE_ADDONS,$ac_have_settings)
+AC_MSG_RESULT($ac_have_settings)
+#
+#
+AC_LANG(C++)
+#
+# End of: Configuration switch: Enable multi-threading
+fi
+#
+#
+AC_CONFIG_FILES([automakefile])
+AC_OUTPUT
+#

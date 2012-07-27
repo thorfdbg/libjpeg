@@ -1,0 +1,7 @@
+#!/bin/bash
+
+make configure
+cp -a configure configure.in automakefile.in autoconfig.h.in Makefile Makefile_Settings.gcc Makefile.template README README.license README.history doxyconfig doxyfilter.py ../jpeg-svn
+for i in `find . -type d -not -name CVS`; do 
+    cp -a $i/*.hpp $i/*.cpp $i/Makefile ../jpeg-svn/$i/.
+done
