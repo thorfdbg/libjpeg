@@ -26,3 +26,6 @@ CVS
 
 # core dumps
 core
+
+#Editor temporaries
+*~
