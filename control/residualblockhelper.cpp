@@ -151,6 +151,8 @@ void ResidualBlockHelper::AddResidual(const RectAngle<LONG> &rect,
 {
   if (residual) {
     UBYTE i,k;
+    // 
+    max = ((max + 1) << m_ucPointShift) - 1;
     //
     // Step 1
     AllocateBuffers();
