@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.25 2012-07-15 10:37:22 thor Exp $
+## $Id: Makefile,v 1.27 2012-07-29 17:00:39 thor Exp $
 ##
 ## Makefile for the jpeg transcoder project,
 ## THOR Software, May 20, 2012, Thomas Richter
@@ -15,7 +15,8 @@ FILES	=	encoder decoder tables image entropyparser rectanglerequest \
 		aclosslessscan acdifferentiallosslessscan \
 		refinementscan acrefinementscan \
 		residualscan residualhuffmanscan \
-		jpeglsscan singlecomponentlsscan lineinterleavedlsscan sampleinterleavedlsscan
+		jpeglsscan singlecomponentlsscan lineinterleavedlsscan \
+		sampleinterleavedlsscan vesascan
 
 DIRNAME	=	codestream
 SUPER	=	../
