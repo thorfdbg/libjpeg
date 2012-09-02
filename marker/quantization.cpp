@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.cpp,v 1.16 2012-07-27 08:08:33 thor Exp $
+** $Id: quantization.cpp,v 1.17 2012-07-29 17:00:39 thor Exp $
 **
 */
 
@@ -199,6 +199,7 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
       for(j = 0;j < 64;j++) {
 	int mult  = (i >= 2)?(hdrscale):(scale);
 	int delta = (table[j] * mult + 50) / 100;
+#if 0
 	if ((j & 7) + (j >> 3) > 3) {
 	  delta = (table[j] * mult + 50) / 100;
 	} else if ((j & 7) + (j >> 3) > 2) {
@@ -211,6 +212,7 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
 	  int sc = (mult > 100)?(100):mult;
 	  delta  = (table[j] * sc + 50) / 100;
 	}
+#endif
 	if (delta <= 0) 
 	  delta = 1;
 	if (delta > 32767)

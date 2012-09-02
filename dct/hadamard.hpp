@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Very low-complexity Hadamard-Transform for the residuals.
 **
-** $Id: hadamard.hpp,v 1.1 2012-07-24 19:36:45 thor Exp $
+** $Id: hadamard.hpp,v 1.2 2012-07-29 17:00:39 thor Exp $
 **
 */
 
@@ -70,8 +70,7 @@ class Hadamard : public DCT {
   //
   // Bit assignment
   enum { 
-    FIX_BITS          = 13, // fractional bits for fixpoint in the calculation
-    QUANTIZER_BITS    = 30  // bits for representing the quantizer
+    QUANTIZER_BITS    = 29  // bits for representing the quantizer
   };
   //
   // The (inverse) quantization tables, i.e. multipliers.

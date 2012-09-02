@@ -47,7 +47,7 @@ the committee itself.
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.48 2012-07-27 08:08:33 thor Exp $
+** $Id: tables.cpp,v 1.49 2012-07-29 17:00:39 thor Exp $
 **
 */
 
@@ -136,7 +136,8 @@ void Tables::InstallDefaultTables(const struct JPG_TagItem *tags)
   LONG colortrafo = tags->GetTagData(JPGTAG_IMAGE_COLORTRANSFORMATION,JPGFLAG_IMAGE_COLORTRANSFORMATION_YCBCR);
   bool lossless   = (frametype & JPGFLAG_REVERSIBLE_DCT)?true:false;
   bool residual   = (frametype & JPGFLAG_RESIDUAL_CODING)?true:false;
-  bool hadamard   = tags->GetTagData(JPGTAG_IMAGE_ENABLE_HADAMARD,true)?true:false;
+  bool hadamard   = tags->GetTagData(JPGTAG_IMAGE_ENABLE_HADAMARD,false)?true:false;
+  bool noiseshaping = tags->GetTagData(JPGTAG_IMAGE_ENABLE_NOISESHAPING,false)?true:false;
   ULONG restart   = tags->GetTagData(JPGTAG_IMAGE_RESTART_INTERVAL);
   UBYTE preshift  = 0;
   UWORD *map0     = (UWORD *)(tags->GetTagPtr(JPGTAG_IMAGE_TONEMAPPING0));
@@ -278,6 +279,7 @@ void Tables::InstallDefaultTables(const struct JPG_TagItem *tags)
     //
     // Enable or disable the hadamard transformation.
     m_pResidualData->InstallHadamardTrafo(hadamard);
+    m_pResidualData->InstallNoiseShaping(noiseshaping);
 
     // Also build an EXIF marker if residual markers are included.
     // This is a bug work-around for eog. Yuck!

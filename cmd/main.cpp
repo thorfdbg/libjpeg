@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This header provides the main function.
 **
-** $Id: main.cpp,v 1.66 2012-07-27 08:08:33 thor Exp $
+** $Id: main.cpp,v 1.69 2012-09-02 16:31:43 thor Exp $
 **
 */
 
@@ -436,7 +436,7 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 	    int colortrafo,bool lossless,bool progressive,
 	    bool reversible,bool residual,bool optimize,bool accoding,bool dconly,
 	    UBYTE levels,bool pyramidal,bool writednl,UWORD restart,double gamma,
-	    int lsmode,bool hadamard,const char *sub)
+	    int lsmode,bool hadamard,bool noiseshaping,const char *sub)
 { 
   struct JPG_TagItem dcscan[] = { // scan parameters for the first DCOnly scan
     JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
@@ -590,6 +590,7 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 		JPG_ValueTag(JPGTAG_IMAGE_WRITE_DNL,writednl),
 		JPG_ValueTag(JPGTAG_IMAGE_RESTART_INTERVAL,restart),
 		JPG_ValueTag(JPGTAG_IMAGE_ENABLE_HADAMARD,hadamard),
+		JPG_ValueTag(JPGTAG_IMAGE_ENABLE_NOISESHAPING,noiseshaping),
 		JPG_PointerTag(JPGTAG_IMAGE_SUBX,subx),
 		JPG_PointerTag(JPGTAG_IMAGE_SUBY,suby),
 		JPG_PointerTag((tonemapping)?(JPGTAG_IMAGE_TONEMAPPING0):JPGTAG_TAG_IGNORE,tonemapping),
@@ -695,6 +696,7 @@ int main(int argc,char **argv)
   bool progressive= false;
   bool writednl   = false;
   bool hadamard   = false;
+  bool noiseshaping = false;
   const char *sub = NULL;
 
   printf("libjpeg,jpeg Copyright (C) 2011-2012 Accusoft, Thomas Richter\n"
@@ -792,6 +794,10 @@ int main(int argc,char **argv)
       hadamard  = true;
       argv++;
       argc--;
+    } else if (!strcmp(argv[1],"-N")) {
+      noiseshaping = true;
+      argv++;
+      argc--;
     } else if (!strcmp(argv[1],"-g")) {
       gamma = atof(argv[2]); 
       if (argv[2] == NULL) {
@@ -823,6 +829,9 @@ int main(int argc,char **argv)
       lsmode = atoi(argv[2]);
       argv += 2;
       argc -= 2;
+    } else {
+      fprintf(stderr,"unsupported command line switch %s\n",argv[1]);
+      return 20;
     }
     // More parameters follow.
   }
@@ -835,6 +844,7 @@ int main(int argc,char **argv)
 	    "-Q quality : defines the quality for the extension layer\n"
 	    "-r         : enable lossless coding by encoding residuals, \n"
 	    "             also requires -q to define the base quality\n"
+	    "-N         : enable noise shaping of the prediction residual\n"
 	    "-l         : enable lossless coding by an int-to-int DCT\n"
 	    "             also requires -c and -q 100 for true lossless\n"
 	    "-p         : JPEG lossless (predictive) mode\n"
@@ -876,6 +886,11 @@ int main(int argc,char **argv)
 	    "             Note that the UBC software will not able to decode streams created by\n"
 	    "             this software due to a limitation of the UBC code - the streams are\n"
 	    "             nevertheless fully conforming.\n"
+	    "             Mode 3 is also available, but not a JPEG LS conforming profile.\n"
+	    "             It rather implements an experimental simple online compression for\n"
+	    "             a call from VESA. For -ls 3, the available bandwidth can be provided\n"
+	    "             with the -m command line argument. -m 100 specifies 100%% bandwidth,\n"
+	    "             i.e. all data is transmitted. -m 25 is a 1:4 compression at 25%% bandwidth.\n"
 	    "-cls       : Use a JPEG LS part-2 conforming pseudo-RCT color transformation.\n"
 	    "             Note that this transformation is only CONFORMING TO 14495-2\n"
 	    "             AND NOT CONFORMING TO 10918-1. Works for near-lossless JPEG LS\n"
@@ -889,7 +904,7 @@ int main(int argc,char **argv)
   } else {
     Encode(argv[1],argv[2],quality,hdrquality,maxerror,colortrafo,lossless,progressive,
 	   reversible,residuals,optimize,accoding,dconly,levels,pyramidal,writednl,restart,
-	   gamma,lsmode,hadamard,sub);
+	   gamma,lsmode,hadamard,noiseshaping,sub);
   }
   
   return 0;

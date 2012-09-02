@@ -49,7 +49,7 @@ the committee itself.
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.cpp,v 1.12 2012-07-27 09:21:25 thor Exp $
+** $Id: residualblockhelper.cpp,v 1.13 2012-07-29 17:00:39 thor Exp $
 **
 */
 
@@ -68,6 +68,10 @@ the committee itself.
 #include "dct/hadamard.hpp"
 #include "dct/dct.hpp"
 #include "std/string.hpp"
+///
+    
+/// Defines
+#define NOISE_SHAPING
 ///
 
 /// ResidualBlockHelper::ResidualBlockHelper
@@ -150,8 +154,9 @@ void ResidualBlockHelper::AddResidual(const RectAngle<LONG> &rect,
 				      LONG * const *residual,ULONG max)
 {
   if (residual) {
+    bool  noiseshaping = m_pFrame->TablesOf()->ResidualDataOf()->isNoiseShapingEnabled();
     UBYTE i,k;
-    // 
+    //
     max = ((max + 1) << m_ucPointShift) - 1;
     //
     // Step 1
@@ -167,9 +172,29 @@ void ResidualBlockHelper::AddResidual(const RectAngle<LONG> &rect,
       for(i = 0;i < m_ucCount;i++) {
 	UWORD quant = (i > 0 && i < 3)?(m_usChromaQuant):(m_usLumaQuant); 
 	LONG *res   = residual[i]; // the residual buffer.
-	LONG *rec   = m_ppReconstructed[i];
-	for(k = 0;k < 64;k++) {
-	  rec[k] = res[k] * quant; // assumes round to zero.
+	LONG *rec   = m_ppReconstructed[i]; 
+	int x,y,dx,dy;
+	for(y = 0;y < 64;y += 16) {
+	  for(x = 0;x < 8;x += 2) {
+	    LONG avg = 0;
+	    if (noiseshaping) {
+	      for(dy = 0;dy < 16;dy += 8) {
+		for(dx = 0;dx < 2;dx++) {
+		  avg   += res[x + dx + y + dy] * quant;
+		}
+	      }
+	    }
+	    avg = (avg + 2) >> 2;
+	    for(dy = 0;dy < 16;dy += 8) {
+	      for(dx = 0;dx < 2;dx++) {
+		LONG v = res[x + dx + y + dy] * quant;
+		if (noiseshaping && v > avg - quant && v < avg + quant) {
+		  v = avg;
+		}
+		rec[x + dx + y + dy] = v;
+	      }
+	    }
+	  }
 	}
       }
     }
@@ -451,6 +476,7 @@ void ResidualBlockHelper::ComputeResiduals(const RectAngle<LONG> &r,
   class ColorTrafo *ctrafo = req->ColorTrafoOf(false);
   class DCT *const *dtrafo = req->DCTsOf();
   ULONG pmax               = max;
+  bool  noiseshaping       = m_pFrame->TablesOf()->ResidualDataOf()->isNoiseShapingEnabled();
   UBYTE i,k;
   //
   // Adjust the maximum and the level shift to that of the original input.
@@ -543,8 +569,25 @@ void ResidualBlockHelper::ComputeResiduals(const RectAngle<LONG> &r,
     for(i = 0;i < m_ucCount;i++) {
       UWORD quant = (i > 0 && i < 3)?(m_usChromaQuant):(m_usLumaQuant); 
       LONG *res   = residual[i]; // the residual buffer.
-      for(k = 0;k < 64;k++) {
-	res[k] /= quant; // assumes round to zero.
+      LONG  error = 0;
+      int   p     = 0;
+      LONG  v;
+      int qnt;
+      int x,y,dx,dy;
+      for(y = 0;y < 64;y += 16) {
+	for(x = 0;x < 8;x += 2) {
+	  for(dy = 0;dy < 16;dy += 8) {
+	    for(dx = 0;dx < 2;dx++) {
+	      p      = x + dx + y + dy;
+	      v      = res[p];
+	      if (noiseshaping)
+		v     += error;
+	      qnt    = v / quant;
+	      error += res[p] - quant * qnt;
+	      res[p] = qnt;
+	    }
+	  }
+	}
       }
     }
   }

@@ -48,7 +48,7 @@ the committee itself.
  * client application to define all the parameters the jpeg library
  * needs. 
  *
- * $Id: parameters.hpp,v 1.20 2012-07-27 08:08:33 thor Exp $
+ * $Id: parameters.hpp,v 1.22 2012-07-29 17:00:39 thor Exp $
  *
  * These parameters are specified by the user upon invocation of
  * the library.
@@ -219,6 +219,10 @@ the committee itself.
 // The default of the tag is to enable the Hadamard transformation (on)
 #define JPGTAG_IMAGE_ENABLE_HADAMARD (JPGTAG_IMAGE_BASE + 0x10)
 //
+// Enable noise shaping of the coding residuals. This lowers the coding
+// performance but improvides the visual performance of the image.
+#define JPGTAG_IMAGE_ENABLE_NOISESHAPING (JPGTAG_IMAGE_BASE + 0x11)
+//
 // Parameters defining the HDR mapping procedure. This defines up to four tone mapping curves
 // one per component (the code could do more, but the interface is currently limited)
 // Each tag is a pointer to 256 UWORDs each defining the HDR level for a given LDR level.
@@ -275,6 +279,9 @@ the committee itself.
 //
 // Sample interleaved, components in a single scan.
 #define JPGFLAG_SCAN_LS_INTERLEAVING_SAMPLE 2
+//
+// Experimental Vesa proposal.
+#define JPGFLAG_SCAN_LS_VESASCAN 3
 ///
 
 /// Tag definitions for the bitmap IO hook

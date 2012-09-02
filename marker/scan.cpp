@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.62 2012-07-26 19:17:35 thor Exp $
+** $Id: scan.cpp,v 1.65 2012-08-17 08:22:56 thor Exp $
 **
 */
 
@@ -73,6 +73,7 @@ the committee itself.
 #include "codestream/singlecomponentlsscan.hpp"
 #include "codestream/lineinterleavedlsscan.hpp"
 #include "codestream/sampleinterleavedlsscan.hpp"
+#include "codestream/vesascan.hpp"
 #include "coding/huffmantemplate.hpp"
 #include "marker/huffmantable.hpp"
 #include "marker/actable.hpp"
@@ -213,7 +214,7 @@ void Scan::ParseMarker(class ByteStream *io)
     if (data > 63)
       JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","end of scan index is out of range, must be between 0 and 63");
   } else {
-    if (data > 2)
+    if (data > 3 /*2*/)
       JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","interleave specification is out of range, must be between 0 and 2"); 
   }
   m_ucScanStop = data;
@@ -401,6 +402,12 @@ void Scan::CreateParser(void)
 								m_ucMappingTable,
 								m_ucLowBit);
       break;
+    case 3:
+      m_pParser = new(m_pEnviron) class VesaScan(m_pFrame,this,
+						 m_ucScanStart,
+						 m_ucMappingTable,
+						 m_ucLowBit);
+      break;
     }
     break;
   default:
@@ -577,6 +584,9 @@ void Scan::InstallDefaults(UBYTE depth,const struct JPG_TagItem *tags)
       break;
     case JPGFLAG_SCAN_LS_INTERLEAVING_SAMPLE:
       m_ucScanStop = 2;
+      break;
+    case JPGFLAG_SCAN_LS_VESASCAN:
+      m_ucScanStop = 3;
       break;
     default:
       JPG_THROW(INVALID_PARAMETER,"Scan::InstallDefaults",

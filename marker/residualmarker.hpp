@@ -48,7 +48,7 @@ the committee itself.
 ** information to make JPEG lossless or to support high-bitrange
 ** without loosing compatibility.
 **
-** $Id: residualmarker.hpp,v 1.9 2012-07-27 08:08:33 thor Exp $
+** $Id: residualmarker.hpp,v 1.10 2012-07-29 17:00:39 thor Exp $
 **
 */
 
@@ -166,6 +166,14 @@ public:
       m_ucQuantization |= 0x08;
   }
   //
+  // Install the noise shaping option.
+  void InstallNoiseShaping(bool enable)
+  {
+    m_ucQuantization &= ~0x04;
+    if (enable)
+      m_ucQuantization |= 0x04;
+  }
+  //
   // Return the chroma quantization matrix index or MAX_UBYTE if it
   // is not defined.
   UBYTE ChromaQuantizationMatrix(void) const
@@ -190,6 +198,12 @@ public:
   bool isHadamardEnabled(void) const
   {
     return (m_ucQuantization & 0x08)?true:false;
+  }
+  //
+  // Return an indicator whether noise shaping is enabled.
+  bool isNoiseShapingEnabled(void) const
+  {
+    return (m_ucQuantization & 0x04)?true:false;
   }
   //
   // Get the quantization
