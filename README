@@ -92,3 +92,37 @@ Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart for sponsoring this project.
 
 Thomas Richter, May 2012
+
+-------------------------------------------------------------------------------------
+
+Release 0.5:
+
+The new features in this version are a refined residual coding algorithm that
+includes a runlength scan to improve coding efficiency for low-quality extensions
+layers. This release also features a new HDR compression in the DCT domain that
+uses the known JPEG refinement scans of progressive coding to improve the resolution
+from 8 bit to 12 bit in a completely backwards compatible way. Additionally, the
+software was unit-tested with the 10918-2 (JPEG part 2) test streams and various
+bugs of the lossless predictive arithmetic coding and lossless predictive coding
+were removed. New command line switches allow the encoding of pfm images (floating
+point, for high-dynamic range) and the number of extension refinement scans.
+
+In detail:
+
+*) For encoding, no additional switch is needed to enforce encoding of floating
+point. The codec just recognizes pfm images and chooses an apropriate encoding
+algorithm. It is necessary to specify a tone mapping with -g to map the coefficients
+into the 8-bit domain.
+
+*) Since the codestream carries currently no metadata to identify such data, on decoding 
+switch "-pfm" is necessary to write the output as pfm.
+
+*) To define the number of extension (hidden) DCT bits on encoding, specify them with
+"-R n" where n is a number between zero (no extension bits) and four (4 extension bits,
+i.e. 12 bits resolution).
+
+*) A new switch "-quality" was added that sets both the quality of the base layer and
+the extension layer. For numbers smaller than 100, no extension layer is present, and
+for numbers larger than 90, the base layer has quality 90 and the extension layer quality
+q - 90, where q is the given quality.
+

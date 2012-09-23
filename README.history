@@ -45,3 +45,16 @@ transformation to avoid color banding in extreme cases. It
 also adds an additional tone mapping curve (or curves) to be
 specified on encoding that allow a higher quality of the
 LDR base layer.
+
+Revision 0.50
+-----------------------------
+
+The new features in this version are a refined residual coding algorithm that
+includes a runlength scan to improve coding efficiency for low-quality extensions
+layers. This release also features a new HDR compression in the DCT domain that
+uses the known JPEG refinement scans of progressive coding to improve the resolution
+from 8 bit to 12 bit in a completely backwards compatible way. Additionally, the
+software was unit-tested with the 10918-2 (JPEG part 2) test streams and various
+bugs of the lossless predictive arithmetic coding and lossless predictive coding
+were removed. New command line switches allow the encoding of pfm images (floating
+point, for high-dynamic range) and the number of extension refinement scans.
