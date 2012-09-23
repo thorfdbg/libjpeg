@@ -47,7 +47,7 @@ the committee itself.
  * An implementation of the ByteStream class that reads/writes bytes
  * to a "ram disk".
  *
- * $Id: memorystream.hpp,v 1.5 2012-06-02 10:27:14 thor Exp $
+ * $Id: memorystream.hpp,v 1.6 2012-09-09 15:53:51 thor Exp $
  *
  */
 
@@ -156,7 +156,7 @@ public:
   ULONG Push(class ByteStream *dest,ULONG total);
   // 
   // Get the next two bytes without removing them from the stream.
-  virtual LONG PeekMarker(void);
+  virtual LONG PeekWord(void);
   //
   // Push contents of a different stream into a memory stream, i.e. write
   // into the memory stream buffer by using bytes from another bytestream.

@@ -47,7 +47,7 @@ the committee itself.
  * Base class for all IO support functions, the abstract ByteStream
  * class.
  *
- * $Id: bytestream.cpp,v 1.2 2012-06-02 10:27:14 thor Exp $
+ * $Id: bytestream.cpp,v 1.3 2012-09-09 15:53:51 thor Exp $
  *
  */
 
@@ -161,24 +161,15 @@ LONG ByteStream::SkipToMarker(UWORD marker1,UWORD marker2,
       // check for the available marker now.
       LastUnDo();
       // And now seek for the marker.
-      byte = PeekMarker();
+      byte = PeekWord();
       if ((byte == marker1) || (byte == marker2) || 
 	  (byte == marker3) || (byte == marker4) ||
 	  (byte == marker5))
 	return byte;
       //
-      // Check whether this is an SOP. If so, skip its contents as
-      // we are definitely not looking for marker segments within
-      // SOP. This handles the most common case transparently.
-      if (byte == 0xff91) {
-	GetWord(); // pull the marker
-	GetWord(); // pull segment size
-	GetWord(); // pull counter
-      } else {
-	// otherwise, not the marker we seek for. Skip, and don't forget
-	// to pull the 0xff we put back.
-	Get();
-      }
+      // otherwise, not the marker we seek for. Skip, and don't forget
+      // to pull the 0xff we put back.
+      Get();
     }
   }
 }

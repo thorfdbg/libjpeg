@@ -51,7 +51,7 @@ the committee itself.
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.cpp,v 1.5 2012-07-17 21:33:33 thor Exp $
+** $Id: jpeg.cpp,v 1.6 2012-09-16 17:28:40 thor Exp $
 **
 */
 
@@ -269,6 +269,17 @@ void JPEG::ReadInternal(struct JPG_TagItem *tags)
 	m_pScan = m_pFrame->StartParseScan(m_pIOStream);
 	if (m_pScan && (stopflags & JPGFLAG_DECODER_STOP_SCAN))
 	  return;
+	if (m_pScan == NULL) {
+	  if (!m_pFrame->ParseTrailer(m_pIOStream)) {
+	    // Frame done, advance to the next frame.
+	    m_pFrame = NULL;
+	    if (!m_pImage->ParseTrailer(m_pIOStream)) {
+	      // Image done, stop decoding, image is now loaded.
+	      m_bDecoding = false;
+	      return;
+	    }
+	  }
+	}
       }
 
       if (m_pScan) {

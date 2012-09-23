@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** An implementation of the ByteStream that reads from or writes to
 ** a static buffer allocated outside of this class.
-** $Id: staticstream.hpp,v 1.2 2012-06-02 10:27:14 thor Exp $
+** $Id: staticstream.hpp,v 1.3 2012-09-09 15:53:51 thor Exp $
 **
 */
 
@@ -98,10 +98,10 @@ public:
     return 0;  // always success
   }
   //
-  // Peek the next marker in the stream, deliver the marker without
+  // Peek the next word in the stream, deliver the marker without
   // advancing the file pointer. Deliver EOF in case we run into
   // the end of the stream.
-  virtual LONG PeekMarker(void)
+  virtual LONG PeekWord(void)
   {
     if (m_pucBufPtr + 1 < m_pucBufEnd) {
       return (m_pucBufPtr[0] << 8) | m_pucBufPtr[1];

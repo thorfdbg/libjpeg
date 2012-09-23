@@ -49,7 +49,7 @@ the committee itself.
 ** the back-end class to perform the real job getting bytes in and
 ** out of the library.
 **
-** $Id: iostream.cpp,v 1.2 2012-06-02 10:27:14 thor Exp $
+** $Id: iostream.cpp,v 1.3 2012-09-09 15:53:51 thor Exp $
 **
 */
 
@@ -535,12 +535,12 @@ void IOStream::Seek(QUAD newpos,LONG mode)
 }
 ///
 
-/// IOStream::PeekMarker
+/// IOStream::PeekWord
 // Peek the next marker in the stream, deliver the marker without
 // advancing the file pointer. Deliver EOF in case we run into
 // the end of the stream. This stream requires a specific implementation
 // of the primitive.
-LONG IOStream::PeekMarker(void)
+LONG IOStream::PeekWord(void)
 {
   LONG byte1,byte2;
   //

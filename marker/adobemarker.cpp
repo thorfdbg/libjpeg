@@ -48,7 +48,7 @@ the committee itself.
 ** in APP14. Used here to indicate the color space and to avoid a color
 ** transformation.
 **
-** $Id: adobemarker.cpp,v 1.3 2012-06-02 10:27:14 thor Exp $
+** $Id: adobemarker.cpp,v 1.4 2012-09-11 14:32:14 thor Exp $
 **
 */
 
@@ -101,7 +101,6 @@ void AdobeMarker::WriteMarker(class ByteStream *io)
 void AdobeMarker::ParseMarker(class ByteStream *io,UWORD len)
 {
   UWORD version;
-  UWORD flags1,flags2;
   LONG color;
 
   if (len != 2 + 5 + 2 + 2 + 2 + 1)
@@ -111,8 +110,8 @@ void AdobeMarker::ParseMarker(class ByteStream *io,UWORD len)
   if (version != 100) // Includes EOF
     JPG_THROW(MALFORMED_STREAM,"AdobeMarker::ParseMarker","Adobe marker version unrecognized");
 
-  flags1 = io->GetWord();
-  flags2 = io->GetWord(); // ignored.
+  io->GetWord();
+  io->GetWord(); // ignored.
 
   color  = io->Get();
 

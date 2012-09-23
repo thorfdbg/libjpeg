@@ -47,7 +47,7 @@ the committee itself.
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.75 2012-07-26 19:17:35 thor Exp $
+** $Id: frame.cpp,v 1.82 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -59,6 +59,7 @@ the committee itself.
 #include "codestream/tables.hpp"
 #include "marker/scan.hpp"
 #include "marker/residualmarker.hpp"
+#include "marker/residualspecsmarker.hpp"
 #include "control/bitmapctrl.hpp"
 #include "control/lineadapter.hpp"
 #include "control/blockbitmaprequester.hpp"
@@ -75,7 +76,9 @@ Frame::Frame(class Tables *tables,ScanType t)
   : JKeeper(tables->EnvironOf()), m_pNext(NULL), m_pTables(tables), 
     m_pScan(NULL), m_pLast(NULL), m_pCurrent(NULL), m_pImage(NULL),
     m_pBlockHelper(NULL), m_Type(t), m_ucPrecision(0), m_ucDepth(0), m_ppComponent(NULL),
-    m_bWriteDNL(false), m_bBuildResidual(false), m_bCreatedResidual(false)
+    m_bWriteDNL(false), 
+    m_bBuildResidual(false), m_bCreatedResidual(false),
+    m_bBuildRefinement(false), m_bCreatedRefinement(false)
 {
 }
 ///
@@ -322,6 +325,14 @@ class Component *Frame::DefineComponent(UBYTE idx,UBYTE subx,UBYTE suby)
 }
 ///
 
+/// Frame::HiddenPrecisionOf
+// Return the precision including the hidden bits.
+UBYTE Frame::HiddenPrecisionOf(void) const
+{
+  return m_ucPrecision + m_pTables->HiddenDCTBitsOf();
+}
+///
+
 /// Frame::PointPreShiftOf
 // Return the point preshift, the adjustment of the
 // input samples by a shift that moves them into the
@@ -329,9 +340,9 @@ class Component *Frame::DefineComponent(UBYTE idx,UBYTE subx,UBYTE suby)
 UBYTE Frame::PointPreShiftOf(void) const
 {
   if (m_pTables) {
-    class ResidualMarker *resmarker;
+    class ResidualSpecsMarker *resmarker;
     
-    if ((resmarker  = m_pTables->ResidualDataOf())) {
+    if ((resmarker  = m_pTables->ResidualSpecsOf())) {
       return resmarker->PointPreShiftOf();
     }
   }
@@ -550,7 +561,7 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
   }
   //
   // Create a residual scan?
-  if (m_pTables->ResidualDataOf()) {
+  if (m_pTables->UseResiduals()) {
     switch(m_Type) {
     case Lossless:
     case ACLossless:
@@ -571,10 +582,60 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
       break;
     default:
       // Make the first scan a residual scan.
-      class Scan *scan = new(m_pEnviron) class Scan(this);
-      scan->TagOn(m_pScan);
-      m_pScan = scan;
-      scan->MakeResidualScan();
+      { 
+	UBYTE component = m_ucDepth;
+	class Scan *scan;
+	do {
+	  component--;
+	  scan = new(m_pEnviron) class Scan(this);
+	  scan->TagOn(m_pScan);
+	  m_pScan = scan;
+	  scan->MakeResidualScan(ComponentOf(component));
+	} while(component);
+      }
+      break;
+    }
+  }
+  if (m_pTables->UseRefinements()) {
+    switch(m_Type) {
+    case Lossless:
+    case ACLossless:
+    case JPEG_LS:
+      JPG_THROW(INVALID_PARAMETER,"Frame::InstallDefaultScanParameters",
+		"the lossless scans do not support hidden refinement scans");
+      break;
+    case DifferentialSequential:
+    case DifferentialProgressive:
+    case DifferentialLossless:
+    case ACDifferentialSequential:
+    case ACDifferentialProgressive:
+    case ACDifferentialLossless:
+      // Hmm. At this time, simply disallow. There is probably a way how to fit this into
+      // the highest hierarchical level, but not now.
+      JPG_THROW(NOT_IMPLEMENTED,"Frame::InstallDefaultScanParameters",
+		"the hierarchical mode does not yet allow hidden refinement coding");
+      break;
+    default:
+      // Create hidden refinement scans.
+      {
+	UBYTE hiddenbits;
+	UBYTE component;
+	class Scan *scan;
+	for(hiddenbits = 0;hiddenbits < m_pTables->HiddenDCTBitsOf();hiddenbits++) {
+	  component = m_ucDepth;
+	  do {
+	    component--;
+	    scan = new(m_pEnviron) class Scan(this);
+	    scan->TagOn(m_pScan);
+	    m_pScan = scan;
+	    scan->MakeHiddenRefinementACScan(hiddenbits,ComponentOf(component));
+	  } while(component);
+	  scan = new(m_pEnviron) class Scan(this);
+	  scan->TagOn(m_pScan);
+	  m_pScan = scan;
+	  scan->MakeHiddenRefinementDCScan(hiddenbits);
+	}
+      }
       break;
     }
   }
@@ -587,18 +648,11 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
 class Scan *Frame::StartParseScan(class ByteStream *io)
 {
   class Scan *scan;
-  LONG data; 
 
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartParseScan",
 	      "frame is currently not available for parsing");
 
-  // If there is a residual marker, and this is the final scan,
-  // build it now. There are then no tables anymore.
-  if (!m_bBuildResidual) {
-    m_pTables->ParseTables(io);
-  }
-  
   scan = new(m_pEnviron) class Scan(this);
 
   if (m_pScan == NULL) {
@@ -614,48 +668,82 @@ class Scan *Frame::StartParseScan(class ByteStream *io)
   //
   // If there is a residual marker, and this is the final scan,
   // build it now.
-  if (m_bBuildResidual && !m_bCreatedResidual) {
+  if (m_bBuildRefinement && !m_bCreatedRefinement) {
+    assert(m_pTables->RefinementDataOf());
+    class ByteStream *stream = m_pTables->RefinementDataOf()->StreamOf();
+    //
+    // De-activate unless re-activated on the next scan/trailer.
+    m_pTables->ParseTables(stream);
+    m_bBuildRefinement = false;
+    if (ScanForScanHeader(stream)) {
+      scan->StartParseHiddenRefinementScan(m_pImage);
+      return scan;
+    }
+  } else if (m_bBuildResidual && !m_bCreatedResidual) {
+    assert(m_pTables->ResidualDataOf());
+    class ByteStream *stream = m_pTables->ResidualDataOf()->StreamOf();
     class BlockBitmapRequester *bb = dynamic_cast<class BlockBitmapRequester *>(m_pImage);
-    assert(m_pImage && bb && m_pTables->ResidualDataOf());
-    if (m_pBlockHelper == NULL) 
+    assert(stream && bb);
+    //
+    // De-activate unless re-activated on the next scan/trailer.
+    m_pTables->ParseTables(stream); 
+    if (m_pBlockHelper == NULL)
       m_pBlockHelper  = new(m_pEnviron) class ResidualBlockHelper(this);
     bb->SetBlockHelper(m_pBlockHelper);
-    scan->MakeResidualScan();
-    //
-    // Only one residual, do not come again.
-    m_bCreatedResidual = true;
-  } else {
-    data    = io->GetWord();
-    if (data != 0xffda) {
-      JPG_WARN(MALFORMED_STREAM,"Frame::StartScan","Start of Scan SOS marker missing");
-      if (data == ByteStream::EOF)
-	return NULL;
-      // Advance to the next marker if there is something next.
-      //
-      do {
-	io->LastUnDo();
-	do {
-	  data = io->Get();
-	} while(data != 0xff && data != ByteStream::EOF);
-	//
-	if (data == ByteStream::EOF)
-	  return NULL; // unparsed.
-	io->LastUnDo();
-	//
-	// If this is SOS, we recovered. Maybe.
-	data = io->GetWord();
-	if (data == ByteStream::EOF)
-	  return NULL; // unparsed
-	// Check for the proper marker.
-      } while(data != 0xffda);
-    }
-    //
-    // Create a buffer for the image.
-    scan->ParseMarker(io);
-  }
-  scan->StartParseScan(io,m_pImage);
 
-  return scan;
+    m_bBuildResidual = false;
+    if (ScanForScanHeader(stream)) {
+      scan->StartParseResidualScan(m_pImage);
+      return scan;
+    }
+  } else {
+    // Regular scan.
+    m_pTables->ParseTables(io);
+    //
+    if (ScanForScanHeader(io)) {
+      scan->ParseMarker(io);
+      scan->StartParseScan(io,m_pImage);
+      return scan;
+    }
+  }
+
+  return NULL;
+}
+///
+
+/// Frame::ScanForScanHeader
+// Start parsing a hidden scan, let it be either the residual or the refinement
+// scan.
+bool Frame::ScanForScanHeader(class ByteStream *stream)
+{ 
+  LONG data;
+
+  
+  //
+  data = stream->GetWord();
+  if (data != 0xffda) {
+    JPG_WARN(MALFORMED_STREAM,"Frame::StartParseHiddenScan","Start of Scan SOS marker missing");
+    // Advance to the next marker if there is something next.
+    //
+    do {
+      stream->LastUnDo();
+      do {
+	data = stream->Get();
+      } while(data != 0xff && data != ByteStream::EOF);
+      //
+      if (data == ByteStream::EOF)
+	break; // Try from the main stream
+      stream->LastUnDo();
+      //
+      // If this is SOS, we recovered. Maybe.
+      data = stream->GetWord();
+      if (data == ByteStream::EOF)
+	break;
+      // Check for the proper marker.
+    } while(data != 0xffda);
+  }
+
+  return (data == 0xffda)?(true):(false);
 }
 ///
 
@@ -726,7 +814,7 @@ void Frame::WriteFrameType(class ByteStream *io) const
 bool Frame::ParseTrailer(class ByteStream *io)
 {
   do {
-    LONG marker = io->PeekMarker();
+    LONG marker = io->PeekWord();
     
     switch(marker) {
     case 0xffc0:
@@ -752,18 +840,54 @@ bool Frame::ParseTrailer(class ByteStream *io)
       // All differential frame starts: The frame ends here.
       // If we have a residual scan that is not yet parsed off,
       // create it now and parse it last so it sees the original
-      // data.
-      if (m_pTables->ResidualDataOf() && !m_bCreatedResidual) {
+      // data. 
+      if (m_pTables->RefinementDataOf() && !m_bCreatedRefinement) {
 	assert(m_pImage);
 	if (dynamic_cast<class BlockBitmapRequester *>(m_pImage)) {
-	  m_bBuildResidual = true;
-	  //
-	  // Come here again when the residual is parsed off
-	  return true;
+	  LONG data;
+	  do {
+	    data = m_pTables->RefinementDataOf()->StreamOf()->PeekWord();
+	    if (data == 0xffff) {
+	      m_pTables->RefinementDataOf()->StreamOf()->Get(); // Filler byte
+	    }
+	  } while(data == 0xffff);
+	  if (data != ByteStream::EOF && data != 0xffd9) {
+	    m_bBuildRefinement = true;
+	    //
+	    // Come here again when the refinement is parsed off.
+	    return true;
+	  } else {
+	    // Do not come again, refinement is there already.
+	    m_bCreatedRefinement = true;
+	  }
 	}
       }
-      //
+      if (m_pTables->ResidualDataOf() && !m_bCreatedResidual) {
+	assert(m_pImage);
+	if (dynamic_cast<class BlockBitmapRequester *>(m_pImage)) { 
+	  LONG data;
+	  do {
+	    data = m_pTables->ResidualDataOf()->StreamOf()->PeekWord();
+	    if (data == 0xffff) {
+	      m_pTables->ResidualDataOf()->StreamOf()->Get(); // Filler byte
+	    }
+	  } while(data == 0xffff);
+	  if (data != ByteStream::EOF && data != 0xffd9) {
+	    m_bBuildResidual = true;
+	    //
+	    // Come here again when the residual is parsed off.
+	    return true;
+	  } else {
+	    // Do not come again, refinement is there already.
+	    m_bCreatedResidual = true;
+	  }
+	}
+      }
       return false;
+    case 0xffff:
+      // A filler byte. Remove the filler, try again.
+      io->Get();
+      break;
     case 0xffd0:
     case 0xffd1:
     case 0xffd2:
@@ -823,6 +947,8 @@ class LineAdapter *Frame::BuildLineAdapter(void)
   case ACProgressive: 
   case ACDifferentialSequential:
   case ACDifferentialProgressive:
+  case Residual:
+  case ACResidual:
     return new(m_pEnviron) class BlockLineAdapter(this); // all block based.
   case Lossless:
   case ACLossless:

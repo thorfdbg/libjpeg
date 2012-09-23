@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.6 2012-07-24 19:36:45 thor Exp $
+## $Id: Makefile,v 1.7 2012-09-15 17:27:27 thor Exp $
 ##
 ## Makefile for the jpeg transcoder project,
 ## THOR Software, May 20, 2012, Thomas Richter
@@ -8,7 +8,7 @@
 ## directory.
 ##
 
-FILES	=	dct idct fdct sermsdct hadamard
+FILES	=	dct idct sermsdct hadamard
 
 DIRNAME	=	dct
 SUPER	=	../

@@ -47,7 +47,7 @@ the committee itself.
 ** This class allows to read individual bits from a stream of bytes.
 ** This class implements the bytestuffing as required.
 **
-** $Id: bitstream.hpp,v 1.17 2012-07-19 14:13:38 thor Exp $
+** $Id: bitstream.hpp,v 1.18 2012-09-09 15:53:51 thor Exp $
 **
 */
 
@@ -87,7 +87,7 @@ class BitStream : public JObject {
     if (dt == 0xff) {
       io->LastUnDo();
       if (bitstuffing) {
-	if (io->PeekMarker() < 0xff80) {
+	if (io->PeekWord() < 0xff80) {
 	  // Bitstuffing.
 	  io->Get();
 	  m_ucB        = dt;
@@ -101,7 +101,7 @@ class BitStream : public JObject {
 	  dt = 0;
 	}
       } else {
-	if (io->PeekMarker() == 0xff00) {
+	if (io->PeekWord() == 0xff00) {
 	  io->GetWord(); // Bytestuffing
 	} else {
 	  // A marker. Do not advance over the marker, but

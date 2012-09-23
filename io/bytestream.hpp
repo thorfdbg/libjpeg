@@ -47,7 +47,7 @@ the committee itself.
  * Base class for all IO support functions, the abstract ByteStream
  * class.
  *
- * $Id: bytestream.hpp,v 1.2 2012-06-02 10:27:14 thor Exp $
+ * $Id: bytestream.hpp,v 1.3 2012-09-09 15:53:51 thor Exp $
  *
  */
 
@@ -83,7 +83,7 @@ also a file/byte counter. What the corresponding sub classes have
 to do is just to implement methods for reading and writing complete
 buffers, and to deliver status information.
 
-One special method, PeekMarker(), allows to read the next marker
+One special method, PeekWord(), allows to read the next marker
 (two bytes) without advancing the file pointer. This is required 
 for some of the higher magic of the error resiliance features.
 * */
@@ -160,10 +160,10 @@ public:
     m_uqCounter = 0;
   }
   //
-  // Peek the next marker in the stream, deliver the marker without
+  // Peek the next word in the stream, deliver the marker without
   // advancing the file pointer. Deliver EOF in case we run into
   // the end of the stream.
-  virtual LONG PeekMarker(void) = 0;  
+  virtual LONG PeekWord(void) = 0;  
   //
   // Skip over bytes, ignore their contribution. The offset must
   // be positive (or zero).

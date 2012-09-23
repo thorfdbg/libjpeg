@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.cpp,v 1.17 2012-07-29 17:00:39 thor Exp $
+** $Id: quantization.cpp,v 1.18 2012-09-23 19:27:16 thor Exp $
 **
 */
 
@@ -218,7 +218,7 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
 	if (delta > 32767)
 	  delta = 32767;
 	if (i == 3 && delta > 1) // The range of the chroma components was extended by one extra bit.
-	  delta >>= 1;
+	  delta <<= 1;
 	m_pDelta[i][j] = delta;
       }
     } else {

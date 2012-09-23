@@ -47,7 +47,7 @@ the committee itself.
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.hpp,v 1.43 2012-06-12 15:04:30 thor Exp $
+** $Id: frame.hpp,v 1.46 2012-09-23 12:58:39 thor Exp $
 **
 */
 
@@ -131,6 +131,10 @@ class Frame : public JKeeper {
   // Has the residual scan already been created? 
   bool                 m_bCreatedResidual;
   //
+  // The same logic for hidden DCT refinement scans.
+  bool                 m_bBuildRefinement;
+  bool                 m_bCreatedRefinement;
+  //
   // Compute the largest common denominator of a and b.
   static int gcd(int a,int b)
   {
@@ -150,6 +154,10 @@ class Frame : public JKeeper {
   //
   // Compute the MCU sizes of the components from the subsampling values
   void ComputeMCUSizes(void);
+  //
+  // Start parsing a scan. Returns true if the scan start is found and there is another hidden
+  // scan. Returns false otherwise.
+  bool ScanForScanHeader(class ByteStream *stream);
   //
 public:
   // This requires a type identifier.
@@ -209,6 +217,9 @@ public:
   {
     return m_ucPrecision;
   }
+  //
+  // Return the precision including the hidden bits.
+  UBYTE HiddenPrecisionOf(void) const;
   //
   // Return the point preshift, the adjustment of the
   // input samples by a shift that moves them into the

@@ -47,7 +47,7 @@ the committee itself.
  * The Art-Deco (MQ) decoder and encoder as specified by the jpeg2000 
  * standard, FDIS, Annex C
  *
- * $Id: qmcoder.cpp,v 1.15 2012-07-25 14:06:55 thor Exp $
+ * $Id: qmcoder.cpp,v 1.18 2012-09-09 21:36:13 thor Exp $
  *
  */
 
@@ -275,9 +275,9 @@ void QMCoder::ByteIn(void)
   if (b == 0xff) {
     // Might be a marker - or not.
     m_pIO->LastUnDo();
-    if (m_pIO->PeekMarker() == 0xff00) {
+    if (m_pIO->PeekWord() == 0xff00) {
       // What is expected, a byte-stuffed 0x00
-      m_pIO->Get();m_pIO->Get();
+      m_pIO->GetWord();
       m_ulC |= 0xff00; //+ would also work.
     } else {
       // Since the encoder drops 0x00 bytes, we need to fit
@@ -296,7 +296,7 @@ void QMCoder::ByteIn(void)
 bool QMCoder::Get(class QMContext &ctxt)
 { 
   ULONG q = Qe_Value[ctxt.m_ucIndex];
-  bool d;
+  bool d; // true on lps
 
   m_ulA -= q;
   if ((m_ulC >> 16) < m_ulA) {

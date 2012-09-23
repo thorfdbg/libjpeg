@@ -47,7 +47,7 @@ the committee itself.
  * An implementation of the ByteStream class that reads/writes bytes
  * to a "ram disk".
  *
- * $Id: memorystream.cpp,v 1.5 2012-06-02 10:27:14 thor Exp $
+ * $Id: memorystream.cpp,v 1.6 2012-09-09 15:53:51 thor Exp $
  *
  */
 
@@ -405,9 +405,9 @@ void MemoryStream::Clean(void)
 }
 ///
 
-/// MemoryStream::PeekMarker
+/// MemoryStream::PeekWord
 // Get the next two bytes without removing them from the stream.
-LONG MemoryStream::PeekMarker(void)
+LONG MemoryStream::PeekWord(void)
 { 
   const UBYTE *ptr = m_pucBufPtr;
   const UBYTE *end = m_pucBufEnd;

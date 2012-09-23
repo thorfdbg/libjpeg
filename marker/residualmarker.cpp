@@ -48,7 +48,7 @@ the committee itself.
 ** information to make JPEG lossless or to support high-bitrange
 ** without loosing compatibility.
 **
-** $Id: residualmarker.cpp,v 1.9 2012-07-26 19:17:35 thor Exp $
+** $Id: residualmarker.cpp,v 1.12 2012-09-23 12:58:39 thor Exp $
 **
 */
 
@@ -59,9 +59,9 @@ the committee itself.
 ///
 
 /// ResidualMarker::ResidualMarker
-ResidualMarker::ResidualMarker(class Environ *env)
-  : JKeeper(env), m_pBuffer(NULL), m_pReadBack(NULL), 
-    m_ucQuantization(0), m_ucPreshift(0), m_ucToneEnable(0)
+ResidualMarker::ResidualMarker(class Environ *env,MarkerType type)
+  : JKeeper(env), m_pBuffer(NULL), m_pReadBack(NULL),
+    m_Type(type)
 {
 }
 ///
@@ -81,40 +81,14 @@ ResidualMarker::~ResidualMarker(void)
 // the exception.
 void ResidualMarker::ParseMarker(class ByteStream *io,UWORD len)
 {
-  UWORD extra = 0;
-  if (len < 2 + 4 + 1 + 2 + 1) // Marker length, identifier, plus error
-    JPG_THROW(MALFORMED_STREAM,"ResidualMarker::ParseMarker","APP9 residual information marker size too short");
-
-  m_ucPreshift     = io->Get();
-  m_ucQuantization = io->Get();
-
-  m_ucToneEnable = m_ucPreshift >> 4;
-  m_ucPreshift  &= 0x0f;
-  
-  if (m_ucToneEnable & 0x01)
-    extra++;
-  if (m_ucToneEnable & 0x02)
-    extra++;
-  if (m_ucToneEnable & 0x04)
-    extra++;
-  if (m_ucToneEnable & 0x08)
-    extra++;
-  if (len < extra)
-    JPG_THROW(MALFORMED_STREAM,"ResidualMarker::ParseMarker","APP9 residual information marker size too short");
-
-  if (m_ucToneEnable & 0x01)
-    m_ucToneMapping[0] = io->Get();
-  if (m_ucToneEnable & 0x02)
-    m_ucToneMapping[1] = io->Get();
-  if (m_ucToneEnable & 0x04)
-    m_ucToneMapping[2] = io->Get();
-  if (m_ucToneEnable & 0x08)
-    m_ucToneMapping[3] = io->Get();
+  if (len < 2 + 4 + 2) // Marker length, identifier, plus error
+    JPG_THROW(MALFORMED_STREAM,"ResidualMarker::ParseMarker",
+	      "APP9 residual data marker size too short");
 
   if (m_pBuffer == NULL)
     m_pBuffer = new(m_pEnviron) class MemoryStream(m_pEnviron);
 
-  len -= 2 + 4 + 1 + 2 + 1 + extra;
+  len -= 2 + 4 + 2;
   m_pBuffer->Append(io,len);
 }
 ///
@@ -133,8 +107,7 @@ class ByteStream *ResidualMarker::StreamOf(void)
 ///
 
 /// ResidualMarker::WriteMarker
-// Write the marker, where the raw data comes buffered from the
-// indicated memory stream.
+// Write the marker as hidden refinement scan marker.
 void ResidualMarker::WriteMarker(class ByteStream *target,class MemoryStream *src)
 { 
   class MemoryStream readback(m_pEnviron,src,JPGFLAG_OFFSET_BEGINNING);
@@ -143,15 +116,7 @@ void ResidualMarker::WriteMarker(class ByteStream *target,class MemoryStream *sr
 
   while(bytes) {
     ULONG write     = bytes;
-    UWORD extradata = 2 + 4 + 1 + 2 + 1;
-    if (m_ucToneEnable & 0x01)
-      extradata++;
-    if (m_ucToneEnable & 0x02)
-      extradata++;
-    if (m_ucToneEnable & 0x04)
-      extradata++;
-    if (m_ucToneEnable & 0x08)
-      extradata++;
+    UWORD extradata = 2 + 4 + 2;
 
     if (write > ULONG(MAX_UWORD - extradata)) {
       write = MAX_UWORD - extradata;
@@ -161,32 +126,23 @@ void ResidualMarker::WriteMarker(class ByteStream *target,class MemoryStream *sr
     // Write the ID
     target->Put('J');
     target->Put('P');
-    target->Put('R');
-    target->Put('E');
-    target->Put('S');
-    target->Put('I');
-    target->Put(m_ucPreshift | (m_ucToneEnable << 4));
-    target->Put(m_ucQuantization);
-
-    if (m_ucToneEnable & 0x01)
-      target->Put(m_ucToneMapping[0]);
-    if (m_ucToneEnable & 0x02)
-      target->Put(m_ucToneMapping[1]);
-    if (m_ucToneEnable & 0x04)
-      target->Put(m_ucToneMapping[2]);
-    if (m_ucToneEnable & 0x08)
-      target->Put(m_ucToneMapping[3]);
+    switch(m_Type) {
+    case Refinement:
+      target->Put('F');
+      target->Put('I');
+      target->Put('N');
+      target->Put('E');
+      break;
+    case Residual:
+      target->Put('R');
+      target->Put('E');
+      target->Put('S');
+      target->Put('I');
+      break;
+    }
 
     readback.Push(target,write);
     bytes -= write;
   }
-}
-///
-
-/// ResidualMarker::InstallPreshift
-// Install parameters - here only the maximum coding error.
-void ResidualMarker::InstallPreshift(UBYTE preshift)
-{
-  m_ucPreshift = preshift;
 }
 ///

@@ -47,7 +47,7 @@ the committee itself.
 ** This class represents the APP9 marker carrying the tone mapping curve
 ** required to restore the HDR data from the LDR approximation.
 **
-** $Id: tonemappingmarker.cpp,v 1.2 2012-07-14 13:30:28 thor Exp $
+** $Id: tonemappingmarker.cpp,v 1.4 2012-09-15 21:45:51 thor Exp $
 **
 */
 
@@ -70,7 +70,7 @@ ToneMappingMarker::ToneMappingMarker(class Environ *env)
 ToneMappingMarker::~ToneMappingMarker(void)
 {
   if (m_pusMapping)
-    m_pEnviron->FreeMem(m_pusMapping,256 * sizeof(UWORD));
+    m_pEnviron->FreeMem(m_pusMapping,(1 << m_ucInternalDepth) * sizeof(UWORD));
 
   if (m_pusInverseMapping)
     m_pEnviron->FreeMem(m_pusInverseMapping,(1 << m_ucDepth) * sizeof(UWORD));
@@ -81,9 +81,10 @@ ToneMappingMarker::~ToneMappingMarker(void)
 // Build the encoding tone mapper from the inverse mapping.
 void ToneMappingMarker::BuildInverseMapping(void)
 { 
-  UBYTE j,lastj,lastanchor;
+  UWORD j,lastj,lastanchor;
   UWORD last,current,mid;
-  UWORD outmax = (1 << m_ucDepth) - 1;
+  UWORD outmax = (1 << m_ucDepth)         - 1;
+  UWORD inmax  = (1 << m_ucInternalDepth) - 1;
   bool lastfilled;
 
   // Check the luts
@@ -98,10 +99,10 @@ void ToneMappingMarker::BuildInverseMapping(void)
   memset(m_pusInverseMapping,0,(1 << m_ucDepth) * sizeof(UWORD));
   //
   // Loop over positive coefficients.
-  lastj      = 255;
-  lastanchor = 255;
+  lastj      = inmax;
+  lastanchor = inmax;
   lastfilled = false;
-  j          = 255;
+  j          = inmax;
   last       = m_pusMapping[j];
   //
   // Try some guesswork whether we should extend this to fullrange.
@@ -211,7 +212,8 @@ void ToneMappingMarker::BuildInverseMapping(void)
 // the exception.
 void ToneMappingMarker::ParseMarker(class ByteStream *io,UWORD len)
 {
-  UBYTE i,dt;
+  UBYTE dt;
+  UWORD i;
 
   assert(m_pusMapping == NULL);
   
@@ -223,21 +225,33 @@ void ToneMappingMarker::ParseMarker(class ByteStream *io,UWORD len)
   m_ucDepth    = (dt & 0x0f) + 8;
 
   len         -= 2 + 2 + 4 + 1;
-  if (len != 256 * 2)
-    JPG_THROW(MALFORMED_STREAM,"ToneMappingMarker::ParseMarker","APP9 tone mapping information marker size invalid");
+  if (len < 256 * 2)
+    JPG_THROW(MALFORMED_STREAM,"ToneMappingMarker::ParseMarker",
+	      "APP9 tone mapping information marker size invalid");
+  
+  for(m_ucInternalDepth = 0;m_ucInternalDepth <= 14;m_ucInternalDepth++) {
+    if (len == 2 << m_ucInternalDepth)
+      break; // Found the right depth
+  }
 
-  m_pusMapping = (UWORD *)m_pEnviron->AllocMem(256 * sizeof(UWORD));
+  //
+  // Must be a power of two.
+  if (m_ucInternalDepth > 14)
+    JPG_THROW(MALFORMED_STREAM,"ToneMappingMarker::ParseMarker",
+	      "APP9 tone mapping information marker size invalid");
 
-  i            = 0;
-  do {
+  m_pusMapping = (UWORD *)m_pEnviron->AllocMem((1 << m_ucInternalDepth) * sizeof(UWORD));
+
+  for(i = 0;i < (1 << m_ucInternalDepth);i++) {
     m_pusMapping[i] = io->GetWord();
-  } while(++i);
+  }
 }
 ///
 
 /// ToneMappingMarker::InstallDefaultParameters
 // Install parameters - here the bpp value and the tone mapping curve.
-void ToneMappingMarker::InstallDefaultParameters(UBYTE idx,UBYTE bpp,const UWORD *curve)
+void ToneMappingMarker::InstallDefaultParameters(UBYTE idx,UBYTE bpp,UBYTE hidden,
+						 const UWORD *curve)
 {
   assert(m_pusMapping == NULL);
 
@@ -248,21 +262,30 @@ void ToneMappingMarker::InstallDefaultParameters(UBYTE idx,UBYTE bpp,const UWORD
     JPG_THROW(INVALID_PARAMETER,"ToneMappingMarker::InstallDefaultParameters",
 	      "tone mapping identifier is out of range, must be between 0 and 15");
   
-  m_ucIndex    = idx;
-  m_ucDepth    = bpp;
-  m_pusMapping = (UWORD *)m_pEnviron->AllocMem(256 * sizeof(UWORD));
+  m_ucIndex         = idx;
+  m_ucDepth         = bpp;
+  m_ucInternalDepth = 8 + hidden;
+
+  // Size limitation of the marker: We can spend at most 15 bits in total.
+  if (m_ucInternalDepth > 14)
+    JPG_THROW(OVERFLOW_PARAMETER,"ToneMappingMarker::InstallDefaultParameters",
+	      "the total number of bits available for the internal sample representation "
+	      "must not exceed 14");
   
-  memcpy(m_pusMapping,curve,256 * sizeof(UWORD));
+  m_pusMapping      = (UWORD *)m_pEnviron->AllocMem((1UL << m_ucInternalDepth) * sizeof(UWORD));
+  
+  memcpy(m_pusMapping,curve,(1UL << m_ucInternalDepth) * sizeof(UWORD));
 }
 ///
 
 /// ToneMappingMarker::WriteMarker
 void ToneMappingMarker::WriteMarker(class ByteStream *target)
 {  
-  UBYTE i;
+  UWORD i;
   
   assert(m_pusMapping);
-  target->PutWord(2 + 2 + 4 + 1 + 256 * 2);
+  // Check above ensured that this cannot exceed 64K
+  target->PutWord(2 + 2 + 4 + 1 + (1UL << m_ucInternalDepth) * 2);
   // Write the ID
   target->Put('J');
   target->Put('P');
@@ -272,10 +295,9 @@ void ToneMappingMarker::WriteMarker(class ByteStream *target)
   target->Put('E'); 
   target->Put((m_ucIndex << 4) | (m_ucDepth - 8));
   
-  i = 0;
-  do {
+  for(i = 0;i < (1 << m_ucInternalDepth);i++) {
     target->PutWord(m_pusMapping[i]);
-  } while(++i);
+  }
 }
 ///
 

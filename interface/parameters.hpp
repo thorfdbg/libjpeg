@@ -48,7 +48,7 @@ the committee itself.
  * client application to define all the parameters the jpeg library
  * needs. 
  *
- * $Id: parameters.hpp,v 1.22 2012-07-29 17:00:39 thor Exp $
+ * $Id: parameters.hpp,v 1.25 2012-09-15 10:11:41 thor Exp $
  *
  * These parameters are specified by the user upon invocation of
  * the library.
@@ -133,7 +133,6 @@ the committee itself.
 //
 // Binary-or this to use an optimized huffman process.
 #define JPGFLAG_OPTIMIZE_HUFFMAN 128
-
 //
 // Definition of the 'quality' factor of JPEG if finetuning of the quantization
 // parameters is not desirable. Defines a quality factor from 1 to 100
@@ -222,6 +221,11 @@ the committee itself.
 // Enable noise shaping of the coding residuals. This lowers the coding
 // performance but improvides the visual performance of the image.
 #define JPGTAG_IMAGE_ENABLE_NOISESHAPING (JPGTAG_IMAGE_BASE + 0x11)
+//
+// Define the number of hidden DCT bits. These bits of the quantized
+// DCT coefficients are encoded in a side-channel not visible to the
+// traditional JPEG decoder but they help to improve the accuracy.
+#define JPGTAG_IMAGE_HIDDEN_DCTBITS      (JPGTAG_IMAGE_BASE + 0x12)
 //
 // Parameters defining the HDR mapping procedure. This defines up to four tone mapping curves
 // one per component (the code could do more, but the interface is currently limited)

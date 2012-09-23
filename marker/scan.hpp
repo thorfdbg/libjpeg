@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.hpp,v 1.43 2012-07-26 19:17:35 thor Exp $
+** $Id: scan.hpp,v 1.49 2012-09-23 14:10:13 thor Exp $
 **
 */
 
@@ -134,6 +134,9 @@ class Scan : public JKeeper {
   // Also the point transformation.
   UBYTE                  m_ucLowBit;
   //
+  // Number of hidden bits not included in the low bit count.
+  UBYTE                  m_ucHiddenBits;
+  //
   // Mapping table selector for JPEG_LS
   UBYTE                  m_ucMappingTable[4];
   //
@@ -199,8 +202,13 @@ public:
   // file.
   void WriteFrameType(class ByteStream *io);
   //
-  // Parse the marker contents.
+  // Parse the marker contents. The scan type comes from
+  // the frame type.
   void ParseMarker(class ByteStream *io);
+  //
+  // Parse the marker contents where the scan type
+  // comes from an additional parameter.
+  void ParseMarker(class ByteStream *io,ScanType type);
   //
   // Write the marker to the stream. Note that this should
   // be called indirectly by the implementing interface of
@@ -211,8 +219,23 @@ public:
   // containing the given number of components.
   void InstallDefaults(UBYTE depth,const struct JPG_TagItem *tags);
   //
-  // Make this scan not a default scan, but a residual scan.
-  void MakeResidualScan(void);
+  // Make this scan not a default scan, but a residual scan. This
+  // creates the AC part of the scan (actually, the scan for the remaining positions)
+  void MakeResidualScan(class Component *comp);
+  //
+  // Make this scan a hidden refinement scan starting at the indicated
+  // bit position in the indicated component label.
+  void MakeHiddenRefinementACScan(UBYTE bitposition,class Component *comp);
+  //
+  // Make this scan a hidden refinement scan starting at the indicated
+  // bit position for the DC part. This is interleaved.
+  void MakeHiddenRefinementDCScan(UBYTE bitposition);
+  //
+  // Parse off a hidden refinement scan from the given position.
+  void StartParseHiddenRefinementScan(class BufferCtrl *ctrl);
+  //
+ // Parse off a residual scan from the given position.
+  void StartParseResidualScan(class BufferCtrl *ctrl);
   //
   // Fill in the decoding tables required.
   void StartParseScan(class ByteStream *io,class BufferCtrl *ctrl); 
@@ -259,6 +282,22 @@ public:
   //
   // The same for the AC band.
   class ACTemplate *ACConditionerOf(UBYTE idx) const;
+  //
+  // Return the DC table of the conditioner.
+  UBYTE DCTableIndexOf(UBYTE idx) const
+  {
+    assert(idx < 4);
+    
+    return m_ucDCTable[idx];
+  } 
+  //
+  // Return the AC table of the conditioner.
+  UBYTE ACTableIndexOf(UBYTE idx) const
+  {
+    assert(idx < 4);
+    
+    return m_ucACTable[idx];
+  }
 };
 ///
 

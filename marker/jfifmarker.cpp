@@ -47,7 +47,7 @@ the committee itself.
 ** This class represents the JFIF, placed in APP0. 
 ** This is only used to indicate a JFIF file and is otherwise unused.
 **
-** $Id: jfifmarker.cpp,v 1.1 2012-06-10 21:46:05 thor Exp $
+** $Id: jfifmarker.cpp,v 1.2 2012-09-11 14:32:14 thor Exp $
 **
 */
 
@@ -107,14 +107,13 @@ void JFIFMarker::WriteMarker(class ByteStream *io)
 // the exception.
 void JFIFMarker::ParseMarker(class ByteStream *io,UWORD len)
 {
-  UBYTE version,revision;
   UBYTE unit;
   
   if (len < 2 + 5 + 2 + 1 + 2 + 2 + 1 + 1)
     JPG_THROW(MALFORMED_STREAM,"JFIFMarker::ParseMarker","misformed JFIF marker");
 
-  version  = io->Get();
-  revision = io->Get();
+  io->Get(); // version
+  io->Get(); // revision
   //
   // Currently ignore.
 

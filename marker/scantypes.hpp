@@ -48,7 +48,7 @@ the committee itself.
 ** Represents the scan including the scan header for the
 ** arithmetic coding procedure.
 **
-** $Id: scantypes.hpp,v 1.4 2012-07-14 21:48:03 thor Exp $
+** $Id: scantypes.hpp,v 1.5 2012-09-23 14:10:13 thor Exp $
 **
 */
 
@@ -70,6 +70,8 @@ enum ScanType {
   ACDifferentialSequential,
   ACDifferentialProgressive,
   ACDifferentialLossless,
+  Residual, // New scan types
+  ACResidual,
   JPEG_LS // not part of 10918, but handled here as well.
 };
 

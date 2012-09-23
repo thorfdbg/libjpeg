@@ -48,7 +48,7 @@ the committee itself.
 ** A random access IO stream that allows forwards and backwards
 ** seeking. This is an abstraction of the known "IOHook".
 **
-** $Id: randomaccessstream.hpp,v 1.2 2012-06-02 10:27:14 thor Exp $
+** $Id: randomaccessstream.hpp,v 1.3 2012-09-09 15:53:51 thor Exp $
 **
 */
 
@@ -99,12 +99,12 @@ public:
   virtual void Flush(void) = 0;
   virtual LONG Query(void) = 0;
   //
-  // Peek the next marker in the stream, deliver the marker without
+  // Peek the next word in the stream, deliver the marker without
   // advancing the file pointer. Deliver EOF in case we run into
   // the end of the stream. This is already implemented here
   // since its working does not depend on the specific implementation
   // on top.
-  virtual LONG PeekMarker(void);
+  virtual LONG PeekWord(void);
   // 
   // SkipBytes skips bytes by either seeking over or, if that should turn
   // out to be impossible, by continuously pulling nonsense out of the

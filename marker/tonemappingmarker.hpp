@@ -47,7 +47,7 @@ the committee itself.
 ** This class represents the APP9 marker carrying the tone mapping curve
 ** required to restore the HDR data from the LDR approximation.
 **
-** $Id: tonemappingmarker.hpp,v 1.1 2012-07-14 12:07:35 thor Exp $
+** $Id: tonemappingmarker.hpp,v 1.3 2012-09-21 14:45:40 thor Exp $
 **
 */
 
@@ -74,8 +74,13 @@ class ToneMappingMarker : public JKeeper {
   // curve by refering to this index.
   UBYTE                    m_ucIndex;
   //
-  // The output bpp value of this tone mapping. Input is 8bpp always.
+  // The output bpp value of this tone mapping. 
   UBYTE                    m_ucDepth;
+  //
+  // The input bpp value of this tone mapping curve - this is the
+  // number of bits spend internally in the JPEG representation before
+  // cutting off the hidden bits.
+  UBYTE                    m_ucInternalDepth;
   //
   // The tone mapping for decoding, i.e. generates output data (>8 bit) from
   // the 8bpp input data.
@@ -119,6 +124,18 @@ public:
     return m_ucIndex;
   }
   //
+  // Return the number of internal bits spend for the table.
+  UBYTE InternalBitsOf(void) const
+  {
+    return m_ucInternalDepth;
+  }
+  //
+  // Return the external bit depth depth.
+  UBYTE ExternalBitsOf(void) const
+  {
+    return m_ucDepth;
+  }
+  //
   // Return the (decoding) tone mapping curve.
   const UWORD *ToneMappingCurveOf(void) const
   {
@@ -136,7 +153,7 @@ public:
   }
   //
   // Install parameters - here the bpp value and the tone mapping curve.
-  void InstallDefaultParameters(UBYTE idx,UBYTE bpp,const UWORD *curve);
+  void InstallDefaultParameters(UBYTE idx,UBYTE bpp,UBYTE hiddenbits,const UWORD *curve);
   //
   // Write the marker.
   void WriteMarker(class ByteStream *io);

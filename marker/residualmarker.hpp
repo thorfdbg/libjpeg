@@ -48,7 +48,7 @@ the committee itself.
 ** information to make JPEG lossless or to support high-bitrange
 ** without loosing compatibility.
 **
-** $Id: residualmarker.hpp,v 1.10 2012-07-29 17:00:39 thor Exp $
+** $Id: residualmarker.hpp,v 1.13 2012-09-23 12:58:39 thor Exp $
 **
 */
 
@@ -66,10 +66,17 @@ class ByteStream;
 ///
 
 /// class ResidualMarker
-// This class collects color space information conforming to the
-// Residual APP9 marker.
+// This marker carries the residual information itself.
 class ResidualMarker : public JKeeper {
   //
+public:
+  // Marker types.
+  enum MarkerType {
+    Residual,
+    Refinement
+  };
+  //
+private:
   //
   // Memory stream containing the residual data.
   class MemoryStream *m_pBuffer;
@@ -77,27 +84,13 @@ class ResidualMarker : public JKeeper {
   // The readback for the above buffer.
   class MemoryStream *m_pReadBack;
   //
-  // Quantization parameter for the extensions marker.
-  // Bit 7 is the enable bit (separate quantization),
-  // Bits 5,4: Chroma table, bits 0,1: Luma table.
-  UBYTE               m_ucQuantization;
-  //
-  // The preshift value for HD coding. Zero for no preshift.
-  // This allows coding of >8 or != 12bpp images with traditional
-  // JPEG by pushing the LSBs into this marker.
-  UBYTE               m_ucPreshift;
-  //
-  // The following flags define which tone mapping curve is enabled.
-  // If disabled, preshifting is used.
-  UBYTE               m_ucToneEnable;
-  //
-  // The tone mapping curves: This gives for each component X the tone mapping
-  // table index.
-  UBYTE               m_ucToneMapping[4];
+  MarkerType          m_Type;
   //
 public:
-  //
-  ResidualMarker(class Environ *env);
+  // 
+  // Create a residual marker. Depending on the second argument, this
+  // is either a refinement marker (true) or a residual marker (false).
+  ResidualMarker(class Environ *env,MarkerType type);
   //
   ~ResidualMarker(void);
   //
@@ -110,104 +103,7 @@ public:
   // Return the buffered data as a parseable bytestream.
   class ByteStream *StreamOf(void);
   //
-  // Return the point preshift, an additional upshift on reconstruction
-  // that allows coding of high dynamic range images by traditional
-  // JPEG.
-  UBYTE PointPreShiftOf(void) const
-  {
-    return m_ucPreshift;
-  }
-  //
-  // Return an indicator whether tone mapping is enabled for the i'th
-  // component.
-  bool isToneMapped(UBYTE comp) const
-  {
-    assert(comp < 4);
-    
-    return (m_ucToneEnable & (1 << comp))?true:false;
-  }
-  //
-  // Return the index of the tone mapping curve for the i'th component
-  // if there is one. (Check first!)
-  UBYTE ToneMappingTableOf(UBYTE comp) const
-  {
-    assert(comp < 4);
-    assert(m_ucToneEnable & (1 << comp));
-
-    return m_ucToneMapping[comp];
-  }
-  //
-  // Install parameters - here only the maximum coding error.
-  void InstallPreshift(UBYTE preshift);
-  //
-  // Install the tone mapping for component X to use the table Y.
-  void InstallToneMapping(UBYTE comp,UBYTE table)
-  {
-    assert(comp < 4);
-    
-    m_ucToneEnable |= (1 << comp);
-    m_ucToneMapping[comp] = table;
-  }
-  //
-  // Install the quantization parameters for luma and chroma
-  // for the extensions layer. The arguments are the quantization
-  // tables for both luma and chroma.
-  void InstallQuantization(UBYTE luma,UBYTE chroma)
-  {
-    m_ucQuantization &= ~0x33;
-    m_ucQuantization  = 0x80 | (luma) | (chroma << 4);
-  }
-  //
-  // Install the hadamard transformation parameter.
-  void InstallHadamardTrafo(bool enable)
-  {
-    m_ucQuantization &= ~0x08;
-    if (enable)
-      m_ucQuantization |= 0x08;
-  }
-  //
-  // Install the noise shaping option.
-  void InstallNoiseShaping(bool enable)
-  {
-    m_ucQuantization &= ~0x04;
-    if (enable)
-      m_ucQuantization |= 0x04;
-  }
-  //
-  // Return the chroma quantization matrix index or MAX_UBYTE if it
-  // is not defined.
-  UBYTE ChromaQuantizationMatrix(void) const
-  {
-    if (m_ucQuantization & 0x80) {
-      return (m_ucQuantization >> 4) & 0x03;
-    }
-    return MAX_UBYTE;
-  }
-  //
-  // Return the luma quantization matrix index or MAX_UBYTE if it is
-  // not defined.
-  UBYTE LumaQuantizationMatrix(void) const
-  {
-    if (m_ucQuantization & 0x80) {
-      return m_ucQuantization & 0x03;
-    }
-    return MAX_UBYTE;
-  }
-  //
-  // Return an indicator whether the Hadamard transformation shall be run.
-  bool isHadamardEnabled(void) const
-  {
-    return (m_ucQuantization & 0x08)?true:false;
-  }
-  //
-  // Return an indicator whether noise shaping is enabled.
-  bool isNoiseShapingEnabled(void) const
-  {
-    return (m_ucQuantization & 0x04)?true:false;
-  }
-  //
-  // Get the quantization
-  // Write the marker, where the raw data comes buffered from the
+  // Write the marker as residual marker, where the raw data comes buffered from the
   // indicated memory stream.
   void WriteMarker(class ByteStream *io,class MemoryStream *src);
 };
