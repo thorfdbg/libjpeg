@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.hpp,v 1.11 2012-07-15 11:59:44 thor Exp $
+** $Id: refinementscan.hpp,v 1.15 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -103,10 +103,10 @@ class RefinementScan : public EntropyParser {
   // buffered somewhere.
   class MemoryStream       m_ACBuffer;
   //
+protected:
+  //
   // Measure data?
   bool                     m_bMeasure;
-  //
-protected:
   //
   // The block control helper that maintains all the request/release
   // logic and the interface to the user.
@@ -130,7 +130,7 @@ protected:
 		   UWORD &skip);
   //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void);
+  virtual void Flush(bool final);
   // 
   // Restart the parser at the next restart interval
   virtual void Restart(void);
@@ -150,8 +150,11 @@ private:
   void CodeBlockSkip(class HuffmanCoder *ac,UWORD &skip);
   //
 public:
+  // Create a refinement scan. The differential flag is always ignored, so
+  // is the residual flag.
   RefinementScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
-		 UBYTE lowbit,UBYTE highbit);
+		 UBYTE lowbit,UBYTE highbit,
+		 bool differential = false,bool residual = false);
   //
   ~RefinementScan(void);
   // 

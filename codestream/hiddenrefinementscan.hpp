@@ -44,65 +44,42 @@ the committee itself.
 
 *************************************************************************/
 /*
-** This scan type decodes the coding residuals and completes an image
-** into a lossless image.
+** This is the hidden version of the (huffman) refinement scan whose
+** data goes into a special APP9 marker. It works otherwise like any other
+** refinement scan.
 **
-** $Id: residualhuffmanscan.hpp,v 1.8 2012-07-27 08:08:33 thor Exp $
+** $Id: hiddenrefinementscan.hpp,v 1.3 2012-09-23 12:58:39 thor Exp $
 **
 */
 
-#ifndef CODESTREAM_RESIDUALHUFFMANSCAN_HPP
-#define CODESTREAM_RESIDUALHUFFMANSCAN_HPP
+#ifndef CODESTREAM_HIDDENREFINEMENTSCAN_HPP
+#define CODESTREAM_HIDDENREFINEMENTSCAN_HPP
 
 /// Includes
 #include "tools/environment.hpp"
 #include "marker/scan.hpp"
 #include "io/bitstream.hpp"
+#include "io/memorystream.hpp"
 #include "coding/quantizedrow.hpp"
 #include "codestream/entropyparser.hpp"
-#include "coding/qmcoder.hpp"
-#include "control/residualblockhelper.hpp"
-#include "io/bitstream.hpp"
+#include "codestream/sequentialscan.hpp"
+#include "codestream/acsequentialscan.hpp"
+#include "codestream/refinementscan.hpp"
+#include "codestream/acrefinementscan.hpp"
 ///
 
 /// Forwards
 class Tables;
 class ByteStream;
-class DCT;
 class Frame;
-struct RectangleRequest;
-class BlockBitmapRequester;
-class BlockBuffer;
 class MemoryStream;
-class HuffmanDecoder;
-class HuffmanCoder;
-class HuffmanStatistics;
-class HuffmanTable;
+class ByteStream;
 ///
 
-/// class ResidualHuffmanScan
-class ResidualHuffmanScan : public EntropyParser {
+/// class RefinementScan
+template<class BaseScan>
+class HiddenScan : public BaseScan {
   //
-  // The huffman tables for this scan.
-  class HuffmanTable         *m_pTable;
-  //
-  // The huffman DC tables: Tables are used in a somewhat
-  // different way.
-  class HuffmanDecoder       *m_pDecoder[8];
-  //
-  // Ditto for the encoder
-  class HuffmanCoder         *m_pCoder[8];
-  //
-  // Ditto for the statistics collection.
-  class HuffmanStatistics    *m_pStatistics[8];
-  //
-  // Scan positions.
-  ULONG                      *m_pulX;
-  ULONG                      *m_pulY;
-  //
-  // The block control helper that maintains all the request/release
-  // logic and the interface to the user.
-  class BlockBuffer          *m_pBlockCtrl; 
   //
   // Buffers the output before it is split into APP4 markers.
   class MemoryStream         *m_pResidualBuffer;
@@ -110,75 +87,37 @@ class ResidualHuffmanScan : public EntropyParser {
   // Where the data finally ends up.
   class ByteStream           *m_pTarget;
   //
-  class ResidualBlockHelper   m_Helper;
+  // Where the data is taken from on parsing.
+  class ResidualMarker       *m_pMarker;
   //
-  // Where the huffman coder puts and gets data.
-  BitStream<false>            m_Stream;
-  //
-  // Measure the scan? If so, nothing happens. As this just extends
-  // scans, even huffman scans, nothing will happen then, but no error
-  // can be generated.
-  bool                        m_bMeasure;
-  //
-  // The mapping of Hadamard bands to coding classes.
-  static const UBYTE          m_ucCodingClass[64];
-  //
-  // Cancelation of the DC gain due to gamma mapping.
-  LONG                       *m_plDC;
-  // Event counter
-  LONG                       *m_plN;
-  // Average error counter
-  LONG                       *m_plB;
-  //  
-  // Enable or disable the Hadamard transformation.
-  bool                        m_bHadamard;
-  //
-  // Update the predicted DC gain.
-  void ErrorAdaption(LONG dc,UBYTE comp)
-  {
-    m_plB[comp] += dc;
-    m_plN[comp]++;
-    m_plDC[comp] = m_plB[comp] / m_plN[comp];
-
-    if (m_plN[comp] > 64) {
-      m_plN[comp] >>= 1;
-      if (m_plB[comp] >= 0) {
-	m_plB[comp] = (m_plB[comp]) >> 1;
-      } else {
-	m_plB[comp] = -((-m_plB[comp]) >> 1);
-      }
-    }
-  }
-  //
-  // Init the counters for the statistical measurement.
-  void InitStatistics(void);
-  //
-  // Encode a single residual block
-  void EncodeBlock(const LONG *rblock,UBYTE c);
-  //
-  // Decode a single residual block.
-  void DecodeBlock(LONG *block,UBYTE c);
+  // True if this is part of the residual scan.
+  bool                        m_bResiduals;
   //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void);
+  virtual void Flush(bool final);
   // 
   // Restart the parser at the next restart interval
-  virtual void Restart(void)
-  {
-    // As this never writes restart markers but rather relies on
-    // the APP9 marker segment for restart, if any, this should
-    // never be called.
-    assert(!"residual streams do not write restart markers");
-  }
+  virtual void Restart(void);
   //
   // Write the marker that indicates the frame type fitting to this scan.
   virtual void WriteFrameType(class ByteStream *io);
   //
+  // Return the data to process for component c. Will be overridden
+  // for residual scan types.
+  virtual class QuantizedRow *GetRow(UBYTE idx) const;
+  //
+  // Check whether there are more rows to process, return true
+  // if so, false if not. Start with the row if there are.
+  virtual bool StartRow(void) const;
   //
 public:
-  ResidualHuffmanScan(class Frame *frame,class Scan *scan);
+  HiddenScan(class Frame *frame,class Scan *scan,class ResidualMarker *marker,
+	     UBYTE start,UBYTE stop,
+	     UBYTE lowbit,UBYTE highbit,
+	     bool residuals,
+	     bool differential);
   //
-  ~ResidualHuffmanScan(void);
+  ~HiddenScan(void);
   // 
   // Fill in the tables for decoding and decoding parameters in general.
   virtual void StartParseScan(class ByteStream *io,class BufferCtrl *ctrl);
@@ -188,19 +127,15 @@ public:
   //
   // Measure scan statistics.
   virtual void StartMeasureScan(class BufferCtrl *ctrl);
-  //
-  // Start a MCU scan. Returns true if there are more rows. False otherwise.
-  virtual bool StartMCURow(void);
-  //
-  // Parse a single MCU in this scan. Return true if there are more
-  // MCUs in this row.
-  virtual bool ParseMCU(void);  
-  //
-  // Write a single MCU in this scan.
-  virtual bool WriteMCU(void); 
 };
 ///
 
+/// Typedefs for convenience
+typedef HiddenScan<RefinementScan> HiddenRefinementScan;
+typedef HiddenScan<ACRefinementScan> HiddenACRefinementScan;
+typedef HiddenScan<SequentialScan> ResidualHuffmanScan;
+typedef HiddenScan<ACSequentialScan> ResidualACScan;
+///
 
 ///
 #endif

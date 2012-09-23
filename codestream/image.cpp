@@ -48,7 +48,7 @@ the committee itself.
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.25 2012-07-14 21:48:03 thor Exp $
+** $Id: image.cpp,v 1.27 2012-09-09 19:57:02 thor Exp $
 **
 */
 
@@ -385,7 +385,6 @@ class Frame *Image::StartParseFrame(class ByteStream *io)
       m_pDimensions = new(m_pEnviron) class Frame(m_pTables,type);
       m_pDimensions->ParseMarker(io);
       m_pImage      = m_pDimensions->BuildImage();
-      m_pImage->PrepareForDecoding();
       m_pDimensions->SetImage(m_pImage);
       m_pImage->PrepareForDecoding();
       return m_pDimensions;
@@ -690,11 +689,13 @@ void Image::WriteTrailer(class ByteStream *io) const
 bool Image::ParseTrailer(class ByteStream *io) const
 {
   do {
-    LONG marker = io->PeekMarker();
+    LONG marker = io->PeekWord();
 
     if (marker == 0xffd9) { //EOI
       io->GetWord();
       return false;
+    } else if (marker == 0xffff) { // A filler 0xff byte
+      io->Get(); // Skip the filler and try again.
     } else if (marker == ByteStream::EOF) {
       JPG_WARN(MALFORMED_STREAM,"Image::ParseTrailer",
 	     "expecting an EOI marker at the end of the stream");

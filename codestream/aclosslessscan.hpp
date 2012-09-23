@@ -48,7 +48,7 @@ the committee itself.
 ** Represents the lossless scan - lines are coded directly with predictive
 ** coding, though here residuals are encoded with the arithmetic encoder.
 **
-** $Id: aclosslessscan.hpp,v 1.14 2012-06-02 10:27:13 thor Exp $
+** $Id: aclosslessscan.hpp,v 1.19 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -59,6 +59,7 @@ the committee itself.
 #include "tools/environment.hpp"
 #include "coding/qmcoder.hpp"
 #include "codestream/entropyparser.hpp"
+#include "codestream/predictivescan.hpp"
 ///
 
 /// Forwards
@@ -72,29 +73,26 @@ class Scan;
 ///
 
 /// class LosslessScan
-// A lossless scan creator.
-class ACLosslessScan : public EntropyParser {
+// Represents the lossless scan - lines are coded directly with predictive
+// coding, though here residuals are encoded with the arithmetic encoder.
+class ACLosslessScan : public PredictiveScan {
   //
   // The class used for pulling and pushing data.
   class LineBuffer          *m_pLineCtrl;
   //
-  // Dimension of the frame in full pixels.
-  ULONG                      m_ulPixelWidth;
-  ULONG                      m_ulPixelHeight;
-  //
-  // Dimensions of the components.
-  ULONG                      m_ulWidth[4];
-  ULONG                      m_ulHeight[4];
-  // 
   // Small DC threshold value ('L' in the standard)
   UBYTE                      m_ucSmall[4];
   //
   // Large DC threshold value ('U' in the specs)
   UBYTE                      m_ucLarge[4];
   //
+  // The context index to use.
+  UBYTE                      m_ucContext[4];
+  //
   // Differentials from the above and left, used
   // for prediction.
-  LONG                       m_lDa[4],m_lDb[4];
+  LONG                      *m_plDa[4];
+  LONG                      *m_plDb[4];
   //
   // The real worker class.
   class QMCoder              m_Coder;
@@ -139,37 +137,70 @@ class ACLosslessScan : public EntropyParser {
       MagnitudeLow.Init();
       MagnitudeHigh.Init();
     }
-  } m_Context;
+    //
+    // Classify and return the sign/zero coding context to encode the difference in.
+    // Requires the differences in both directions.
+    struct ContextZeroSet &ClassifySignZero(LONG Da,LONG Db,UBYTE l,UBYTE u)
+    {
+      return SignZeroCoding[Classify(Da,l,u) + 2][Classify(Db,l,u) + 2];
+    }
+    //
+    // Classify the Magnitude context 
+    struct MagnitudeSet &ClassifyMagnitude(LONG Db,UBYTE u)
+    {
+      if (Db > (1 << u) || -Db > (1 << u)) {
+	return MagnitudeHigh;
+      } else {
+	return MagnitudeLow;
+      }
+    }
+    //
+    // Classifier in one direction.
+    static int Classify(LONG diff,UBYTE l,UBYTE u)
+    {
+      LONG abs = (diff > 0)?(diff):(-diff);
+  
+      if (abs <= ((1 << l) >> 1)) {
+	// the zero cathegory.
+	return 0;
+      }
+      if (abs <= (1 << u)) {
+	if (diff < 0) {
+	  return -1;
+	} else {
+	  return 1;
+	}
+      }
+      if (diff < 0) {
+	return -2;
+      } else {
+	return 2;
+      }
+    }
+    //
+  } m_Context[4];
   //
-  // The predictor to use.
-  UBYTE m_ucPredictor;
-  //
-  // The low bit for the point transform.
-  UBYTE m_ucLowBit;
-  //
-  // Disable prediction as if we were at the first line.
-  // Used behind restart markers.
-  bool m_bNoPrediction;
-  //
-  //
-  // Classify the difference according to the l and u conditioning parameters.
-  static int Classify(LONG diff,UBYTE l,UBYTE u);
-  //
-  // Collect component information and install the component dimensions.
+  // Common setup for encoding and decoding.
   void FindComponentDimensions(void);
   //
+  // This is actually the true MCU-parser, not the interface that reads
+  // a full line.
+  void ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift);
+  //
+  // The actual MCU-writer, write a single group of pixels to the stream,
+  // or measure their statistics.
+  void WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift);
+  //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void); 
+  virtual void Flush(bool final); 
   // 
   // Restart the parser at the next restart interval
   virtual void Restart(void);
   //
-  // Clear the entire MCU
-  void ClearMCU(class Line **top);
-  //
   //
 public:
-  ACLosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lobit);
+  ACLosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lobit,
+		 bool differential = false);
   //
   virtual ~ACLosslessScan(void);
   //

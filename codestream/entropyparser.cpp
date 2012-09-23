@@ -48,7 +48,7 @@ the committee itself.
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.cpp,v 1.11 2012-07-17 19:39:21 thor Exp $
+** $Id: entropyparser.cpp,v 1.13 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -93,7 +93,7 @@ EntropyParser::~EntropyParser(void)
 // reset the MCU counter.
 void EntropyParser::WriteRestartMarker(class ByteStream *io)
 {
-  Flush();
+  Flush(false);
   io->PutWord(m_usNextRestartMarker);
   m_usNextRestartMarker = (m_usNextRestartMarker + 1) & 0xfff7;
   m_usMCUsToGo          = m_usRestartInterval;
@@ -104,7 +104,13 @@ void EntropyParser::WriteRestartMarker(class ByteStream *io)
 // Parse the restart marker or resync at the restart marker.
 void EntropyParser::ParseRestartMarker(class ByteStream *io)
 {
-  LONG dt = io->PeekMarker();
+  LONG dt = io->PeekWord();
+  
+  while(dt == 0xffff) {
+    // Found a filler byte. Skip over and try again.
+    io->Get();
+    dt = io->PeekWord();
+  }
   
   if (dt == 0xffdc && m_bScanForDNL) {
     ParseDNLMarker(io);
@@ -132,7 +138,7 @@ void EntropyParser::ParseRestartMarker(class ByteStream *io)
       } else if (dt == 0xff) {
 	// Could be a marker.
 	io->LastUnDo();
-	dt = io->PeekMarker();
+	dt = io->PeekWord();
 	// Depends now on the marker.
 	if (dt >= 0xffd0 && dt < 0xffd8) {
 	  // Is a restart marker. If this is the correct one, just leave,
@@ -192,7 +198,15 @@ bool EntropyParser::ParseDNLMarker(class ByteStream *io)
   if (m_bDNLFound)
     return true;
   
-  dt = io->PeekMarker();
+  dt = io->PeekWord();
+
+  while(dt == 0xffff) {
+    // A filler byte followed by the marker (hopefully). Skip the
+    // filler and try again.
+    io->Get();
+    dt = io->PeekWord();
+  }
+
   if (dt == 0xffdc) {
     dt = io->GetWord();
     dt = io->GetWord();

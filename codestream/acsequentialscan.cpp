@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents the scan including the scan header.
 **
-** $Id: acsequentialscan.cpp,v 1.24 2012-06-02 10:27:13 thor Exp $
+** $Id: acsequentialscan.cpp,v 1.33 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -60,7 +60,6 @@ the committee itself.
 #include "coding/quantizedrow.hpp"
 #include "codestream/rectanglerequest.hpp"
 #include "dct/idct.hpp"
-#include "dct/fdct.hpp"
 #include "dct/sermsdct.hpp"
 #include "std/assert.hpp"
 #include "interface/bitmaphook.hpp"
@@ -76,9 +75,11 @@ the committee itself.
 
 /// ACSequentialScan::ACSequentialScan
 ACSequentialScan::ACSequentialScan(class Frame *frame,class Scan *scan,
-				   UBYTE start,UBYTE stop,UBYTE lowbit)
+				   UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE,
+				   bool differential,bool residual)
   : EntropyParser(frame,scan), m_pBlockCtrl(NULL),
-    m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit)
+    m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit),
+    m_bMeasure(false), m_bDifferential(differential), m_bResidual(residual)
 {
   m_ucCount = scan->ComponentsInScan();
   
@@ -104,7 +105,10 @@ void ACSequentialScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctr
 
   for(i = 0;i < m_ucCount;i++) {
     dc = m_pScan->DCConditionerOf(i);
-    ac = m_pScan->ACConditionerOf(i);
+    ac = m_pScan->ACConditionerOf(i); 
+    
+    m_ucDCContext[i]  = m_pScan->DCTableIndexOf(i);
+    m_ucACContext[i]  = m_pScan->ACTableIndexOf(i);
 
     if (dc) {
       m_ucSmall[i]    = dc->LowerThresholdOf();
@@ -124,7 +128,10 @@ void ACSequentialScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctr
     m_lDiff[i]       = 0;
     m_ulX[i]         = 0;
   }
-  m_Context.Init();
+  
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
+  }
   
   assert(!ctrl->isLineBased());
   m_pBlockCtrl = dynamic_cast<BlockBuffer *>(ctrl);
@@ -142,6 +149,9 @@ void ACSequentialScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctr
   for(i = 0;i < m_ucCount;i++) {
     dc = m_pScan->DCConditionerOf(i);
     ac = m_pScan->ACConditionerOf(i);
+   
+    m_ucDCContext[i]  = m_pScan->DCTableIndexOf(i);
+    m_ucACContext[i]  = m_pScan->ACTableIndexOf(i);
 
     if (dc) {
       m_ucSmall[i]    = dc->LowerThresholdOf();
@@ -161,7 +171,9 @@ void ACSequentialScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctr
     m_lDiff[i]         = 0;
     m_ulX[i]           = 0;
   }
-  m_Context.Init();
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
+  }
 
   assert(!ctrl->isLineBased());
   m_pBlockCtrl = dynamic_cast<BlockBuffer *>(ctrl);
@@ -188,7 +200,7 @@ void ACSequentialScan::StartMeasureScan(class BufferCtrl *)
 // Start a MCU scan. Returns true if there are more rows.
 bool ACSequentialScan::StartMCURow(void)
 {
-  bool more = m_pBlockCtrl->StartMCUQuantizerRow(m_pScan);
+  bool more = StartRow();
 
   for(int i = 0;i < m_ucCount;i++) {
     m_ulX[i]   = 0;
@@ -211,7 +223,7 @@ bool ACSequentialScan::WriteMCU(void)
 
   for(c = 0;c < m_ucCount;c++) {
     class Component *comp    = m_pComponent[c];
-    class QuantizedRow *q    = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
+    class QuantizedRow *q    = GetRow(comp->IndexOf());
     LONG &prevdc             = m_lDC[c];
     LONG &prevdiff           = m_lDiff[c];
     UBYTE l                  = m_ucSmall[c];
@@ -235,7 +247,7 @@ bool ACSequentialScan::WriteMCU(void)
 	  memset(dummy ,0,sizeof(dummy) );
 	  block[0] = prevdc;
 	}
-	EncodeBlock(block,prevdc,prevdiff,l,u,kx);
+	EncodeBlock(block,prevdc,prevdiff,l,u,kx,m_ucDCContext[c],m_ucACContext[c]);
       }
       if (q) q = q->NextOf();
     }
@@ -251,11 +263,16 @@ bool ACSequentialScan::WriteMCU(void)
 // Restart the parser at the next restart interval
 void ACSequentialScan::Restart(void)
 {
-  for(int i = 0;i < m_ucCount;i++) {
+  int i;
+  
+  for(i = 0;i < m_ucCount;i++) {
     m_lDC[i]         = 0; 
     m_lDiff[i]       = 0;
   }
-  m_Context.Init();
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
+  }
+  
   m_Coder.OpenForRead(m_Coder.ByteStreamOf());
 }
 ///
@@ -273,7 +290,7 @@ bool ACSequentialScan::ParseMCU(void)
   
   for(c = 0;c < m_ucCount;c++) {
     class Component *comp    = m_pComponent[c];
-    class QuantizedRow *q    = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
+    class QuantizedRow *q    = GetRow(comp->IndexOf());
     LONG &prevdc             = m_lDC[c];
     LONG &prevdiff           = m_lDiff[c];
     UBYTE l                  = m_ucSmall[c];
@@ -296,7 +313,7 @@ bool ACSequentialScan::ParseMCU(void)
 	  block  = dummy;
 	}
 	if (valid) {
-	  DecodeBlock(block,prevdc,prevdiff,l,u,kx);
+	  DecodeBlock(block,prevdc,prevdiff,l,u,kx,m_ucDCContext[c],m_ucACContext[c]);
 	} else {
 	  for(UBYTE i = m_ucScanStart;i <= m_ucScanStop;i++) {
 	    block[i] = 0;
@@ -316,25 +333,25 @@ bool ACSequentialScan::ParseMCU(void)
 /// ACSequentialScan::Classify
 // Find the DC context class depending on the previous DC and
 // the values of L and U given in the conditioner.
-struct ACSequentialScan::QMContextSet::DCContextZeroSet &ACSequentialScan::Classify(LONG diff,UBYTE l,UBYTE u)
+struct ACSequentialScan::QMContextSet::DCContextZeroSet &ACSequentialScan::QMContextSet::Classify(LONG diff,UBYTE l,UBYTE u)
 {
   LONG abs = (diff > 0)?(diff):(-diff);
   
   if (abs <= ((1 << l) >> 1)) {
     // the zero cathegory.
-    return m_Context.DCZero;
+    return DCZero;
   }
   if (abs <= (1 << u)) {
     if (diff < 0) {
-      return m_Context.DCSmallNegative;
+      return DCSmallNegative;
     } else {
-      return m_Context.DCSmallPositive;
+      return DCSmallPositive;
     }
   }
   if (diff < 0) {
-    return m_Context.DCLargeNegative;
+    return DCLargeNegative;
   } else {
-    return m_Context.DCLargePositive;
+    return DCLargePositive;
   }
 }
 ///
@@ -343,16 +360,20 @@ struct ACSequentialScan::QMContextSet::DCContextZeroSet &ACSequentialScan::Class
 // Encode a single huffman block
 void ACSequentialScan::EncodeBlock(const LONG *block,
 				   LONG &prevdc,LONG &prevdiff,
-				   UBYTE small,UBYTE large,UBYTE kx)
+				   UBYTE small,UBYTE large,UBYTE kx,UBYTE dc,UBYTE ac)
 {
   // DC coding
-  if (m_ucScanStart == 0) {
-    struct QMContextSet::DCContextZeroSet &cz = Classify(prevdiff,small,large);
+  if (m_ucScanStart == 0 && m_bResidual == false) {
+    struct QMContextSet::DCContextZeroSet &cz = m_Context[dc].Classify(prevdiff,small,large);
     LONG diff;
     // DPCM coding of the DC coefficient.
     diff   = block[0] >> m_ucLowBit; // only correct for two's completement machines
     diff  -= prevdc;
-    prevdc = block[0] >> m_ucLowBit;
+    if (m_bDifferential) {
+      prevdc = 0;
+    } else {
+      prevdc = block[0] >> m_ucLowBit;
+    }
 
     if (diff) {
       LONG sz;
@@ -378,18 +399,18 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
 	//
 	// Magnitude category coding.
 	while(sz >= m) {
-	  m_Coder.Put(m_Context.DCMagnitude.X[i],true);
+	  m_Coder.Put(m_Context[dc].DCMagnitude.X[i],true);
 	  m <<= 1;
 	  i++;
 	} 
 	// Terminate magnitude cathegory coding.
-	m_Coder.Put(m_Context.DCMagnitude.X[i],false);
+	m_Coder.Put(m_Context[dc].DCMagnitude.X[i],false);
 	//
 	// Get the MSB to code.
 	m >>= 1;
 	// Refinement bits: Depend on the magnitude category.
 	while((m >>= 1)) {
-	  m_Coder.Put(m_Context.DCMagnitude.M[i],(m & sz)?(true):(false));
+	  m_Coder.Put(m_Context[dc].DCMagnitude.M[i],(m & sz)?(true):(false));
 	}
       } else {
 	m_Coder.Put((diff > 0)?(cz.SP):(cz.SN),false);
@@ -410,7 +431,7 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
     // which point on this, and all following coefficients
     // up to coefficient with index 63 are zero.
     eob = m_ucScanStop;
-    k   = (m_ucScanStart)?(m_ucScanStart):(1);
+    k   = (m_ucScanStart)?(m_ucScanStart):((m_bResidual)?0:1);
     //
     while(eob >= k) {
       data = block[DCT::ScanOrder[eob]];
@@ -426,11 +447,11 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
       LONG data,sz;
       //
       if (k == eob) {
-	m_Coder.Put(m_Context.ACZero[k-1].SE,true); // Code EOB.
+	m_Coder.Put(m_Context[ac].ACZero[k-1].SE,true); // Code EOB.
 	break;
       }
       // Not EOB.
-      m_Coder.Put(m_Context.ACZero[k-1].SE,false);
+      m_Coder.Put(m_Context[ac].ACZero[k-1].SE,false);
       //
       // Run coding in S0. Since k is not the eob, at least
       // one non-zero coefficient must follow, so we cannot
@@ -439,31 +460,31 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
 	data = block[DCT::ScanOrder[k]];
 	data = (data >= 0)?(data >> m_ucLowBit):(-((-data) >> m_ucLowBit));
 	if (data == 0) {
-	  m_Coder.Put(m_Context.ACZero[k-1].S0,false);
+	  m_Coder.Put(m_Context[ac].ACZero[k-1].S0,false);
 	  k++;
 	}
       } while(data == 0);
-      m_Coder.Put(m_Context.ACZero[k-1].S0,true);
+      m_Coder.Put(m_Context[ac].ACZero[k-1].S0,true);
       //
       // The coefficient at k is now nonzero. First code
       // the sign. This context is the uniform.
       if (data < 0) {
-	m_Coder.Put(m_Context.Uniform,true);
+	m_Coder.Put(m_Context[ac].Uniform,true);
 	sz = -data - 1;
       } else {
-	m_Coder.Put(m_Context.Uniform,false);
+	m_Coder.Put(m_Context[ac].Uniform,false);
 	sz =  data - 1;
       }
       //
       // Code the magnitude category. 
       if (sz >= 1) {
-	m_Coder.Put(m_Context.ACZero[k-1].SP,true); // SP or SN coding.
+	m_Coder.Put(m_Context[ac].ACZero[k-1].SP,true); // SP or SN coding.
 	if (sz >= 2) {
 	  int  i = 0;
 	  LONG m = 4;
-	  struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context.ACMagnitudeHigh):(m_Context.ACMagnitudeLow);
+	  struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context[ac].ACMagnitudeHigh):(m_Context[ac].ACMagnitudeLow);
 	  //
-	  m_Coder.Put(m_Context.ACZero[k-1].SP,true); // X1 coding, identical to SN and SP.
+	  m_Coder.Put(m_Context[ac].ACZero[k-1].SP,true); // X1 coding, identical to SN and SP.
 	  // Note that AC_SN,AC_SP and AC_X1 are all the same context
 	  // all following decisions are not conditioned on k directly.
 	  while(sz >= m) {
@@ -481,10 +502,10 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
 	    m_Coder.Put(acm.M[i],(m & sz)?true:false);
 	  }
 	} else {
-	  m_Coder.Put(m_Context.ACZero[k-1].SP,false);
+	  m_Coder.Put(m_Context[ac].ACZero[k-1].SP,false);
 	}
       } else {
-	m_Coder.Put(m_Context.ACZero[k-1].SP,false);
+	m_Coder.Put(m_Context[ac].ACZero[k-1].SP,false);
       }
       //
       // Encode the next coefficient. Note that this bails out early without an
@@ -498,12 +519,12 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
 // Decode a single huffman block.
 void ACSequentialScan::DecodeBlock(LONG *block,
 				   LONG &prevdc,LONG &prevdiff,
-				   UBYTE small,UBYTE large,UBYTE kx)
+				   UBYTE small,UBYTE large,UBYTE kx,UBYTE dc,UBYTE ac)
 {
   // DC coding
-  if (m_ucScanStart == 0) {
+  if (m_ucScanStart == 0 && m_bResidual == false) {
     LONG diff;
-    struct QMContextSet::DCContextZeroSet &cz = Classify(prevdiff,small,large);
+    struct QMContextSet::DCContextZeroSet &cz = m_Context[dc].Classify(prevdiff,small,large);
     // Check whether the difference is nonzero.
     if (m_Coder.Get(cz.S0)) {
       LONG sz;
@@ -516,7 +537,7 @@ void ACSequentialScan::DecodeBlock(LONG *block,
 	int  i = 0;
 	LONG m = 2;
 	
-	while(m_Coder.Get(m_Context.DCMagnitude.X[i])) {
+	while(m_Coder.Get(m_Context[dc].DCMagnitude.X[i])) {
 	  m <<= 1;
 	  i++;
 	  if (m == 0) 
@@ -530,7 +551,7 @@ void ACSequentialScan::DecodeBlock(LONG *block,
 	//
 	// Refinement coding of remaining bits.
 	while((m >>= 1)) {
-	  if (m_Coder.Get(m_Context.DCMagnitude.M[i])) {
+	  if (m_Coder.Get(m_Context[dc].DCMagnitude.M[i])) {
 	    sz |= m;
 	  }
 	}
@@ -550,21 +571,25 @@ void ACSequentialScan::DecodeBlock(LONG *block,
     }
 
     prevdiff = diff;
-    prevdc  += diff;
+    if (m_bDifferential) {
+      prevdc   = diff;
+    } else {
+      prevdc  += diff;
+    }
     block[0] = prevdc << m_ucLowBit; // point transformation
   }
 
   if (m_ucScanStop) {
     // AC coding. No block skipping used here.
-    int k = (m_ucScanStart)?(m_ucScanStart):(1);
+    int k = (m_ucScanStart)?(m_ucScanStart):((m_bResidual)?0:1);
     //
     // EOB decoding.
-    while(k <= m_ucScanStop && !m_Coder.Get(m_Context.ACZero[k-1].SE)) {
+    while(k <= m_ucScanStop && !m_Coder.Get(m_Context[ac].ACZero[k-1].SE)) {
       LONG sz;
       bool sign;
       //
       // Not yet EOB. Run coding in S0: Skip over zeros.
-      while(!m_Coder.Get(m_Context.ACZero[k-1].S0)) {
+      while(!m_Coder.Get(m_Context[ac].ACZero[k-1].S0)) {
 	k++;
 	if (k > m_ucScanStop)
 	  JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
@@ -573,15 +598,15 @@ void ACSequentialScan::DecodeBlock(LONG *block,
       //
       // Now decode the sign of the coefficient.
       // This happens in the uniform context.
-      sign = m_Coder.Get(m_Context.Uniform);
+      sign = m_Coder.Get(m_Context[ac].Uniform);
       //
       // Decode the magnitude.
-      if (m_Coder.Get(m_Context.ACZero[k-1].SP)) {
+      if (m_Coder.Get(m_Context[ac].ACZero[k-1].SP)) {
 	// X1 coding, identical to SN and SP.
-	if (m_Coder.Get(m_Context.ACZero[k-1].SP)) {
+	if (m_Coder.Get(m_Context[ac].ACZero[k-1].SP)) {
 	  int  i = 0;
 	  LONG m = 4;
-	  struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context.ACMagnitudeHigh):(m_Context.ACMagnitudeLow);
+	  struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context[ac].ACMagnitudeHigh):(m_Context[ac].ACMagnitudeLow);
 	  
 	  while(m_Coder.Get(acm.X[i])) {
 	    m <<= 1;
@@ -625,27 +650,55 @@ void ACSequentialScan::DecodeBlock(LONG *block,
 // Write the marker that indicates the frame type fitting to this scan.
 void ACSequentialScan::WriteFrameType(class ByteStream *io)
 {
-  if (m_ucScanStart > 0 || m_ucScanStop < 63 || m_ucLowBit) {
+  UBYTE hidden = m_pFrame->TablesOf()->HiddenDCTBitsOf();
+
+  if (m_ucScanStart > 0 || m_ucScanStop < 63 || m_ucLowBit > hidden) {
     // is progressive.
-    io->PutWord(0xffca);
+    if (m_bDifferential)
+      io->PutWord(0xffce);
+    else
+      io->PutWord(0xffca);
   } else {
-    io->PutWord(0xffc9); // AC sequential
+    if (m_bDifferential)
+      io->PutWord(0xffcd); // AC differential sequential
+    else
+      io->PutWord(0xffc9); // AC sequential
   }
 }
 ///
 
 /// ACSequentialScan::Flush
 // Flush the remaining bits out to the stream on writing.
-void ACSequentialScan::Flush(void)
+void ACSequentialScan::Flush(bool)
 {
+  int i;
+  
   m_Coder.Flush();
-  m_Context.Init();
 
-  for(int i = 0;i < m_ucCount;i++) {
+  for(i = 0;i < m_ucCount;i++) {
     m_lDC[i]    = 0;
     m_lDiff[i]  = 0;
   }
-
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
+  }
+  
   m_Coder.OpenForWrite(m_Coder.ByteStreamOf());
+}
+///
+
+/// ACSequentialScan::GetRow
+// Return the data to process for component c. Will be overridden
+// for residual scan types.
+class QuantizedRow *ACSequentialScan::GetRow(UBYTE idx) const
+{
+  return m_pBlockCtrl->CurrentQuantizedRow(idx);
+}
+///
+
+/// ACSequentialScan::StartRow
+bool ACSequentialScan::StartRow(void) const
+{
+  return m_pBlockCtrl->StartMCUQuantizerRow(m_pScan);
 }
 ///

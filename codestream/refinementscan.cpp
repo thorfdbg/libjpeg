@@ -47,7 +47,7 @@ the committee itself.
 **
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.cpp,v 1.22 2012-07-20 23:49:08 thor Exp $
+** $Id: refinementscan.cpp,v 1.26 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -63,7 +63,6 @@ the committee itself.
 #include "coding/quantizedrow.hpp"
 #include "codestream/rectanglerequest.hpp"
 #include "dct/idct.hpp"
-#include "dct/fdct.hpp"
 #include "dct/sermsdct.hpp"
 #include "std/assert.hpp"
 #include "interface/bitmaphook.hpp"
@@ -77,7 +76,8 @@ the committee itself.
 
 /// RefinementScan::RefinementScan
 RefinementScan::RefinementScan(class Frame *frame,class Scan *scan,
-			       UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE highbit)
+			       UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE highbit,
+			       bool,bool)
   : EntropyParser(frame,scan), m_ACBuffer(frame->EnvironOf(),256), m_pBlockCtrl(NULL),
     m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit), m_ucHighBit(highbit)
 {
@@ -189,7 +189,7 @@ bool RefinementScan::StartMCURow(void)
 
 /// RefinementScan::Flush
 // Flush the remaining bits out to the stream on writing.
-void RefinementScan::Flush(void)
+void RefinementScan::Flush(bool)
 {
   if (m_ucScanStart) {
     // Progressive, AC band. It looks wierd to code the remaining

@@ -47,7 +47,7 @@ the committee itself.
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.49 2012-07-29 17:00:39 thor Exp $
+** $Id: tables.cpp,v 1.55 2012-09-23 12:58:39 thor Exp $
 **
 */
 
@@ -59,6 +59,7 @@ the committee itself.
 #include "marker/adobemarker.hpp"
 #include "marker/losslessmarker.hpp"
 #include "marker/residualmarker.hpp"
+#include "marker/residualspecsmarker.hpp"
 #include "marker/restartintervalmarker.hpp"
 #include "marker/jfifmarker.hpp"
 #include "marker/exifmarker.hpp"
@@ -82,11 +83,11 @@ the committee itself.
 Tables::Tables(class Environ *env)
   : JKeeper(env), m_pQuant(NULL), m_pHuffman(NULL), m_pConditioner(NULL), 
     m_pRestart(NULL), m_pColorInfo(NULL), m_pResolutionInfo(NULL), m_pCameraInfo(NULL),
-    m_pResidualData(NULL), m_pColorTrafo(NULL), 
+    m_pResidualData(NULL), m_pRefinementData(NULL), m_pResidualSpecs(NULL), m_pColorTrafo(NULL), 
     m_pLosslessMarker(NULL), m_pToneMappingMarker(NULL),
     m_pThresholds(NULL), m_pLSColorTrafo(NULL),
     m_pusToneMapping(NULL), m_pusInverseMapping(NULL),
-    m_bResidual(false), m_bForceFixpoint(false), m_bDisableColor(false)
+    m_bForceFixpoint(false), m_bDisableColor(false)
 {
 }
 ///
@@ -116,6 +117,8 @@ Tables::~Tables(void)
   delete m_pResolutionInfo;
   delete m_pCameraInfo;
   delete m_pResidualData;
+  delete m_pRefinementData;
+  delete m_pResidualSpecs;
   delete m_pColorTrafo;
   delete m_pLosslessMarker;
   delete m_pRestart;
@@ -140,6 +143,7 @@ void Tables::InstallDefaultTables(const struct JPG_TagItem *tags)
   bool noiseshaping = tags->GetTagData(JPGTAG_IMAGE_ENABLE_NOISESHAPING,false)?true:false;
   ULONG restart   = tags->GetTagData(JPGTAG_IMAGE_RESTART_INTERVAL);
   UBYTE preshift  = 0;
+  UBYTE hiddenbits= tags->GetTagData(JPGTAG_IMAGE_HIDDEN_DCTBITS,0);
   UWORD *map0     = (UWORD *)(tags->GetTagPtr(JPGTAG_IMAGE_TONEMAPPING0));
   UWORD *map1     = (UWORD *)(tags->GetTagPtr(JPGTAG_IMAGE_TONEMAPPING1));
   UWORD *map2     = (UWORD *)(tags->GetTagPtr(JPGTAG_IMAGE_TONEMAPPING2));
@@ -163,6 +167,16 @@ void Tables::InstallDefaultTables(const struct JPG_TagItem *tags)
       }
       break;
     }
+  }
+
+  if (hiddenbits) {
+    if (int(hiddenbits) > precision - 8)
+      JPG_THROW(OVERFLOW_PARAMETER,"Tables::InstallDefaultTables",
+		"can only hide at most the number of extra bits between "
+		"the native bit depth of the image and eight bits per pixel");
+    if (hiddenbits + 8 > 12)
+      JPG_THROW(OVERFLOW_PARAMETER,"Tables::InstallDefaultTables",
+		"the maximum number of hidden DCT bits can be at most four");
   }
 
   if (m_pQuant != NULL || m_pHuffman != NULL || m_pColorInfo != NULL || m_pResolutionInfo != NULL ||
@@ -222,51 +236,56 @@ void Tables::InstallDefaultTables(const struct JPG_TagItem *tags)
     tone = new(m_pEnviron) class ToneMappingMarker(m_pEnviron);
     tone->NextOf() = m_pToneMappingMarker;
     m_pToneMappingMarker = tone;
-    tone->InstallDefaultParameters(0,precision,map0);
+    tone->InstallDefaultParameters(0,precision,hiddenbits,map0);
   }
   if (map1 && map1 != map0) {
     tone = new(m_pEnviron) class ToneMappingMarker(m_pEnviron);
     tone->NextOf() = m_pToneMappingMarker;
     m_pToneMappingMarker = tone;
-    tone->InstallDefaultParameters(1,precision,map1);
+    tone->InstallDefaultParameters(1,precision,hiddenbits,map1);
   }
   if (map2 && map2 != map0) {
     tone = new(m_pEnviron) class ToneMappingMarker(m_pEnviron);
     tone->NextOf() = m_pToneMappingMarker;
     m_pToneMappingMarker = tone;
-    tone->InstallDefaultParameters(2,precision,map2);
+    tone->InstallDefaultParameters(2,precision,hiddenbits,map2);
   }
   if (map3 && map3 != map0) {
     tone = new(m_pEnviron) class ToneMappingMarker(m_pEnviron);
     tone->NextOf() = m_pToneMappingMarker;
     m_pToneMappingMarker = tone;
-    tone->InstallDefaultParameters(3,precision,map3);
+    tone->InstallDefaultParameters(3,precision,hiddenbits,map3);
   }
   
-  if (residual) {
-    m_bResidual     = true;
-    m_pResidualData = new(m_pEnviron) ResidualMarker(m_pEnviron);
-    m_pResidualData->InstallPreshift(preshift);
+  if (residual || hiddenbits) {
+    if (hdrquality > 0)
+      m_pResidualData   = new(m_pEnviron) ResidualMarker(m_pEnviron,ResidualMarker::Residual);
+    if (hiddenbits)
+      m_pRefinementData = new(m_pEnviron) ResidualMarker(m_pEnviron,ResidualMarker::Refinement);
+    m_pResidualSpecs  = new(m_pEnviron) ResidualSpecsMarker(m_pEnviron);
+
+    m_pResidualSpecs->InstallPreshift(preshift);
+    m_pResidualSpecs->InstallHiddenBits(hiddenbits);
     
     if (map0)
-      m_pResidualData->InstallToneMapping(0,0);
+      m_pResidualSpecs->InstallToneMapping(0,0);
     if (map1) {
       if (map1 == map0) 
-	m_pResidualData->InstallToneMapping(1,0);
+	m_pResidualSpecs->InstallToneMapping(1,0);
       else 
-	m_pResidualData->InstallToneMapping(1,1);
+	m_pResidualSpecs->InstallToneMapping(1,1);
     }
     if (map2) {
       if (map2 == map0) 
-	m_pResidualData->InstallToneMapping(2,0);
+	m_pResidualSpecs->InstallToneMapping(2,0);
       else
-	m_pResidualData->InstallToneMapping(2,2);
+	m_pResidualSpecs->InstallToneMapping(2,2);
     }
     if (map3) {
       if (map3 == map0)
-	m_pResidualData->InstallToneMapping(3,0);
+	m_pResidualSpecs->InstallToneMapping(3,0);
       else
-	m_pResidualData->InstallToneMapping(3,3);
+	m_pResidualSpecs->InstallToneMapping(3,3);
     }
 
     //
@@ -274,12 +293,12 @@ void Tables::InstallDefaultTables(const struct JPG_TagItem *tags)
     // layer if defined. The setup by this code is that
     // 2 and 3 are reserved for this.
     if (hdrquality != MAX_ULONG)
-      m_pResidualData->InstallQuantization(2,(colortrafo != JPGFLAG_IMAGE_COLORTRANSFORMATION_NONE)?(3):(2));
+      m_pResidualSpecs->InstallQuantization(2,(colortrafo != JPGFLAG_IMAGE_COLORTRANSFORMATION_NONE)?(3):(2));
 
     //
     // Enable or disable the hadamard transformation.
-    m_pResidualData->InstallHadamardTrafo(hadamard);
-    m_pResidualData->InstallNoiseShaping(noiseshaping);
+    m_pResidualSpecs->InstallHadamardTrafo(hadamard);
+    m_pResidualSpecs->InstallNoiseShaping(noiseshaping);
 
     // Also build an EXIF marker if residual markers are included.
     // This is a bug work-around for eog. Yuck!
@@ -340,6 +359,11 @@ void Tables::WriteTables(class ByteStream *io)
     m_pLosslessMarker->WriteMarker(io);
   }
 
+  if (m_pResidualSpecs) {
+    io->PutWord(0xffe9); // Also APP9
+    m_pResidualSpecs->WriteMarker(io);
+  }
+
   for(tone = m_pToneMappingMarker;tone;tone = tone->NextOf()) {
     io->PutWord(0xffe9); // Also APP9
     tone->WriteMarker(io);
@@ -354,7 +378,7 @@ void Tables::WriteTables(class ByteStream *io)
 void Tables::ParseTables(class ByteStream *io)
 {
   do {
-    LONG marker = io->PeekMarker();
+    LONG marker = io->PeekWord();
     switch(marker) {
     case 0xffdb: // DQT
       io->GetWord();
@@ -512,10 +536,25 @@ void Tables::ParseTables(class ByteStream *io)
 	      break;
 	    } else if (type == JPG_MAKEID('R','E','S','I')) {
 	      if (m_pResidualData == NULL)
-		m_pResidualData = new(m_pEnviron) class ResidualMarker(m_pEnviron);
+		m_pResidualData = new(m_pEnviron) class ResidualMarker(m_pEnviron,
+								       ResidualMarker::Residual);
 	      //
 	      // Parse off the residual data.
 	      m_pResidualData->ParseMarker(io,len);
+	      break;
+	    } else if (type == JPG_MAKEID('F','I','N','E')) {
+	      if (m_pRefinementData == NULL)
+		m_pRefinementData = new(m_pEnviron) class ResidualMarker(m_pEnviron,
+									 ResidualMarker::Refinement);
+	      //
+	      m_pRefinementData->ParseMarker(io,len);
+	      break;
+	    } else if (type == JPG_MAKEID('S','P','E','C')) {
+	      if (m_pResidualSpecs == NULL)
+		m_pResidualSpecs = new(m_pEnviron) class ResidualSpecsMarker(m_pEnviron);
+	      //
+	      // Parse off the residual specifications.
+	      m_pResidualSpecs->ParseMarker(io,len);
 	      break;
 	    } else if (type == JPG_MAKEID('T','O','N','E')) {
 	      class ToneMappingMarker *tone = new(m_pEnviron) class ToneMappingMarker(m_pEnviron);
@@ -584,6 +623,9 @@ void Tables::ParseTables(class ByteStream *io)
     case 0xffde: // DHP
     case 0xfff7: // JPEG LS SOS
       return;
+    case 0xffff: // A filler byte followed by a marker. Skip.
+      io->Get();
+      break;
     case 0xffd0:
     case 0xffd1:
     case 0xffd2:
@@ -702,10 +744,26 @@ const UWORD *Tables::FindQuantizationTable(UBYTE idx) const
 ///
 
 /// Tables::ResidualDataOf
-// Return the information on the residual marker data if any.
+// Return the residual data data if any.
 class ResidualMarker *Tables::ResidualDataOf(void) const
 {
   return m_pResidualData;
+}
+///
+
+/// Tables::RefinementDataOf
+// Return the refinement data if any.
+class ResidualMarker *Tables::RefinementDataOf(void) const
+{
+  return m_pRefinementData;
+}
+///
+
+/// Tables::ResidualSpecsOf
+// Return the information on the residual marker data if any.
+class ResidualSpecsMarker *Tables::ResidualSpecsOf(void) const
+{
+  return m_pResidualSpecs;
 }
 ///
 
@@ -717,10 +775,10 @@ const UWORD *Tables::FindEncodingToneMappingCurve(UBYTE comp,UBYTE ldrbpp)
 
   assert(comp < 4);
 
-  if (m_pResidualData) {
-    if (m_pResidualData->isToneMapped(comp)) {
+  if (m_pResidualSpecs) {
+    if (m_pResidualSpecs->isToneMapped(comp)) {
       class ToneMappingMarker *tone;
-      UBYTE tabidx = m_pResidualData->ToneMappingTableOf(comp);
+      UBYTE tabidx = m_pResidualSpecs->ToneMappingTableOf(comp);
 
       for(tone = m_pToneMappingMarker;tone;tone = tone->NextOf()) {
 	if (tone->IndexOf() == tabidx)
@@ -732,7 +790,7 @@ const UWORD *Tables::FindEncodingToneMappingCurve(UBYTE comp,UBYTE ldrbpp)
 
       return tone->EncodingCurveOf();
     } else {
-      preshift = m_pResidualData->PointPreShiftOf();
+      preshift = m_pResidualSpecs->PointPreShiftOf();
     }
   }
 
@@ -760,10 +818,10 @@ const UWORD *Tables::FindDecodingToneMappingCurve(UBYTE comp,UBYTE ldrbpp)
 
   assert(comp < 4);
 
-  if (m_pResidualData) {
-    if (m_pResidualData->isToneMapped(comp)) {
+  if (m_pResidualSpecs) {
+    if (m_pResidualSpecs->isToneMapped(comp)) {
       class ToneMappingMarker *tone;
-      UBYTE tabidx = m_pResidualData->ToneMappingTableOf(comp);
+      UBYTE tabidx = m_pResidualSpecs->ToneMappingTableOf(comp);
 
       for(tone = m_pToneMappingMarker;tone;tone = tone->NextOf()) {
 	if (tone->IndexOf() == tabidx)
@@ -775,7 +833,7 @@ const UWORD *Tables::FindDecodingToneMappingCurve(UBYTE comp,UBYTE ldrbpp)
 
       return tone->ToneMappingCurveOf();
     } else {
-      preshift = m_pResidualData->PointPreShiftOf();
+      preshift = m_pResidualSpecs->PointPreShiftOf();
     }
   }
 
@@ -940,11 +998,33 @@ class ColorTrafo *Tables::ColorTrafoOf(class Frame *frame,UBYTE type,UBYTE bpp,U
 }
 ///
 
+
+/// Tables::HiddenDCTBitsOf
+// Check how many bits are hidden in invisible refinement scans.
+UBYTE Tables::HiddenDCTBitsOf(void) const
+{
+  if (m_pResidualSpecs)
+    return m_pResidualSpecs->HiddenBitsOf();
+
+  return 0;
+}
+///
+
 /// Tables::UseResiduals
-// Check whether residual data in the APP4 marker shall be written.
+// Check whether residual data in the APP9 marker shall be written.
 bool Tables::UseResiduals(void) const
 {
-  if (m_pResidualData || m_bResidual)
+  if (m_pResidualData)
+    return true;
+  return false;
+}
+///
+
+/// Tables::UseRefinements
+// Check whether refinement data shall be written.
+bool Tables::UseRefinements(void) const
+{
+  if (m_pRefinementData)
     return true;
   return false;
 }

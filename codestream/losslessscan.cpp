@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents the scan including the scan header.
 **
-** $Id: losslessscan.cpp,v 1.28 2012-07-20 23:49:08 thor Exp $
+** $Id: losslessscan.cpp,v 1.33 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -71,35 +71,13 @@ the committee itself.
 ///
 
 /// LosslessScan::LosslessScan
-LosslessScan::LosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit)
-  : EntropyParser(frame,scan), m_pLineCtrl(NULL), m_ucPredictor(predictor), m_ucLowBit(lowbit)
+LosslessScan::LosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit,bool differential)
+  : PredictiveScan(frame,scan,predictor,lowbit,differential)
 { 
-  m_ucCount = scan->ComponentsInScan();
-  
   for(int i = 0;i < 4;i++) {
     m_pDCDecoder[i]    = NULL;
     m_pDCCoder[i]      = NULL;
     m_pDCStatistics[i] = NULL;
-  }
-}
-///
-
-/// LosslessScan::FindComponentDimensions
-// Collect the component information.
-void LosslessScan::FindComponentDimensions(void)
-{ 
-  int i;
-
-  m_ulPixelWidth  = m_pFrame->WidthOf();
-  m_ulPixelHeight = m_pFrame->HeightOf();
-
-  for(i = 0;i < m_ucCount;i++) {
-    class Component *comp = ComponentOf(i);
-    UBYTE subx = comp->SubXOf();
-    UBYTE suby = comp->SubYOf();
-    
-    m_ulWidth[i]  = (m_ulPixelWidth  + subx - 1) / subx;
-    m_ulHeight[i] = (m_ulPixelHeight + suby - 1) / suby;
   }
 }
 ///
@@ -114,7 +92,11 @@ LosslessScan::~LosslessScan(void)
 // Write the marker that indicates the frame type fitting to this scan.
 void LosslessScan::WriteFrameType(class ByteStream *io)
 {
-  io->PutWord(0xffc3); // lossless sequential
+  if (m_bDifferential) {
+    io->PutWord(0xffc7); // differential lossless sequential
+  } else {
+    io->PutWord(0xffc3); // lossless sequential
+  }
 }
 ///
 
@@ -126,7 +108,7 @@ void LosslessScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
   FindComponentDimensions();
   
   for(i = 0;i < m_ucCount;i++) {
-    m_pDCDecoder[i]  = m_pScan->DCHuffmanDecoderOf(i);
+    m_pDCDecoder[i]       = m_pScan->DCHuffmanDecoderOf(i);
   }
   
   assert(ctrl->isLineBased());
@@ -187,10 +169,7 @@ bool LosslessScan::WriteMCU(void)
 {
   int i;
   struct Line *top[4],*prev[4];
-  ULONG xpos[4],ypos[4];
-  UBYTE mcuwidth[4],mcuheight[4];
-  bool more;
-  int lines = 8; // total number of MCU lines processed.
+  int lines      = 8; // total number of MCU lines processed.
   UBYTE preshift = m_ucLowBit + FractionalColorBitsOf();
 
   for(i = 0;i < m_ucCount;i++) {
@@ -198,158 +177,231 @@ bool LosslessScan::WriteMCU(void)
     UBYTE idx       = comp->IndexOf();
     top[i]          = m_pLineCtrl->CurrentLineOf(idx);
     prev[i]         = m_pLineCtrl->PreviousLineOf(idx);
-    xpos[i]         = 0;
-    ypos[i]         = m_pLineCtrl->CurrentYOf(idx);
-    mcuwidth[i]     = comp->MCUWidthOf();
-    mcuheight[i]    = comp->MCUHeightOf();
-    m_bNoPrediction = false;
+    m_ulX[i]        = 0;
+    m_ulY[i]        = m_pLineCtrl->CurrentYOf(idx);
   }
 
   // Loop over lines and columns
   do {
-    BeginWriteMCU(m_Stream.ByteStreamOf());
     do {
+      BeginWriteMCU(m_Stream.ByteStreamOf());
       //
-      // Encode a single MCU, which is now a group of pixels.
-      for(i = 0;i < m_ucCount;i++) {
-	class HuffmanCoder *dc          = m_pDCCoder[i];
-	class HuffmanStatistics *dcstat = m_pDCStatistics[i];
-	struct Line *line = top[i];
-	struct Line *pline= prev[i];
-	UBYTE ym = mcuheight[i];
-	LONG  x  = xpos[i];
-	LONG  y  = (m_bNoPrediction)?(0):(ypos[i]);
-	LONG *lp = line->m_pData + x;
-	LONG *pp = (pline)?(pline->m_pData + x):(NULL);
-	//
-	// Predicted value at the left. Either taken from the left if there
-	// is a left, or from the top if there is a top, or the default
-	// value.
-	// Encude MCUwidth * MCUheight coefficients starting at the line top.
-	do {
-	  UBYTE xm = mcuwidth[i];
-	  do {
-	    LONG pred;
-	    WORD v;
-	    // Get the predicted value.
-	    if (x == 0) { 
-	      if (y == 0) {
-		pred = ((1L << m_pFrame->PrecisionOf()) >> 1) >> m_ucLowBit;
-	      } else {
-		pred = pp[0] >> preshift; // the line on top, or the default on the left edge.
-	      }
-	    } else if (y == 0) {
-	      pred = lp[-1] >> preshift; // at the first line, predict from the left.
-	    } else switch(m_ucPredictor) { // Use the user-defined predictor.
-	      case 0: // No prediction. Actually, this is invalid here.
-		JPG_THROW(INVALID_PARAMETER,"LosslessScan::WriteMCU",
-			  "a lossless non-differential scan must use prediction, but prediction is turned off");
-		break;
-	      case 1:
-		pred = lp[-1] >> preshift; // predict from the left.
-		break;
-	      case 2:
-		pred = pp[0] >> preshift;  // predict from the top
-		break;
-	      case 3:
-		pred = pp[-1] >> preshift; // predict from the left top
-		break;
-	      case 4:
-		pred = (lp[-1]  >> preshift) + (pp[0]  >> preshift) - (pp[-1] >> preshift); // linear interpolation.
-		break;
-	      case 5:
-		pred = (lp[-1]  >> preshift) + (((pp[0]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 6:
-		pred = (pp[0]  >> preshift) + (((lp[-1]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 7:
-		pred = ((lp[-1] >> preshift) + (pp[0] >> preshift)) >> 1;
-		break;
-	      default:
-		JPG_THROW(INVALID_PARAMETER,"LosslessScan::WriteMCU",
-			  "invalid predictor selected for the lossless mode");
-		break;
-	      }
-	    v = ((lp[0] >> preshift) - pred); // value to be encoded. Standard requires 16 bit modulo arithmetic.
-	    if (dcstat) {
-	      if (v == 0) {
-		dcstat->Put(0);
-	      } else if (v == -32768) {
-		dcstat->Put(16); // Do not append bits
-	      } else {
-		UBYTE symbol = 0;
-		do {
-		  symbol++;
-		  if (v > -(1 << symbol) && v < (1 << symbol)) {
-		    dcstat->Put(symbol);
-		    break;
-		  }
-		} while(true);
-	      }
-	    } else {
-	      if (v == 0) {
-		dc->Put(&m_Stream,0);
-	      } else if (v == -32768) {
-		dc->Put(&m_Stream,16); // Do not append bits
-	      } else {
-		UBYTE symbol = 0;
-		do {
-		  symbol++;
-		  if (v > -(1 << symbol) && v < (1 << symbol)) {
-		    dc->Put(&m_Stream,symbol);
-		    if (v >= 0) {
-		      m_Stream.Put(symbol,v);
-		    } else {
-		      m_Stream.Put(symbol,v - 1);
-		    }
-		    break;
-		  }
-		} while(true);
-	      }
-	    }
-	    //
-	    // One pixel done. Proceed to the next in the MCU. Note that
-	    // the lines have been extended such that always a complete MCU is present.
-	    lp++,pp++;x++;
-	  } while(--xm);
-	  //
-	  // Go to the next line.
-	  x  = x  - mcuwidth[i];
-	  pp = lp - mcuwidth[i];
-	  if (line->m_pNext)
-	    line = line->m_pNext;
-	  lp = line->m_pData + x;
-	  y++;
-	} while(--ym);
+      if (m_bMeasure) {
+	MeasureMCU(prev,top,preshift);
+      } else {
+	WriteMCU(prev,top,preshift);
       }
-      //
-      // End MCU coding. Proceed to next MCU.
-      for(i = 0,more = true;i < m_ucCount;i++) {
-	xpos[i] += mcuwidth[i];
-	if (xpos[i] >= m_ulWidth[i])
-	  more = false;
-      }
-    } while(more);
+    } while(AdvanceToTheRight());
+    //
+    // Turn on prediction again after the restart line.
+    m_bNoPrediction = false;
     //
     // Advance to the next line.
-    for(i = 0,more = true;i < m_ucCount;i++) {
-      int cnt = mcuheight[i];
-      xpos[i]  = 0;
-      ypos[i] += cnt;
-      if (ypos[i] >= m_ulHeight[i]) {
-	more = false;
-      } else do {
-	prev[i] = top[i];
-	if (top[i]->m_pNext) {
-	  top[i] = top[i]->m_pNext;
-	}
-      } while(--cnt);
+  } while(AdvanceToTheNextLine(prev,top) && --lines);
+
+  return false;
+}
+///
+
+/// LosslessScan::WriteMCU
+// The actual MCU-writer, write a single group of pixels to the stream,
+// or measure their statistics.
+void LosslessScan::WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+{
+  UBYTE i;
+  //
+  // Parse a single MCU, which is now a group of pixels.
+  for(i = 0;i < m_ucCount;i++) {
+    class HuffmanCoder *dc = m_pDCCoder[i];
+    struct Line *line = top[i];
+    struct Line *pline= prev[i];
+    UBYTE ym = m_ucMCUHeight[i];
+    ULONG  x = m_ulX[i];
+    ULONG  y = m_ulY[i];
+    LONG *lp = line->m_pData + x;
+    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
+    //
+    if (m_bNoPrediction) {
+      y = 0;
     }
-    m_bNoPrediction = false;
-  } while(--lines && more);
-  
-  return false; // no further blocks here.
+    //
+    // Write MCUwidth * MCUheight coefficients starting at the line top.
+    do {
+      UBYTE xm     = m_ucMCUWidth[i];
+      do {
+	UBYTE mode = PredictionMode(x,y);
+	LONG pred  = PredictSample(mode,preshift,lp,pp);
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v;  // 16 bit integer arithmetic required.
+	//
+	v = WORD((lp[0] >> preshift) - pred); // value to be encoded. Standard requires 16 bit modulo arithmetic.
+	if (v == 0) {
+	  dc->Put(&m_Stream,0);
+	} else if (v == -32768) {
+	  dc->Put(&m_Stream,16); // Do not append bits
+	} else {
+	  UBYTE symbol = 0;
+	  do {
+	    symbol++;
+	    if (v > -(1 << symbol) && v < (1 << symbol)) {
+	      dc->Put(&m_Stream,symbol);
+	      if (v >= 0) {
+		m_Stream.Put(symbol,v);
+	      } else {
+		m_Stream.Put(symbol,v - 1);
+	      }
+	      break;
+	    }
+	  } while(true);
+	}
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
+	lp++,pp++;x++;
+      } while(--xm);
+      //
+      // Go to the next line.
+      x  = x  - m_ucMCUWidth[i];
+      pp = lp - m_ucMCUWidth[i];
+      if (line->m_pNext)
+	line = line->m_pNext;
+      lp = line->m_pData + x;
+      y++;
+    } while(--ym);
+  }
+}
+///
+
+/// LosslessScan::MeasureMCU
+// The actual MCU-writer, write a single group of pixels to the stream,
+// or measure their statistics. This here only measures the statistics
+// to design an optimal Huffman table
+void LosslessScan::MeasureMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+{
+  UBYTE i;
+  //
+  // Parse a single MCU, which is now a group of pixels.
+  for(i = 0;i < m_ucCount;i++) {
+    class HuffmanStatistics *dcstat = m_pDCStatistics[i];
+    struct Line *line = top[i];
+    struct Line *pline= prev[i];
+    UBYTE ym = m_ucMCUHeight[i];
+    ULONG  x = m_ulX[i];
+    ULONG  y = m_ulY[i];
+    LONG *lp = line->m_pData + x;
+    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
+    //
+    if (m_bNoPrediction) {
+      y = 0;      
+    }
+    //
+    // Write MCUwidth * MCUheight coefficients starting at the line top.
+    do {
+      UBYTE xm     = m_ucMCUWidth[i];
+      do {
+	UBYTE mode = PredictionMode(x,y);
+	LONG pred  = PredictSample(mode,preshift,lp,pp);
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v;  // 16 bit integer arithmetic required.
+	//
+	v = WORD((lp[0] >> preshift) - pred); // value to be encoded. Standard requires 16 bit modulo arithmetic.
+	if (v == 0) {
+	  dcstat->Put(0);
+	} else if (v == -32768) {
+	  dcstat->Put(16); // Do not append bits
+	} else {
+	  UBYTE symbol = 0;
+	  do {
+	    symbol++;
+	    if (v > -(1 << symbol) && v < (1 << symbol)) {
+	      dcstat->Put(symbol);
+	      break;
+	    }
+	  } while(true);
+	}
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
+	lp++,pp++;x++;
+      } while(--xm);
+      //
+      // Go to the next line.
+      x  = x  - m_ucMCUWidth[i];
+      pp = lp - m_ucMCUWidth[i];
+      if (line->m_pNext)
+	line = line->m_pNext;
+      lp = line->m_pData + x;
+      y++;
+    } while(--ym);
+  }
+}
+///
+
+/// LosslessScan::ParseMCU
+// This is actually the true MCU-parser, not the interface that reads
+// a full line.
+void LosslessScan::ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+{ 
+  UBYTE i;
+  //
+  // Parse a single MCU, which is now a group of pixels.
+  for(i = 0;i < m_ucCount;i++) {
+    class HuffmanDecoder *dc = m_pDCDecoder[i];
+    struct Line *line = top[i];
+    struct Line *pline= prev[i];
+    UBYTE ym = m_ucMCUHeight[i];
+    ULONG  x = m_ulX[i];
+    ULONG  y = m_ulY[i];
+    LONG *lp = line->m_pData + x;
+    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
+    //
+    if (m_bNoPrediction) {
+      y = 0;
+    }
+    //
+    // Parse MCUwidth * MCUheight coefficients starting at the line top.
+    do {
+      UBYTE xm     = m_ucMCUWidth[i];
+      do {
+	UBYTE mode = PredictionMode(x,y);
+	LONG pred  = PredictSample(mode,preshift,lp,pp);
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v;
+	UBYTE symbol = dc->Get(&m_Stream);
+	
+	if (symbol == 0) {
+	  v = 0;
+	} else if (symbol == 16) {
+	  v = -32768;
+	} else {
+	  LONG thre = 1L << (symbol - 1);
+	  LONG diff = m_Stream.Get(symbol); // get the number of bits 
+	  if (diff < thre) {
+	    diff += (-1L << symbol) + 1;
+	  }
+	  v = diff;
+	}
+	//
+	// Set the current pixel, do the inverse pointwise transformation.
+	lp[0] = WORD(v + pred) << preshift;
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
+	lp++,pp++;x++;
+      } while(--xm);
+      //
+      // Go to the next line.
+      x  = x  - m_ucMCUWidth[i];
+      pp = lp - m_ucMCUWidth[i];
+      if (line->m_pNext)
+	line = line->m_pNext;
+      lp = line->m_pData + x;
+      y++;
+    } while(--ym);
+  }
 }
 ///
 
@@ -361,10 +413,7 @@ bool LosslessScan::ParseMCU(void)
 {
   int i;
   struct Line *top[4],*prev[4];
-  ULONG xpos[4],ypos[4];
-  UBYTE mcuwidth[4],mcuheight[4];
-  bool more;
-  int lines = 8; // total number of MCU lines processed.
+  int lines      = 8; // total number of MCU lines processed.
   UBYTE preshift = m_ucLowBit + FractionalColorBitsOf();
 
   for(i = 0;i < m_ucCount;i++) {
@@ -372,143 +421,25 @@ bool LosslessScan::ParseMCU(void)
     UBYTE idx       = comp->IndexOf();
     top[i]          = m_pLineCtrl->CurrentLineOf(idx);
     prev[i]         = m_pLineCtrl->PreviousLineOf(idx);
-    xpos[i]         = 0;
-    ypos[i]         = m_pLineCtrl->CurrentYOf(idx);
-    mcuwidth[i]     = comp->MCUWidthOf();
-    mcuheight[i]    = comp->MCUHeightOf();
-    m_bNoPrediction = false;
+    m_ulX[i]        = 0;
+    m_ulY[i]        = m_pLineCtrl->CurrentYOf(idx);
   }
 
   // Loop over lines and columns
   do {
-    if (BeginReadMCU(m_Stream.ByteStreamOf()) == false) {
-      // An error, clear the entire MCU here.
-      ClearMCU(top);
-    } else do {
-      // Encode a single MCU, which is now a group of pixels.
-      for(i = 0;i < m_ucCount;i++) {
-	class HuffmanDecoder *dc = m_pDCDecoder[i];
-	struct Line *line = top[i];
-	struct Line *pline= prev[i];
-	UBYTE ym = mcuheight[i];
-	LONG  x  = xpos[i];
-	LONG  y  = (m_bNoPrediction)?(0):(ypos[i]);
-	LONG *lp = line->m_pData + x;
-	LONG *pp = (pline)?(pline->m_pData + x):(NULL);
-	//
-	// Predicted value at the left. Either taken from the left if there
-	// is a left, or from the top if there is a top, or the default
-	// value.
-	// Encude MCUwidth * MCUheight coefficients starting at the line top.
-	do {
-	  UBYTE xm = mcuwidth[i];
-	  do {
-	    LONG pred;
-	    // Get the predicted value.
-	    if (x == 0) {
-	      if (y == 0) {
-		pred = ((1L << m_pFrame->PrecisionOf()) >> 1) >> m_ucLowBit;
-	      } else {
-		pred = pp[0] >> preshift; // the line on top, or the default on the left edge.
-	      }
-	    } else if (y == 0) {
-	      pred = lp[-1] >> preshift; // at the first line, predict from the left.
-	    } else switch(m_ucPredictor) { // Use the user-defined predictor.
-	      case 0: // No prediction. Actually, this is invalid here.
-		JPG_THROW(INVALID_PARAMETER,"LosslessScan::ParseMCU",
-			  "a lossless non-differential scan must use prediction, but prediction is turned off");
-		break;
-	      case 1:
-		pred = lp[-1] >> preshift; // predict from the left.
-		break;
-	      case 2:
-		pred = pp[0] >> preshift;  // predict from the top
-		break;
-	      case 3:
-		pred = pp[-1] >> preshift; // predict from the left top
-		break;
-	      case 4:
-		pred = (lp[-1]  >> preshift) + (pp[0]  >> preshift) - (pp[-1] >> preshift); // linear interpolation.
-		break;
-	      case 5:
-		pred = (lp[-1]  >> preshift) + (((pp[0]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 6:
-		pred = (pp[0]  >> preshift) + (((lp[-1]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 7:
-		pred = ((lp[-1] >> preshift) + (pp[0] >> preshift)) >> 1;
-		break;
-	      default:
-		JPG_THROW(INVALID_PARAMETER,"LosslessScan::ParseMCU",
-			  "invalid predictor selected for the lossless mode");
-		break;
-	      }
-	    //
-	    // Decode now the difference between the predicted value and
-	    // the real value.
-	    {
-	      WORD v; // 16 bit integer arithmetic required.
-	      // NOTE: C++ does actually not ensure that v has wraparound-characteristics, though it
-	      // typically does.
-	      UBYTE symbol = dc->Get(&m_Stream);
-	      
-	      if (symbol == 0) {
-		v = 0;
-	      } else if (symbol == 16) {
-		v = -32768;
-	      } else {
-		LONG thre = 1L << (symbol - 1);
-		LONG diff = m_Stream.Get(symbol); // get the number of bits 
-		if (diff < thre) {
-		  diff += (-1L << symbol) + 1;
-		}
-		v = diff;
-	      }
-	      //
-	      // Set the current pixel, do the inverse pointwise transformation.
-	      lp[0] = (v + pred) << preshift;
-	    }
-	    //
-	    // One pixel done. Proceed to the next in the MCU. Note that
-	    // the lines have been extended such that always a complete MCU is present.
-	    lp++,pp++;x++;
-	  } while(--xm);
-	  //
-	  // Go to the next line.
-	  x  = x  - mcuwidth[i];
-	  pp = lp - mcuwidth[i];
-	  if (line->m_pNext)
-	    line = line->m_pNext;
-	  lp = line->m_pData + x;
-	  y++;
-	} while(--ym);
+    do {
+      if (BeginReadMCU(m_Stream.ByteStreamOf())) {
+	ParseMCU(prev,top,preshift);
+      } else {
+	ClearMCU(top);
       }
-      //
-      // End MCU coding. Proceed to next MCU.
-      for(i = 0,more = true;i < m_ucCount;i++) {
-	xpos[i] += mcuwidth[i];
-	if (xpos[i] >= m_ulWidth[i])
-	  more = false;
-      }
-    } while(more);
+    } while(AdvanceToTheRight());
+    //
+    // Turn on prediction again after the restart line.
+    m_bNoPrediction = false;
     //
     // Advance to the next line.
-    for(i = 0,more = true;i < m_ucCount;i++) {
-      int cnt  = mcuheight[i];
-      xpos[i]  = 0;
-      ypos[i] += cnt;
-      if (m_ulHeight[i] && ypos[i] >= m_ulHeight[i]) {
-	more = false;
-      } else do {
-	prev[i] = top[i];
-	if (top[i]->m_pNext) {
-	  top[i] = top[i]->m_pNext;
-	}
-      } while(--cnt);
-    }
-    m_bNoPrediction = false;
-  } while(--lines && more);
+  } while(AdvanceToTheNextLine(prev,top) && --lines);
   
   return false; // no further blocks here.
 }
@@ -524,11 +455,11 @@ bool LosslessScan::StartMCURow(void)
 
 /// LosslessScan::Flush
 // Flush the remaining bits out to the stream on writing.
-void LosslessScan::Flush(void)
+void LosslessScan::Flush(bool)
 {  
   if (!m_bMeasure)
     m_Stream.Flush();
-  m_bNoPrediction = true;
+  m_bNoPrediction = true; 
 }
 ///
 
@@ -538,31 +469,5 @@ void LosslessScan::Restart(void)
 { 
   m_Stream.OpenForRead(m_Stream.ByteStreamOf());
   m_bNoPrediction = true;
-}
-///
-
-/// LosslessScan::ClearMCU
-// Clear the entire MCU
-void LosslessScan::ClearMCU(class Line **top)
-{ 
-  UBYTE preshift = FractionalColorBitsOf();
-  LONG neutral   = ((1L << m_pFrame->PrecisionOf()) >> 1) << preshift;
-  
-  for(int i = 0;i < m_ucCount;i++) {
-    class Component *comp = ComponentOf(i);
-    struct Line *line     = top[i];
-    UBYTE ym              = comp->MCUHeightOf();
-    //
-    do {
-      LONG *p = line->m_pData;
-      LONG *e = line->m_pData + m_ulWidth[i];
-      do {
-	*p = neutral;
-      } while(++p < e);
-
-      if (line->m_pNext)
-	line = line->m_pNext;
-    } while(--ym);
-  }
 }
 ///

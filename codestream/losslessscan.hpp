@@ -48,7 +48,7 @@ the committee itself.
 ** Represents the lossless scan - lines are coded directly with predictive
 ** coding.
 **
-** $Id: losslessscan.hpp,v 1.20 2012-07-20 23:49:08 thor Exp $
+** $Id: losslessscan.hpp,v 1.24 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -58,7 +58,8 @@ the committee itself.
 /// Includes
 #include "tools/environment.hpp"
 #include "io/bitstream.hpp"
-#include "codestream/entropyparser.hpp"
+#include "codestream/predictivescan.hpp"
+#include "tools/line.hpp"
 ///
 
 /// Forwards
@@ -76,14 +77,7 @@ class Scan;
 
 /// class LosslessScan
 // A lossless scan creator.
-class LosslessScan : public EntropyParser {
-  //
-  // The class used for pulling and pushing data.
-  class LineBuffer          *m_pLineCtrl;
-  //
-  // Dimension of the frame in full pixels.
-  ULONG                      m_ulPixelWidth;
-  ULONG                      m_ulPixelHeight;
+class LosslessScan : public PredictiveScan {
   //
   class HuffmanDecoder      *m_pDCDecoder[4];
   //
@@ -93,40 +87,33 @@ class LosslessScan : public EntropyParser {
   // And for measuring the statistics.
   class HuffmanStatistics   *m_pDCStatistics[4];
   //
-  // Dimensions of the components.
-  ULONG                      m_ulWidth[4];
-  ULONG                      m_ulHeight[4];
-  //
   // The bitstream for bit-IO
   BitStream<false>           m_Stream;
   // 
-  // The predictor to use.
-  UBYTE                      m_ucPredictor;
-  //
-  // The low bit for the point transform.
-  UBYTE                      m_ucLowBit;
-  //
-  // Disable prediction as if we were at the first line.
-  // Used behind restart markers.
-  bool                       m_bNoPrediction;
-  //
   // Only measuring the statistics.
   bool                       m_bMeasure;
   //
-  // Collect component information and install the component dimensions.
-  void FindComponentDimensions(void);
+  // This is actually the true MCU-parser, not the interface that reads
+  // a full line.
+  void ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift);
   //
+  // The actual MCU-writer, write a single group of pixels to the stream,
+  // or measure their statistics.
+  void WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift);
+  //
+  // The actual MCU-writer, write a single group of pixels to the stream,
+  // or measure their statistics.
+  void MeasureMCU(struct Line **prev,struct Line **top,UBYTE preshift);
+   // 
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void); 
+  virtual void Flush(bool final); 
   // 
   // Restart the parser at the next restart interval
   virtual void Restart(void);
   //
-  // Clear the entire MCU
-  void ClearMCU(class Line **top);
-  //
 public:
-  LosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit);
+  LosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit,
+	       bool differential = false);
   //
   virtual ~LosslessScan(void);
   // 

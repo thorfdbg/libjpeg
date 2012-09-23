@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents the scan including the scan header.
 **
-** $Id: aclosslessscan.cpp,v 1.20 2012-07-17 19:39:21 thor Exp $
+** $Id: aclosslessscan.cpp,v 1.25 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -65,11 +65,12 @@ the committee itself.
 #include "coding/actemplate.hpp"
 #include "codestream/tables.hpp"
 #include "tools/line.hpp"
+#include "std/string.hpp"
 ///
 
 /// ACLosslessScan::ACLosslessScan
-ACLosslessScan::ACLosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit)
-  : EntropyParser(frame,scan), m_pLineCtrl(NULL), m_ucPredictor(predictor), m_ucLowBit(lowbit)
+ACLosslessScan::ACLosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit,bool differential)
+  : PredictiveScan(frame,scan,predictor,lowbit,differential)
 { 
   m_ucCount = scan->ComponentsInScan();
   
@@ -77,32 +78,23 @@ ACLosslessScan::ACLosslessScan(class Frame *frame,class Scan *scan,UBYTE predict
     m_ucSmall[i]     = 0;
     m_ucLarge[i]     = 1;
   }
-}
-///
 
-/// ACLosslessScan::FindComponentDimensions
-// Collect the component information.
-void ACLosslessScan::FindComponentDimensions(void)
-{ 
-  int i;
-
-  m_ulPixelWidth  = m_pFrame->WidthOf();
-  m_ulPixelHeight = m_pFrame->HeightOf();
-
-  for(i = 0;i < m_ucCount;i++) {
-    class Component *comp = ComponentOf(i);
-    UBYTE subx = comp->SubXOf();
-    UBYTE suby = comp->SubYOf();
-    
-    m_ulWidth[i]  = (m_ulPixelWidth  + subx - 1) / subx;
-    m_ulHeight[i] = (m_ulPixelHeight + suby - 1) / suby;
-  }
+  memset(m_plDa,0,sizeof(m_plDa));
+  memset(m_plDb,0,sizeof(m_plDb));
 }
 ///
 
 /// ACLosslessScan::~ACLosslessScan
 ACLosslessScan::~ACLosslessScan(void)
 {
+  UBYTE i;
+  
+  for(i = 0;i < m_ucCount;i++) {
+    if (m_plDa[i])
+      m_pEnviron->FreeMem(m_plDa[i],sizeof(LONG) * m_ucMCUHeight[i]);
+    if (m_plDb[i])
+      m_pEnviron->FreeMem(m_plDb[i],sizeof(LONG) * m_ulWidth[i]);
+  }
 }
 ///
 
@@ -110,7 +102,28 @@ ACLosslessScan::~ACLosslessScan(void)
 // Write the marker that indicates the frame type fitting to this scan.
 void ACLosslessScan::WriteFrameType(class ByteStream *io)
 {
-  io->PutWord(0xffcb); // lossless sequential AC coded
+  if (m_bDifferential) {
+    io->PutWord(0xffcf); // differential lossless sequential AC coded
+  } else {
+    io->PutWord(0xffcb); // lossless sequential AC coded
+  }
+}
+///
+
+/// ACLosslessScan::FindComponentDimensions
+// Common setup for encoding and decoding.
+void ACLosslessScan::FindComponentDimensions(void)
+{
+  UBYTE i;
+
+  PredictiveScan::FindComponentDimensions();
+
+  for(i = 0;i < m_ucCount;i++) {
+    assert(m_plDa[i] == NULL && m_plDb[i] == NULL);
+
+    m_plDa[i] = (LONG *)(m_pEnviron->AllocMem(sizeof(LONG) * m_ucMCUHeight[i]));
+    m_plDb[i] = (LONG *)(m_pEnviron->AllocMem(sizeof(LONG) * m_ulWidth[i]));
+  }
 }
 ///
 
@@ -131,11 +144,12 @@ void ACLosslessScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
       m_ucSmall[i]    = 0;
       m_ucLarge[i]    = 1;
     }
-    m_lDa[i] = 0;
-    m_lDb[i] = 0;
+    memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
+    m_ucContext[i]    = m_pScan->DCTableIndexOf(i); 
   }
-  
-  m_Context.Init();
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
+  }
   
   assert(ctrl->isLineBased());
   m_pLineCtrl = dynamic_cast<LineBuffer *>(ctrl);
@@ -161,12 +175,13 @@ void ACLosslessScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
     } else {
       m_ucSmall[i]    = 0;
       m_ucLarge[i]    = 1;
-    }
-    m_lDa[i] = 0;
-    m_lDb[i] = 0;
+    }  
+    memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
+    m_ucContext[i]    = m_pScan->DCTableIndexOf(i); 
   }
-
-  m_Context.Init();
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
+  }
     
   assert(ctrl->isLineBased());
   m_pLineCtrl = dynamic_cast<LineBuffer *>(ctrl);
@@ -180,34 +195,203 @@ void ACLosslessScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
 /// ACLosslessScan::StartMeasureScan
 void ACLosslessScan::StartMeasureScan(class BufferCtrl *)
 {
-
   JPG_THROW(NOT_IMPLEMENTED,"ACLosslessScan::StartMeasureScan",
 	    "arithmetic coding is always adaptive and does not require a measurement phase");
 }
 ///
 
-/// ACLosslessScan::Classify
-// Find the context class depending on the previous DC and
-// the values of L and U given in the conditioner.
-int ACLosslessScan::Classify(LONG diff,UBYTE l,UBYTE u)
-{
-  LONG abs = (diff > 0)?(diff):(-diff);
-  
-  if (abs <= ((1 << l) >> 1)) {
-    // the zero cathegory.
-    return 0;
-  }
-  if (abs <= (1 << u)) {
-    if (diff < 0) {
-      return -1;
-    } else {
-      return 1;
+/// ACLosslessScan::WriteMCU
+// This is actually the true MCU-writer, not the interface that reads
+// a full line.
+void ACLosslessScan::WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+{ 
+  UBYTE c;
+  //
+  // Parse a single MCU, which is now a group of pixels.
+  for(c = 0;c < m_ucCount;c++) {
+    struct QMContextSet &contextset = m_Context[m_ucContext[c]];
+    struct Line *line = top[c];
+    struct Line *pline= prev[c];
+    UBYTE ym = m_ucMCUHeight[c];
+    ULONG  x = m_ulX[c];
+    ULONG  y = m_ulY[c];
+    LONG *lp = line->m_pData + x;
+    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
+    //
+    if (m_bNoPrediction) {
+      y           = 0;
+      // Reset conditioning to the top
+      memset(m_plDb[c] + x,0,sizeof(LONG) * m_ucMCUWidth[c]);
     }
+    //
+    // Write MCUwidth * MCUheight coefficients starting at the line top.
+    do {
+      UBYTE xm     = m_ucMCUWidth[c];
+      do {
+	UBYTE mode = PredictionMode(x,y);
+	LONG pred  = PredictSample(mode,preshift,lp,pp);
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v     = WORD((lp[0] >> preshift) - pred); // 16 bit integer arithmetic required.
+	// NOTE: C++ does actually not ensure that v has wraparound-characteristics, though it
+	// typically does.
+	//
+	// Get the sign coding context.
+	struct QMContextSet::ContextZeroSet &zset = contextset.ClassifySignZero(m_plDa[c][ym-1],m_plDb[c][x],
+										m_ucSmall[c],m_ucLarge[c]);
+	// 
+	if (v) {
+	  LONG sz;
+	  m_Coder.Put(zset.S0,true);
+	  //
+	  if (v < 0) {
+	    m_Coder.Put(zset.SS,true);
+	    sz = -(v + 1);
+	  } else {
+	    m_Coder.Put(zset.SS,false);
+	    sz =   v - 1;
+	  }
+	  //
+	  if (sz >= 1) {
+	    struct QMContextSet::MagnitudeSet &mset = contextset.ClassifyMagnitude(m_plDb[c][x],m_ucLarge[c]);
+	    int  i = 0;
+	    LONG m = 2;
+	    //
+	    m_Coder.Put((v > 0)?(zset.SP):(zset.SN),true);
+	    //
+	    while(sz >= m) {
+	      m_Coder.Put(mset.X[i],true);
+	      m <<= 1;
+	      i++;
+	    }
+	    m_Coder.Put(mset.X[i],false);
+	    //
+	    m >>= 1;
+	    while((m >>= 1)) {
+	      m_Coder.Put(mset.M[i],(m & sz)?(true):(false));
+	    }
+	  } else {
+	    m_Coder.Put((v > 0)?(zset.SP):(zset.SN),false);
+	  }
+	} else {
+	  m_Coder.Put(zset.S0,false);
+	}
+	//
+	// Update Da and Db.
+	// Is this a bug? 32768 does not exist, but -32768 does. 
+	// The reference streams use -32768, so let's stick to that.
+	m_plDb[c][x]    = v;
+	m_plDa[c][ym-1] = v;
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
+	lp++,pp++;x++;
+      } while(--xm);
+      //
+      // Go to the next line.
+      x  = x  - m_ucMCUWidth[c];
+      pp = lp - m_ucMCUWidth[c];
+      if (line->m_pNext)
+	line = line->m_pNext;
+      lp = line->m_pData + x;
+      y++;
+    } while(--ym);
   }
-  if (diff < 0) {
-    return -2;
-  } else {
-    return 2;
+}
+///
+
+/// ACLosslessScan::ParseMCU
+// The actual MCU-parser, write a single group of pixels to the stream,
+// or measure their statistics.
+void ACLosslessScan::ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+{ 
+  UBYTE c;
+  //
+  // Parse a single MCU, which is now a group of pixels.
+  for(c = 0;c < m_ucCount;c++) {
+    struct QMContextSet &contextset = m_Context[m_ucContext[c]];
+    struct Line *line = top[c];
+    struct Line *pline= prev[c];
+    UBYTE ym = m_ucMCUHeight[c];
+    ULONG  x = m_ulX[c];
+    ULONG  y = m_ulY[c];
+    LONG *lp = line->m_pData + x;
+    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
+    //
+    if (m_bNoPrediction) {
+      y        = 0;
+      // Reset conditioning to the top
+      memset(m_plDb[c] + x,0,sizeof(LONG) * m_ucMCUWidth[c]);
+    }
+    //
+    // Parse MCUwidth * MCUheight coefficients starting at the line top.
+    do {
+      UBYTE xm     = m_ucMCUWidth[c];
+      do {
+	UBYTE mode = PredictionMode(x,y);
+	LONG pred  = PredictSample(mode,preshift,lp,pp);
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v;
+	// Get the sign coding context.
+	struct QMContextSet::ContextZeroSet &zset = contextset.ClassifySignZero(m_plDa[c][ym-1],m_plDb[c][x],
+										m_ucSmall[c],m_ucLarge[c]);
+	//
+	if (m_Coder.Get(zset.S0)) {
+	  LONG sz   = 0;
+	  bool sign = m_Coder.Get(zset.SS); // true for negative.
+	  //
+	  if (m_Coder.Get((sign)?(zset.SN):(zset.SP))) {
+	    struct QMContextSet::MagnitudeSet &mset = contextset.ClassifyMagnitude(m_plDb[c][x],m_ucLarge[c]);
+	    int  i = 0;
+	    LONG m = 2;
+	    //
+	    while(m_Coder.Get(mset.X[i])) {
+	      m <<= 1;
+	      i++;
+	    }
+	    //
+	    m >>= 1;
+	    sz  = m;
+	    while((m >>= 1)) {
+	      if (m_Coder.Get(mset.M[i])) {
+		sz |= m;
+	      }
+	    }
+	  }
+	  //
+	  if (sign) {
+	    v = -sz - 1;
+	  } else {
+	    v =  sz + 1;
+	  }
+	} else {
+	  v = 0;
+	}
+	//
+	// Set the current pixel, do the inverse pointwise transformation.
+	// 16-bit transformation required.
+	lp[0] = WORD(v + pred) << preshift; 
+	//
+	// Update Da and Db.
+	// Is this a bug? 32768 does not exist, but -32768 does. The streams
+	// seem to use -32768 instead.
+	m_plDb[c][x]    = v;
+	m_plDa[c][ym-1] = v;
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
+	lp++,pp++;x++;
+      } while(--xm);
+      //
+      // Go to the next line.
+      x  = x  - m_ucMCUWidth[c];
+      pp = lp - m_ucMCUWidth[c];
+      if (line->m_pNext)
+	line = line->m_pNext;
+      lp = line->m_pData + x;
+      y++;
+    } while(--ym);
   }
 }
 ///
@@ -218,12 +402,9 @@ int ACLosslessScan::Classify(LONG diff,UBYTE l,UBYTE u)
 // here a group of pixels. But it is more practical this way.
 bool ACLosslessScan::WriteMCU(void)
 {
-  int i;
+ int i;
   struct Line *top[4],*prev[4];
-  ULONG xpos[4],ypos[4];
-  UBYTE mcuwidth[4],mcuheight[4];
-  bool more;
-  int lines = 8; // total number of MCU lines processed.
+  int lines      = 8; // total number of MCU lines processed.
   UBYTE preshift = m_ucLowBit + FractionalColorBitsOf();
 
   for(i = 0;i < m_ucCount;i++) {
@@ -231,173 +412,30 @@ bool ACLosslessScan::WriteMCU(void)
     UBYTE idx       = comp->IndexOf();
     top[i]          = m_pLineCtrl->CurrentLineOf(idx);
     prev[i]         = m_pLineCtrl->PreviousLineOf(idx);
-    xpos[i]         = 0;
-    ypos[i]         = m_pLineCtrl->CurrentYOf(idx);
-    mcuwidth[i]     = comp->MCUWidthOf();
-    mcuheight[i]    = comp->MCUHeightOf();
-    m_bNoPrediction = false;
+    m_ulX[i]        = 0;
+    m_ulY[i]        = m_pLineCtrl->CurrentYOf(idx);
   }
 
   // Loop over lines and columns
   do {
-    BeginWriteMCU(m_Coder.ByteStreamOf());
-    do { 
-      // Encode a single MCU, which is now a group of pixels.
-      for(i = 0;i < m_ucCount;i++) {
-	struct Line *line = top[i];
-	struct Line *pline= prev[i];
-	UBYTE ym = mcuheight[i];
-	LONG  x  = xpos[i];
-	LONG  y  = (m_bNoPrediction)?(0):(ypos[i]);
-	LONG *lp = line->m_pData + x;
-	LONG *pp = (pline)?(pline->m_pData + x):(NULL);
-	//
-	// Predicted value at the left. Either taken from the left if there
-	// is a left, or from the top if there is a top, or the default
-	// value.
-	// Encude MCUwidth * MCUheight coefficients starting at the line top.
-	do {
-	  UBYTE xm = mcuwidth[i];
-	  do {
-	    LONG pred;
-	    WORD v;
-	    // Get the predicted value.
-	    if (x == 0) { 
-	      if (y == 0) {
-		pred = ((1L << m_pFrame->PrecisionOf()) >> 1) >> m_ucLowBit;
-	      } else {
-		pred = pp[0] >> preshift; // the line on top, or the default on the left edge.
-	      }
-	    } else if (y == 0) {
-	      pred = lp[-1] >> preshift; // at the first line, predict from the left.
-	    } else switch(m_ucPredictor) { // Use the user-defined predictor.
-	      case 0: // No prediction. Actually, this is invalid here.
-		JPG_THROW(INVALID_PARAMETER,"ACLosslessScan::WriteMCU",
-			  "a lossless non-differential scan must use prediction, but prediction is turned off");
-		break;
-	      case 1:
-		pred = lp[-1] >> preshift; // predict from the left.
-		break;
-	      case 2:
-		pred = pp[0] >> preshift;  // predict from the top
-		break;
-	      case 3:
-		pred = pp[-1] >> preshift; // predict from the left top
-		break;
-	      case 4:
-		pred = (lp[-1]  >> preshift) + (pp[0]  >> preshift) - (pp[-1] >> preshift); // linear interpolation.
-		break;
-	      case 5:
-		pred = (lp[-1]  >> preshift) + (((pp[0]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 6:
-		pred = (pp[0]  >> preshift) + (((lp[-1]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 7:
-		pred = ((lp[-1] >> preshift) + (pp[0] >> preshift)) >> 1;
-		break;
-	      default:
-		JPG_THROW(INVALID_PARAMETER,"ACLosslessScan::WriteMCU",
-			  "invalid predictor selected for the lossless mode");
-		break;
-	      }
-	    //
-	    // value to be encoded. Standard requires 16 bit modulo arithmetic.	    
-	    v = ((lp[0] >> preshift) - pred); 
-
-	    struct QMContextSet::ContextZeroSet &ctxt = m_Context.SignZeroCoding
-	      [Classify(m_lDa[i],m_ucSmall[i],m_ucLarge[i]) + 2][Classify(m_lDb[i],m_ucSmall[i],m_ucLarge[i]) + 2];
-	    //
-	    if (v) {
-	      LONG sz;
-	      m_Coder.Put(ctxt.S0,true);
-	      //
-	      if (v < 0) {
-		m_Coder.Put(ctxt.SS,true);
-		sz = -(v + 1);
-	      } else {
-		m_Coder.Put(ctxt.SS,false);
-		sz =   v - 1;
-	      }
-	      //
-	      if (sz >= 1) {
-		int  i = 0;
-		LONG m = 2;
-		int cl = Classify(m_lDb[i],m_ucSmall[i],m_ucLarge[i]);
-		struct QMContextSet::MagnitudeSet &mag = (cl >= 2 || cl <= -2)?(m_Context.MagnitudeHigh):
-		  (m_Context.MagnitudeLow);
-		m_Coder.Put((v > 0)?(ctxt.SP):(ctxt.SN),true);
-		//
-		while(sz >= m) {
-		  m_Coder.Put(mag.X[i],true);
-		  m <<= 1;
-		  i++;
-		}
-		m_Coder.Put(mag.X[i],false);
-		//
-		m >>= 1;
-		while((m >>= 1)) {
-		  m_Coder.Put(mag.M[i],(m & sz)?(true):(false));
-		}
-	      } else {
-		m_Coder.Put((v > 0)?(ctxt.SP):(ctxt.SN),false);
-	      }
-	    } else {
-	      m_Coder.Put(ctxt.S0,false);
-	    }
-	    //
-	    // Update Da and Db. The logic is a bit strange here....
-	    if (y == 0) {
-	      m_lDb[i] = 0;
-	    } else {
-	      m_lDb[i] = (pp[0] >> preshift) - (lp[0] >> preshift);
-	    }
-	    if (x == 0) {
-	      m_lDa[i] = 0;
-	    } else {
-	      m_lDa[i] = (lp[-1] >> preshift) - (lp[0] >> preshift);
-	    }
-	    // One pixel done. Proceed to the next in the MCU. Note that
-	    // the lines have been extended such that always a complete MCU is present.
-	    lp++,pp++;x++;
-	  } while(--xm);
-	  //
-	  // Go to the next line.
-	  x  = x  - mcuwidth[i];
-	  pp = lp - mcuwidth[i];
-	  if (line->m_pNext)
-	    line = line->m_pNext;
-	  lp = line->m_pData + x;
-	  y++;
-	} while(--ym);
-      }
+    do {
+      BeginWriteMCU(m_Coder.ByteStreamOf());
       //
-      // End MCU coding. Proceed to next MCU.
-      for(i = 0,more = true;i < m_ucCount;i++) {
-	xpos[i] += mcuwidth[i];
-	if (xpos[i] >= m_ulWidth[i])
-	  more = false;
-      }
-    } while(more);
+      WriteMCU(prev,top,preshift);
+    } while(AdvanceToTheRight());
+    //
+    // Turn on prediction again after the restart line.
+    m_bNoPrediction = false;
+    // 
+    // Reset conditioning to the left
+    for(i = 0;i < m_ucCount;i++) {
+      memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
+    }
     //
     // Advance to the next line.
-    for(i = 0,more = true;i < m_ucCount;i++) {
-      int cnt = mcuheight[i];
-      xpos[i]  = 0;
-      ypos[i] += cnt;
-      if (ypos[i] >= m_ulHeight[i]) {
-	more = false;
-      } else do {
-	prev[i] = top[i];
-	if (top[i]->m_pNext) {
-	  top[i] = top[i]->m_pNext;
-	}
-      } while(--cnt);
-    }
-    m_bNoPrediction = false;
-  } while(--lines && more);
-  
-  return false; // no further blocks here.
+  } while(AdvanceToTheNextLine(prev,top) && --lines);
+
+  return false;
 }
 ///
 
@@ -409,10 +447,7 @@ bool ACLosslessScan::ParseMCU(void)
 {
   int i;
   struct Line *top[4],*prev[4];
-  ULONG xpos[4],ypos[4];
-  UBYTE mcuwidth[4],mcuheight[4];
-  bool more;
-  int lines = 8; // total number of MCU lines processed.
+  int lines      = 8; // total number of MCU lines processed.
   UBYTE preshift = m_ucLowBit + FractionalColorBitsOf();
 
   for(i = 0;i < m_ucCount;i++) {
@@ -420,176 +455,29 @@ bool ACLosslessScan::ParseMCU(void)
     UBYTE idx       = comp->IndexOf();
     top[i]          = m_pLineCtrl->CurrentLineOf(idx);
     prev[i]         = m_pLineCtrl->PreviousLineOf(idx);
-    xpos[i]         = 0;
-    ypos[i]         = m_pLineCtrl->CurrentYOf(idx);
-    mcuwidth[i]     = comp->MCUWidthOf();
-    mcuheight[i]    = comp->MCUHeightOf();
-    m_bNoPrediction = false;
+    m_ulX[i]        = 0;
+    m_ulY[i]        = m_pLineCtrl->CurrentYOf(idx);
   }
 
   // Loop over lines and columns
   do {
-    if (BeginReadMCU(m_Coder.ByteStreamOf()) == false) {
-      ClearMCU(top);
-    } else do {
-      // Encode a single MCU, which is now a group of pixels.
-      for(i = 0;i < m_ucCount;i++) {
-	struct Line *line = top[i];
-	struct Line *pline= prev[i];
-	UBYTE ym = mcuheight[i];
-	LONG  x  = xpos[i];
-	LONG  y  = (m_bNoPrediction)?(0):(ypos[i]);
-	LONG *lp = line->m_pData + x;
-	LONG *pp = (pline)?(pline->m_pData + x):(NULL);
-	//
-	// Predicted value at the left. Either taken from the left if there
-	// is a left, or from the top if there is a top, or the default
-	// value.
-	// Encude MCUwidth * MCUheight coefficients starting at the line top.
-	do {
-	  UBYTE xm = mcuwidth[i];
-	  do {
-	    LONG pred;
-	    //
-	    // Get the predicted value.
-	    if (x == 0) {
-	      if (y == 0) {
-		pred = ((1L << m_pFrame->PrecisionOf()) >> 1) >> m_ucLowBit;
-	      } else {
-		pred = pp[0] >> preshift; // the line on top, or the default on the left edge.
-	      }
-	    } else if (y == 0) {
-	      pred = lp[-1] >> preshift; // at the first line, predict from the left.
-	    } else switch(m_ucPredictor) { // Use the user-defined predictor.
-	      case 0: // No prediction. Actually, this is invalid here.
-		JPG_THROW(INVALID_PARAMETER,"ACLosslessScan::ParseMCU",
-			  "a lossless non-differential scan must use prediction, but prediction is turned off");
-		break;
-	      case 1:
-		pred = lp[-1] >> preshift; // predict from the left.
-		break;
-	      case 2:
-		pred = pp[0] >> preshift;  // predict from the top
-		break;
-	      case 3:
-		pred = pp[-1] >> preshift; // predict from the left top
-		break;
-	      case 4:
-		pred = (lp[-1]  >> preshift) + (pp[0]  >> preshift) - (pp[-1] >> preshift); // linear interpolation.
-		break;
-	      case 5:
-		pred = (lp[-1]  >> preshift) + (((pp[0]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 6:
-		pred = (pp[0]  >> preshift) + (((lp[-1]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-		break;
-	      case 7:
-		pred = ((lp[-1] >> preshift) + (pp[0] >> preshift)) >> 1;
-		break;
-	      default:
-		JPG_THROW(INVALID_PARAMETER,"ACLosslessScan::ParseMCU",
-			  "invalid predictor selected for the lossless mode");
-		break;
-	      }
-	    //
-	    // Decode now the difference between the predicted value and
-	    // the real value.
-	    {
-	      WORD v; // 16 bit integer arithmetic required.
-	      // NOTE: C++ does actually not ensure that v has wraparound-characteristics, 
-	      // though it typically does.
-	      //
-	      struct QMContextSet::ContextZeroSet &ctxt = m_Context.SignZeroCoding
-		[Classify(m_lDa[i],m_ucSmall[i],m_ucLarge[i]) + 2][Classify(m_lDb[i],m_ucSmall[i],m_ucLarge[i]) + 2];
-	      //
-	      if (m_Coder.Get(ctxt.S0)) {
-		LONG sz   = 0;
-		bool sign = m_Coder.Get(ctxt.SS); // true for negative.
-		//
-		if (m_Coder.Get((sign)?(ctxt.SN):(ctxt.SP))) {
-		  int  i = 0;
-		  LONG m = 2;
-		  int cl = Classify(m_lDb[i],m_ucSmall[i],m_ucLarge[i]);
-		  struct QMContextSet::MagnitudeSet &mag = (cl >= 2 || cl <= -2)?(m_Context.MagnitudeHigh):
-		    (m_Context.MagnitudeLow);
-		  //
-		  while(m_Coder.Get(mag.X[i])) {
-		    m <<= 1;
-		    i++;
-		  }
-		  //
-		  m >>= 1;
-		  sz  = m;
-		  while((m >>= 1)) {
-		    if (m_Coder.Get(mag.M[i])) {
-		      sz |= m;
-		    }
-		  }
-		}
-		//
-		if (sign) {
-		  v = -sz - 1;
-		} else {
-		  v =  sz + 1;
-		}
-	      } else {
-		v = 0;
-	      }
-	      //
-	      // Set the current pixel, do the inverse pointwise transformation.
-	      lp[0] = (v + pred) << preshift;
-	    }
-	    //
-	    // Update Da and Db. The logic is a bit strange here....
-	    if (y == 0) {
-	      m_lDb[i] = 0;
-	    } else {
-	      m_lDb[i] = (pp[0] >> preshift) - (lp[0] >> preshift);
-	    }
-	    if (x == 0) {
-	      m_lDa[i] = 0;
-	    } else {
-	      m_lDa[i] = (lp[-1] >> preshift) - (lp[0] >> preshift);
-	    }
-	    // One pixel done. Proceed to the next in the MCU. Note that
-	    // the lines have been extended such that always a complete MCU is present.
-	    lp++,pp++;x++;
-	  } while(--xm);
-	  //
-	  // Go to the next line.
-	  x  = x  - mcuwidth[i];
-	  pp = lp - mcuwidth[i];
-	  if (line->m_pNext)
-	    line = line->m_pNext;
-	  lp = line->m_pData + x;
-	  y++;
-	} while(--ym);
+    do {
+      if (BeginReadMCU(m_Coder.ByteStreamOf())) {
+	ParseMCU(prev,top,preshift);
+      } else {
+	ClearMCU(top);
       }
-      //
-      // End MCU coding. Proceed to next MCU.
-      for(i = 0,more = true;i < m_ucCount;i++) {
-	xpos[i] += mcuwidth[i];
-	if (xpos[i] >= m_ulWidth[i])
-	  more = false;
-      }
-    } while(more);
+    } while(AdvanceToTheRight());
     //
-    // Advance to the next line.
-    for(i = 0,more = true;i < m_ucCount;i++) {
-      int cnt = mcuheight[i];
-      xpos[i]  = 0;
-      ypos[i] += cnt;
-      if (m_ulHeight[i] && ypos[i] >= m_ulHeight[i]) {
-	more = false;
-      } else do {
-	prev[i] = top[i];
-	if (top[i]->m_pNext) {
-	  top[i] = top[i]->m_pNext;
-	}
-      } while(--cnt);
-    }
+    // Turn on prediction again after the restart line.
     m_bNoPrediction = false;
-  } while(--lines && more);
+    //
+    // Reset conditioning to the left
+    for(i = 0;i < m_ucCount;i++) {
+      memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
+    }
+    // Advance to the next line.
+  } while(AdvanceToTheNextLine(prev,top) && --lines);
   
   return false; // no further blocks here.
 }
@@ -604,16 +492,30 @@ bool ACLosslessScan::StartMCURow(void)
 ///
 
 /// ACLosslessScan::Flush
-void ACLosslessScan::Flush(void)
+void ACLosslessScan::Flush(bool)
 {
+  int i;
+  
   m_Coder.Flush();
-  m_Context.Init();
 
-  for(int i = 0;i < m_ucCount;i++) {
-    m_lDa[i] = 0;
-    m_lDb[i] = 0;
+  for(i = 0;i < m_ucCount;i++) {
+    memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
+    memset(m_plDb[i],0,sizeof(LONG) * m_ulWidth[i]);
   }
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
+  }
+
   m_bNoPrediction = true;
+  
+  for(i = 0;i < m_ucCount;i++) {
+    if (m_ulX[i]) {
+      JPG_WARN(MALFORMED_STREAM,"ACLosslessScan::Flush",
+	       "found restart marker in the middle of the line, expect corrupt results");
+      break;
+    }
+  }
+
 
   m_Coder.OpenForWrite(m_Coder.ByteStreamOf());
 }
@@ -623,39 +525,25 @@ void ACLosslessScan::Flush(void)
 // Restart the parser at the next restart interval
 void ACLosslessScan::Restart(void)
 { 
-  for(int i = 0;i < m_ucCount;i++) {
-    m_lDa[i] = 0;
-    m_lDb[i] = 0;
+  int i;
+  
+  for(i = 0;i < m_ucCount;i++) {
+    memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
+    memset(m_plDb[i],0,sizeof(LONG) * m_ulWidth[i]);
+  }
+  for(i = 0;i < 4;i++) {
+    m_Context[i].Init();
   }
   
-  m_Context.Init();
+  for(i = 0;i < m_ucCount;i++) {
+    if (m_ulX[i]) {
+      JPG_WARN(MALFORMED_STREAM,"ACLosslessScan::Restart",
+	       "found restart marker in the middle of the line, expect corrupt results");
+      break;
+    }
+  }
+
   m_Coder.OpenForRead(m_Coder.ByteStreamOf());
   m_bNoPrediction = true;
-}
-///
-
-/// ACLosslessScan::ClearMCU
-// Clear the entire MCU
-void ACLosslessScan::ClearMCU(class Line **top)
-{ 
-  UBYTE preshift = FractionalColorBitsOf();
-  LONG neutral   = ((1L << m_pFrame->PrecisionOf()) >> 1) << preshift;
-  
-  for(int i = 0;i < m_ucCount;i++) {
-    class Component *comp = ComponentOf(i);
-    struct Line *line     = top[i];
-    UBYTE ym              = comp->MCUHeightOf();
-    //
-    do {
-      LONG *p = line->m_pData;
-      LONG *e = line->m_pData + m_ulWidth[i];
-      do {
-	*p = neutral;
-      } while(++p < e);
-
-      if (line->m_pNext)
-	line = line->m_pNext;
-    } while(--ym);
-  }
 }
 ///

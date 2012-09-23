@@ -47,7 +47,7 @@ the committee itself.
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.cpp,v 1.11 2012-07-19 14:13:38 thor Exp $
+** $Id: jpeglsscan.cpp,v 1.12 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -249,7 +249,7 @@ bool JPEGLSScan::StartMCURow(void)
 
 /// JPEGLSScan::Flush
 // Flush the remaining bits out to the stream on writing.
-void JPEGLSScan::Flush(void)
+void JPEGLSScan::Flush(bool)
 {
   m_Stream.Flush();
 }

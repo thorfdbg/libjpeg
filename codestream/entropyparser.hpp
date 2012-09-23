@@ -48,7 +48,7 @@ the committee itself.
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.hpp,v 1.11 2012-07-17 19:39:21 thor Exp $
+** $Id: entropyparser.hpp,v 1.12 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -168,7 +168,7 @@ public:
   virtual ~EntropyParser(void);
   //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void) = 0;
+  virtual void Flush(bool final) = 0;
   //
   // Restart the statistics/prediction at the next restart marker on reading.
   virtual void Restart(void) = 0;

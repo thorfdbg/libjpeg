@@ -48,7 +48,7 @@ the committee itself.
 ** Encode a refinement scan with the arithmetic coding procedure from
 ** Annex G.
 **
-** $Id: acrefinementscan.cpp,v 1.9 2012-06-02 10:27:13 thor Exp $
+** $Id: acrefinementscan.cpp,v 1.13 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -61,7 +61,6 @@ the committee itself.
 #include "coding/quantizedrow.hpp"
 #include "codestream/rectanglerequest.hpp"
 #include "dct/idct.hpp"
-#include "dct/fdct.hpp"
 #include "dct/sermsdct.hpp"
 #include "std/assert.hpp"
 #include "interface/bitmaphook.hpp"
@@ -77,7 +76,8 @@ the committee itself.
 
 /// ACRefinementScan::ACRefinementScan
 ACRefinementScan::ACRefinementScan(class Frame *frame,class Scan *scan,
-				   UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE highbit)
+				   UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE highbit,
+				   bool,bool)
   : EntropyParser(frame,scan), m_pBlockCtrl(NULL),
     m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit), m_ucHighBit(highbit)
 {
@@ -120,7 +120,11 @@ void ACRefinementScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctr
 
   assert(!ctrl->isLineBased());
   m_pBlockCtrl = dynamic_cast<BlockBuffer *>(ctrl);
-  m_pBlockCtrl->ResetToStartOfScan(m_pScan);
+  m_pBlockCtrl->ResetToStartOfScan(m_pScan); 
+  //
+  // Actually, always:
+  m_bMeasure = false;
+
 
   m_pScan->WriteMarker(io);
   m_Coder.OpenForWrite(io);
@@ -425,7 +429,7 @@ void ACRefinementScan::WriteFrameType(class ByteStream *io)
 
 /// ACRefinementScan::Flush
 // Flush the remaining bits out to the stream on writing.
-void ACRefinementScan::Flush(void)
+void ACRefinementScan::Flush(bool)
 {
   m_Coder.Flush();
   m_Context.Init();

@@ -47,7 +47,7 @@ the committee itself.
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.hpp,v 1.41 2012-07-15 11:59:44 thor Exp $
+** $Id: sequentialscan.hpp,v 1.46 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -82,6 +82,25 @@ class BitmapCtrl;
 // Huffman coded.
 class SequentialScan : public EntropyParser {
   //
+  // Last DC value, required for the DPCM coder.
+  LONG                     m_lDC[4];
+  //
+  // Number of blocks still to skip over.
+  // This is only used in the progressive mode.
+  UWORD                    m_usSkip[4];
+  //
+  // The bitstream from which we read the data.
+  BitStream<false>         m_Stream;
+  //
+protected:
+  //
+  // The block control helper that maintains all the request/release
+  // logic and the interface to the user.
+  class BlockBuffer       *m_pBlockCtrl; 
+  // 
+  // Scan positions.
+  ULONG                    m_ulX[4];
+  //
   // The huffman DC tables
   class HuffmanDecoder    *m_pDCDecoder[4];
   //
@@ -95,24 +114,6 @@ class SequentialScan : public EntropyParser {
   // Ditto for the statistics collection.
   class HuffmanStatistics *m_pDCStatistics[4];
   class HuffmanStatistics *m_pACStatistics[4];
-  //
-  // Last DC value, required for the DPCM coder.
-  LONG                     m_lDC[4];
-  //
-  // Number of blocks still to skip over.
-  // This is only used in the progressive mode.
-  UWORD                    m_usSkip[4];
-  //
-  // Scan positions.
-  ULONG                    m_ulX[4];
-  //
-  // The bitstream from which we read the data.
-  BitStream<false>         m_Stream;
-  //
-  // The block control helper that maintains all the request/release
-  // logic and the interface to the user.
-  class BlockBuffer       *m_pBlockCtrl; 
-  //
   // Scan parameters.
   UBYTE                    m_ucScanStart;
   UBYTE                    m_ucScanStop;
@@ -120,6 +121,12 @@ class SequentialScan : public EntropyParser {
   //
   // Measure data or encode?
   bool                     m_bMeasure;
+  //
+  // Encode a differential scan?
+  bool                     m_bDifferential;
+  //
+  // Encode a residual scan?
+  bool                     m_bResidual;
   //
   // Encode a single huffman block
   void EncodeBlock(const LONG *block,
@@ -132,7 +139,7 @@ class SequentialScan : public EntropyParser {
 		   LONG &prevdc,UWORD &skip);
   //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void);
+  virtual void Flush(bool final);
   //
   // Restart the parser at the next restart interval
   virtual void Restart(void);
@@ -145,12 +152,25 @@ class SequentialScan : public EntropyParser {
   // Write the marker that indicates the frame type fitting to this scan.
   virtual void WriteFrameType(class ByteStream *io);
   //
+  // Return the data to process for component c. Will be overridden
+  // for residual scan types.
+  virtual class QuantizedRow *GetRow(UBYTE idx) const;
+  //
   // Code any run of zero blocks here. This is only valid in
   // the progressive mode.
   void CodeBlockSkip(class HuffmanCoder *ac,UWORD &skip);
   //
+  // Check whether there are more rows to process, return true
+  // if so, false if not. Start with the row if there are.
+  virtual bool StartRow(void) const;
+  //
+  //
 public:
-  SequentialScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,UBYTE lowbit);
+  // Create a sequential scan. The highbit is always ignored as this is
+  // a valid setting for progressive only
+  SequentialScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
+		 UBYTE lowbit,UBYTE highbit,
+		 bool differential = false,bool residual = false);
   //
   ~SequentialScan(void);
   // 

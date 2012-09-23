@@ -47,7 +47,7 @@ the committee itself.
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.hpp,v 1.27 2012-07-20 13:57:55 thor Exp $
+** $Id: tables.hpp,v 1.30 2012-09-15 17:27:27 thor Exp $
 **
 */
 
@@ -66,6 +66,7 @@ class HuffmanTemplate;
 class JFIFMarker;
 class AdobeMarker;
 class ResidualMarker;
+class ResidualSpecsMarker;
 class ToneMappingMarker;
 class ColorTrafo;
 class EXIFMarker;
@@ -104,6 +105,13 @@ class Tables: public JKeeper {
   // for lossless compression.
   class ResidualMarker        *m_pResidualData;
   //
+  // This marker contains the hidden refinement data if
+  // this feature is used
+  class ResidualMarker        *m_pRefinementData;
+  //
+  // Specifications of the residual data.
+  class ResidualSpecsMarker   *m_pResidualSpecs;
+  //
   // The color transformer
   class ColorTrafo            *m_pColorTrafo;
   //
@@ -126,10 +134,6 @@ class Tables: public JKeeper {
   //
   // Mapping on encoding, downshifting as a table.
   UWORD                       *m_pusInverseMapping;
-  //
-  // Boolean indicator whether a residual marker shall be written.
-  // Only used on writing.
-  bool                         m_bResidual;
   //
   // Boolean indicator whether the fixpoint code must be used.
   bool                         m_bForceFixpoint;
@@ -178,8 +182,14 @@ public:
   // Find the quantization table of the given index.
   const UWORD *FindQuantizationTable(UBYTE idx) const;
   //
-  // Return the information on the residual marker data if any.
+  // Return the residual data if any.
   class ResidualMarker *ResidualDataOf(void) const;
+  //
+  // Return the refinement data if any.
+  class ResidualMarker *RefinementDataOf(void) const;
+  //
+  // Return the information on the residual data if any.
+  class ResidualSpecsMarker *ResidualSpecsOf(void) const;
   //
   // Return the thresholds of JPEG LS or NULL if there are none.
   class Thresholds *ThresholdsOf(void) const
@@ -195,11 +205,17 @@ public:
   // Check whether the integer reversible SERMS based DCT shall be used.
   bool UseReversibleDCT(void) const;
   //
-  // Check whether residual data in the APP4 marker shall be written.
+  // Check whether residual data in the APP9 marker shall be written.
   bool UseResiduals(void) const;
+  //
+  // Check whether the refinement data in APP9 shall be written.
+  bool UseRefinements(void) const;
   //
   // Check how many fractional bits the color transformation will use.
   UBYTE FractionalColorBitsOf(UBYTE count) const;
+  //
+  // Check how many bits are hidden in invisible refinement scans.
+  UBYTE HiddenDCTBitsOf(void) const;
   //
   // Check whether color tranformation is enabled.
   bool UseColortrafo(void) const; 

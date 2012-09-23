@@ -45,20 +45,22 @@ the committee itself.
 *************************************************************************/
 /*
 ** A variant of JPEG LS for the proposed vesa compression. Experimental.
+** This is the version which includes arithmetic coding.
 **
-** $Id: vesascan.hpp,v 1.17 2012-09-13 19:28:57 thor Exp $
+** $Id: vesascan.hpp,v 1.16 2012-08-29 08:58:33 thor Exp $
 **
 */
 
-#ifndef CODESTREAM_VESASCAN_HPP
-#define CODESTREAM_VESASCAN_HPP
+#ifndef CODESTREAM_ACVESASCAN_HPP
+#define CODESTREAM_ACVESASCAN_HPP
 
 /// Includes
 #include "codestream/jpeglsscan.hpp"
+#include "coding/qmcoder.hpp"
 ///
 
-/// class VesaScan
-class VesaScan : public JPEGLSScan {
+/// class ACVesaScan
+class ACVesaScan : public JPEGLSScan {
   //
   // Left neighbourhood given the lower three bits of the pixel position.
   static const ULONG m_ulOffset[8];
@@ -80,6 +82,24 @@ class VesaScan : public JPEGLSScan {
   //
   // Available bandwidth in average bits per line.
   ULONG m_ulBandwidth;
+  //
+  // The output coder.
+  class QMCoder  m_Coder;
+  //
+  // The contexts for the QM coder
+  struct Context {
+    class QMContext C,R,SZ,SS,T;
+    //
+    void Init(void)
+    {
+      C.Init();
+      R.Init();
+      SZ.Init();
+      SS.Init();
+      T.Init();
+    }
+  }              m_Contexts[4];
+  //
   //
   enum {
     // Number of wavelet decomposition levels
@@ -281,24 +301,6 @@ class VesaScan : public JPEGLSScan {
   // the same band.
   static bool isZeroTree(ULONG *data,ULONG width,ULONG x,ULONG increment,ULONG bitmask)
   {
-    /*
-    if ((data[x] & Significant) || (data[x] & bitmask) == 0) {
-      if (increment > 1) {
-	// Must test next level.
-	if (((x - (increment >> 1)) >= width || 
-	     isZeroTree(data,width,x - (increment >> 1),increment >> 1,bitmask)) &&
-	    ((x + (increment >> 1)) >= width || 
-	     isZeroTree(data,width,x + (increment >> 1),increment >> 1,bitmask)))
-	  return true;
-	return false;
-      } else {
-	return true;
-      }
-    }
-    return false;
-    */
-    // Make use of the interleaving and come up with an even simpler algorithm
-    // that is iterative.
     ULONG xmin = ((x - increment + 1) < width)?(x - increment + 1):(0);
     ULONG xmax = ((x + increment - 1) < width)?(x + increment - 1):(width - 1);
     
@@ -312,16 +314,6 @@ class VesaScan : public JPEGLSScan {
   // Mark the complete zero tree as encoded.
   static void markTreeAsEncoded(ULONG *data,ULONG width,ULONG x,ULONG increment)
   {
-    /*
-    data[x] |= Encoded;
-
-    if (increment > 1) {
-      if (x - (increment >> 1) < width)
-	markTreeAsEncoded(data,width,x - (increment >> 1),increment >> 1);
-      if (x + (increment >> 1) < width)
-	markTreeAsEncoded(data,width,x + (increment >> 1),increment >> 1);
-    }
-    */
     // Due to the interleaved layout of the samples, an iterative approach is possible
     // and even simpler.
     ULONG xmin = ((x - increment + 1) < width)?(x - increment + 1):(0);
@@ -333,7 +325,8 @@ class VesaScan : public JPEGLSScan {
   }
   //
   // Encode a bitplane level with the EZW 
-  void EncodeEZWLevel(ULONG *data,ULONG width,UBYTE inc,ULONG bitmask,bool lowpass)
+  void EncodeEZWLevel(struct Context &ctxt,
+		      ULONG *data,ULONG width,UBYTE inc,ULONG bitmask,bool lowpass)
   {
     ULONG x;
     ULONG increment = 1UL << inc;
@@ -341,28 +334,28 @@ class VesaScan : public JPEGLSScan {
     for(x = (lowpass)?(0):(increment >> 1);x < width;x += increment) {
       // Anything to do at all?
       if (data[x] & Significant) {
-	m_Stream.Put<1>((data[x] & bitmask)?(true):(false));m_ulUsedBits++;
+	m_Coder.Put(ctxt.R,(data[x] & bitmask)?(true):(false));m_ulUsedBits++;
       } else if ((data[x] & Encoded) == 0) {
 	if (data[x] & bitmask) {
 	  // Not a zero-tree, becomes significant.
-	  m_Stream.Put<1>(1);m_ulUsedBits++;
+	  m_Coder.Put(ctxt.SZ,true);m_ulUsedBits++;
 	  // Sign-coding.
-	  m_Stream.Put<1>((data[x] & Signed)?(true):(false));m_ulUsedBits++;
+	  m_Coder.Put(ctxt.SS,(data[x] & Signed)?(true):(false));m_ulUsedBits++;
 	  // Becomes significant.
 	  data[x] |= Significant;
 	} else {
 	  // Not significant.
-	  m_Stream.Put<1>(0);m_ulUsedBits++;
+	  m_Coder.Put(ctxt.SZ,false);m_ulUsedBits++;
 	  // May be a zero-tree. Makes only sense to test
 	  // if this is not the lowest level anyhow or if there are children.
 	  // For even position in the lowpass, there are no children either.
 	  if ((lowpass && ((x >> inc) & 1)) || (!lowpass && increment > 2)) {
 	    if (isZeroTree(data,width,x,(lowpass)?(increment):(increment >> 1),bitmask)) {
-	      m_Stream.Put<1>(1);m_ulUsedBits++;
+	      m_Coder.Put(ctxt.T,true);m_ulUsedBits++;
 	      markTreeAsEncoded(data,width,x,(lowpass)?(increment):(increment >> 1));
 	    } else {
 	      // Isolated zero.
-	      m_Stream.Put<1>(0);m_ulUsedBits++;
+	      m_Coder.Put(ctxt.T,false),m_ulUsedBits++;
 	    }
 	  }
 	}
@@ -371,7 +364,8 @@ class VesaScan : public JPEGLSScan {
   }
   //
   // Decode a bitplane level with the EZW.
-  void DecodeEZWLevel(ULONG *data,ULONG width,UBYTE inc,ULONG bitmask,bool lowpass)
+  void DecodeEZWLevel(struct Context &ctxt,
+		      ULONG *data,ULONG width,UBYTE inc,ULONG bitmask,bool lowpass)
   {
     ULONG x;
     ULONG increment = 1UL << inc;
@@ -379,21 +373,21 @@ class VesaScan : public JPEGLSScan {
     for(x = (lowpass)?(0):(increment >> 1);x < width;x += increment) { 
       // Significant or not?
       if (data[x] & Significant) {
-	if ((m_ulUsedBits++,m_Stream.Get<1>()))
+	if ((m_ulUsedBits++,m_Coder.Get(ctxt.R)))
 	  data[x] |=  bitmask; // Get the bit itself.
       } else if ((data[x] & Encoded) == 0) {
-	if ((m_ulUsedBits++,m_Stream.Get<1>())) { // Zero or not?
+	if ((m_ulUsedBits++,m_Coder.Get(ctxt.SZ))) { // Zero or not?
 	  // Here not zero. Get the sign.
 	  data[x] |= bitmask;
 	  // Get the sign bit.
-	  if ((m_ulUsedBits++,m_Stream.Get<1>())) 
+	  if ((m_ulUsedBits++,m_Coder.Get(ctxt.SS)))
 	    data[x] |= Signed;
 	  // Becomes significant.
 	  data[x] |= Significant;
 	} else {
 	  if ((lowpass && ((x >> inc) & 1)) || (!lowpass && increment > 2)) {
 	    // Here a zero-tree or an isolated zero.
-	    if (m_ulUsedBits++,m_Stream.Get<1>()) { 
+	    if (m_ulUsedBits++,m_Coder.Get(ctxt.T)) {
 	      // Zero tree.
 	      assert(data[x] == 0);
 	      markTreeAsEncoded(data,width,x,(lowpass)?(increment):(increment >> 1));
@@ -404,19 +398,33 @@ class VesaScan : public JPEGLSScan {
     }
   }
   //
+  // Flush the remaining bits out to the stream on writing.
+  virtual void Flush(void); 
+  // 
+  // Restart the parser at the next restart interval
+  virtual void Restart(void);
+  //
+  //
 public:
   // Create a new scan. This is only the base type.
-  VesaScan(class Frame *frame,class Scan *scan,
+  ACVesaScan(class Frame *frame,class Scan *scan,
 	   UBYTE near,const UBYTE *mapping,UBYTE point);
   //
-  virtual ~VesaScan(void);
+  virtual ~ACVesaScan(void);
   // 
   // Parse a single MCU in this scan. Return true if there are more
   // MCUs in this row.
   virtual bool ParseMCU(void);
   //
   // Write a single MCU in this scan.
-  virtual bool WriteMCU(void); 
+  virtual bool WriteMCU(void);  
+  //
+  // Fill in the tables for decoding and decoding parameters in general.
+  virtual void StartParseScan(class ByteStream *io,class BufferCtrl *ctrl);
+  //
+  // Write the default tables for encoding
+  virtual void StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl);
+  //
 };
 ///
 

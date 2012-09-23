@@ -49,7 +49,7 @@ the committee itself.
 ** arithmetic coding procedure for follow-up refinement
 ** scans.
 **
-** $Id: acrefinementscan.hpp,v 1.9 2012-06-02 10:27:13 thor Exp $
+** $Id: acrefinementscan.hpp,v 1.13 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -146,6 +146,10 @@ protected:
   UBYTE                       m_ucLowBit;
   UBYTE                       m_ucHighBit;
   //  
+  // Only here for the hidden scan to look at.
+  // Always false.
+  bool                        m_bMeasure;
+  //
   // Encode a single block
   void EncodeBlock(const LONG *block);
   //
@@ -153,7 +157,7 @@ protected:
   void DecodeBlock(LONG *block);
   //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void);
+  virtual void Flush(bool final);
   //
   // Restart the parser at the next restart interval
   virtual void Restart(void);
@@ -165,8 +169,11 @@ private:
   //
   //
 public:
+  // Create an AC coded refinement scan. The differential flag is always
+  // ignored, so is the residual flag.
   ACRefinementScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
-		   UBYTE lowbit,UBYTE highbit);
+		   UBYTE lowbit,UBYTE highbit,
+		   bool differential = false,bool residual = false);
   //
   ~ACRefinementScan(void);
   // 

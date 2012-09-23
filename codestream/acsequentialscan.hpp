@@ -48,7 +48,7 @@ the committee itself.
 ** Represents the scan including the scan header for the
 ** arithmetic coding procedure.
 **
-** $Id: acsequentialscan.hpp,v 1.18 2012-06-02 10:27:13 thor Exp $
+** $Id: acsequentialscan.hpp,v 1.25 2012-09-23 14:10:12 thor Exp $
 **
 */
 
@@ -80,26 +80,12 @@ class ACSequentialScan : public EntropyParser {
   // The QM coder doing the main work here.
   class QMCoder            m_Coder;
   //
-  // AC conditioners, one per component.
-  //
-  // Small DC threshold value ('L' in the standard)
-  UBYTE                    m_ucSmall[4];
-  //
-  // Large DC threshold value ('U' in the specs)
-  UBYTE                    m_ucLarge[4];
-  //
-  // Higher block index discrimination ('kx' in the specs)
-  UBYTE                    m_ucBlockEnd[4];
-  //
   // Last DC value, required for the DPCM coder.
   LONG                     m_lDC[4];
   //
   // Last difference value, required for selecting the
   // AC coding context.
   LONG                     m_lDiff[4];
-  //
-  // Scan positions.
-  ULONG                    m_ulX[4];
   //
   // Height in blocks.
   ULONG                    m_ulHeight;
@@ -258,8 +244,12 @@ class ACSequentialScan : public EntropyParser {
 #else
       Uniform.Init(QMCoder::Uniform_State);
 #endif
-    }
-  } m_Context;
+    }  
+    //
+    // Classify the DC difference into five categories, return it.
+    struct DCContextZeroSet &Classify(LONG diff,UBYTE l,UBYTE u);
+    //
+  } m_Context[4];
   //
   // 
 protected:
@@ -268,38 +258,78 @@ protected:
   // logic and the interface to the user.
   class BlockBuffer          *m_pBlockCtrl;
   //
+  // Scan positions.
+  ULONG                       m_ulX[4];
+  //
   // Scan parameters.
   UBYTE                       m_ucScanStart;
   UBYTE                       m_ucScanStop;
-  UBYTE                       m_ucLowBit;
-  //  
+  UBYTE                       m_ucLowBit; 
+  //
+  // AC conditioners, one per component.
+  //
+  // Context numbers to use for the conditional.
+  UBYTE                       m_ucDCContext[4];
+  UBYTE                       m_ucACContext[4];
+  //
+  // Small DC threshold value ('L' in the standard)
+  UBYTE                       m_ucSmall[4];
+  //
+  // Large DC threshold value ('U' in the specs)
+  UBYTE                       m_ucLarge[4];
+  //
+  // Higher block index discrimination ('kx' in the specs)
+  UBYTE                       m_ucBlockEnd[4]; 
+  //
+  // Will always be false as there is no reason to measure anything.
+  // This is only here to satisfy the expected interface of the
+  // residual scan.
+  bool                        m_bMeasure;
+  //
+  // Set if this is a differential scan.
+  bool                        m_bDifferential;
+  //
+  // Set if this is a residual scan.
+  bool                        m_bResidual;
+  //
   // Encode a single block
   void EncodeBlock(const LONG *block,
 		   LONG &prevdc,LONG &prevdiff,
-		   UBYTE small,UBYTE large,UBYTE blockup);
+		   UBYTE small,UBYTE large,UBYTE blockup,
+		   UBYTE dctable,UBYTE actable);
   //
   // Decode a single block.
   void DecodeBlock(LONG *block,
 		   LONG &prevdc,LONG &prevdiff,
-		   UBYTE small,UBYTE large,UBYTE blockup);
+		   UBYTE small,UBYTE large,UBYTE blockup,
+		   UBYTE dctable,UBYTE actable);
   //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void);
+  virtual void Flush(bool final);
   // 
   // Restart the parser at the next restart interval
   virtual void Restart(void);
+  //
+  // Return the data to process for component c. Will be overridden
+  // for residual scan types.
+  virtual class QuantizedRow *GetRow(UBYTE idx) const; 
+  //
+  // Check whether there are more rows to process, return true
+  // if so, false if not. Start with the row if there are.
+  virtual bool StartRow(void) const;
   //
 private:
   //
   // Write the marker that indicates the frame type fitting to this scan.
   virtual void WriteFrameType(class ByteStream *io);
   //
-  // Classify the DC difference into five categories, return it.
-  struct QMContextSet::DCContextZeroSet &Classify(LONG diff,UBYTE l,UBYTE u);
-  //
   //
 public:
-  ACSequentialScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,UBYTE lowbit);
+  // Create an arithmetically coded sequential scan. The highbit is always
+  // ignored as this setting only exists for progressive refinement scans.
+  ACSequentialScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
+		   UBYTE lowbit,UBYTE highbit,
+		   bool differential = false,bool residual = false);
   //
   ~ACSequentialScan(void);
   // 

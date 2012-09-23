@@ -47,7 +47,7 @@ the committee itself.
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.hpp,v 1.15 2012-07-19 14:13:38 thor Exp $
+** $Id: jpeglsscan.hpp,v 1.18 2012-09-22 20:51:40 thor Exp $
 **
 */
 
@@ -616,7 +616,7 @@ protected:
   virtual void FindComponentDimensions(void);
   //
   // Flush the remaining bits out to the stream on writing.
-  virtual void Flush(void); 
+  virtual void Flush(bool final); 
   // 
   // Restart the parser at the next restart interval
   virtual void Restart(void);

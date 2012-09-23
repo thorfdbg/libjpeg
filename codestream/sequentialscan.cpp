@@ -48,7 +48,7 @@ the committee itself.
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.cpp,v 1.59 2012-07-20 23:49:08 thor Exp $
+** $Id: sequentialscan.cpp,v 1.67 2012-09-23 14:51:24 thor Exp $
 **
 */
 
@@ -64,7 +64,6 @@ the committee itself.
 #include "coding/quantizedrow.hpp"
 #include "codestream/rectanglerequest.hpp"
 #include "dct/idct.hpp"
-#include "dct/fdct.hpp"
 #include "dct/sermsdct.hpp"
 #include "std/assert.hpp"
 #include "interface/bitmaphook.hpp"
@@ -78,9 +77,11 @@ the committee itself.
 
 /// SequentialScan::SequentialScan
 SequentialScan::SequentialScan(class Frame *frame,class Scan *scan,
-			       UBYTE start,UBYTE stop,UBYTE lowbit)
+			       UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE,
+			       bool differential,bool residual)
   : EntropyParser(frame,scan), m_pBlockCtrl(NULL),
-    m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit)
+    m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit),
+    m_bDifferential(differential), m_bResidual(residual)
 {
   m_ucCount = scan->ComponentsInScan();
   
@@ -199,7 +200,7 @@ void SequentialScan::StartMeasureScan(class BufferCtrl *ctrl)
 // Start a MCU scan. Returns true if there are more rows.
 bool SequentialScan::StartMCURow(void)
 {
-  bool more = m_pBlockCtrl->StartMCUQuantizerRow(m_pScan);
+  bool more = StartRow();
 
   for(int i = 0;i < m_ucCount;i++) {
     m_ulX[i]   = 0;
@@ -224,9 +225,9 @@ void SequentialScan::Restart(void)
 
 /// SequentialScan::Flush
 // Flush the remaining bits out to the stream on writing.
-void SequentialScan::Flush(void)
+void SequentialScan::Flush(bool)
 {
-  if (m_ucScanStart) {
+  if (m_ucScanStart || m_bResidual) {
     // Progressive, AC band. It looks wierd to code the remaining
     // block skips right here. However, AC bands in spectral selection
     // are always coded in isolated scans, thus only one component
@@ -268,7 +269,7 @@ bool SequentialScan::WriteMCU(void)
   
   for(c = 0;c < m_ucCount;c++) {
     class Component *comp           = m_pComponent[c];
-    class QuantizedRow *q           = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
+    class QuantizedRow *q           = GetRow(comp->IndexOf());
     class HuffmanCoder *dc          = m_pDCCoder[c];
     class HuffmanCoder *ac          = m_pACCoder[c];
     class HuffmanStatistics *dcstat = m_pDCStatistics[c];
@@ -337,7 +338,7 @@ bool SequentialScan::ParseMCU(void)
   
   for(c = 0;c < m_ucCount;c++) {
     class Component *comp    = m_pComponent[c];
-    class QuantizedRow *q    = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
+    class QuantizedRow *q    = GetRow(comp->IndexOf());
     class HuffmanDecoder *dc = m_pDCDecoder[c];
     class HuffmanDecoder *ac = m_pACDecoder[c];
     UWORD &skip              = m_usSkip[c];
@@ -383,13 +384,17 @@ void SequentialScan::MeasureBlock(const LONG *block,
 				  LONG &prevdc,UWORD &skip)
 { 
   // DC coding
-  if (m_ucScanStart == 0) {
+  if (m_ucScanStart == 0 && m_bResidual == false) {
     LONG  diff;
     UBYTE symbol = 0;
     // DPCM coding of the DC coefficient.
     diff   = block[0] >> m_ucLowBit; // Actually, only correct for two's complement machines...
     diff  -= prevdc;
-    prevdc = block[0] >> m_ucLowBit;
+    if (m_bDifferential) {
+      prevdc = 0;
+    } else {
+      prevdc = block[0] >> m_ucLowBit;
+    }
 
     if (diff) {
       do {
@@ -407,7 +412,7 @@ void SequentialScan::MeasureBlock(const LONG *block,
   // AC coding
   if (m_ucScanStop) {
     UBYTE symbol,run = 0;
-    int k = (m_ucScanStart)?(m_ucScanStart):(1);
+    int k = (m_ucScanStart)?(m_ucScanStart):((m_bResidual)?0:1);
     
     do {
       LONG data = block[DCT::ScanOrder[k]]; 
@@ -448,7 +453,7 @@ void SequentialScan::MeasureBlock(const LONG *block,
     // Is there still an open run? If so, code an EOB.
     if (run) {
       // In the progressive mode, absorb into the skip
-      if (m_ucScanStart) {
+      if (m_ucScanStart || m_bResidual) {
 	skip++;
 	if (skip == MAX_WORD) {
 	  ac->Put(0xe0); // symbol for maximum length
@@ -493,14 +498,18 @@ void SequentialScan::EncodeBlock(const LONG *block,
 				 LONG &prevdc,UWORD &skip)
 {
   // DC coding
-  if (m_ucScanStart == 0) {
+  if (m_ucScanStart == 0 && m_bResidual == false) {
     UBYTE symbol = 0;
     LONG diff;
     //
     // DPCM coding of the DC coefficient.
     diff   = block[0] >> m_ucLowBit; // Actually, only correct for two's complement machines...
     diff  -= prevdc;
-    prevdc = block[0] >> m_ucLowBit;
+    if (m_bDifferential) {
+      prevdc = 0;
+    } else {
+      prevdc = block[0] >> m_ucLowBit;
+    }
 
     if (diff) {
       do {
@@ -523,7 +532,7 @@ void SequentialScan::EncodeBlock(const LONG *block,
   // AC coding
   if (m_ucScanStop) {
     UBYTE symbol,run = 0;
-    int k = (m_ucScanStart)?(m_ucScanStart):(1);
+    int k = (m_ucScanStart)?(m_ucScanStart):((m_bResidual)?0:1);
 
     do {
       LONG data = block[DCT::ScanOrder[k]];
@@ -547,6 +556,7 @@ void SequentialScan::EncodeBlock(const LONG *block,
 	do {
 	  symbol++;
 	  if (data > -(1L << symbol) && data < (1L << symbol)) {
+	    assert(symbol < 16);
 	    // Cathegory symbol, run length run
 	    ac->Put(&m_Stream,symbol | (run << 4));
 	    if (data >= 0) {
@@ -569,7 +579,7 @@ void SequentialScan::EncodeBlock(const LONG *block,
     // zero blocks.
     if (run) {
       // Include in a block skip (or try to, rather).
-      if (m_ucScanStart) {
+      if (m_ucScanStart || m_bResidual) {
 	skip++;
 	if (skip == MAX_WORD) // avoid an overflow, code now
 	  CodeBlockSkip(ac,skip);
@@ -588,7 +598,7 @@ void SequentialScan::DecodeBlock(LONG *block,
 				 class HuffmanDecoder *dc,class HuffmanDecoder *ac,
 				 LONG &prevdc,UWORD &skip)
 {
-  if (m_ucScanStart == 0) {
+  if (m_ucScanStart == 0 && m_bResidual == false) {
     // First DC level coding. If it is in the spectral selection.
     LONG diff   = 0;
     UBYTE value = dc->Get(&m_Stream);
@@ -599,7 +609,11 @@ void SequentialScan::DecodeBlock(LONG *block,
 	diff += (-1L << value) + 1;
       }
     }
-    prevdc  += diff;
+    if (m_bDifferential) {
+      prevdc   = diff;
+    } else {
+      prevdc  += diff;
+    }
     block[0] = prevdc << m_ucLowBit; // point transformation
   }
 
@@ -608,7 +622,7 @@ void SequentialScan::DecodeBlock(LONG *block,
     if (skip > 0) {
       skip--; // Still blocks to skip
     } else {
-      int k = (m_ucScanStart)?(m_ucScanStart):(1);
+      int k = (m_ucScanStart)?(m_ucScanStart):((m_bResidual)?0:1);
 
       do {
 	UBYTE rs = ac->Get(&m_Stream);
@@ -649,12 +663,38 @@ void SequentialScan::DecodeBlock(LONG *block,
 // Write the marker that indicates the frame type fitting to this scan.
 void SequentialScan::WriteFrameType(class ByteStream *io)
 {
-  if (m_ucScanStart > 0 || m_ucScanStop < 63 || m_ucLowBit) {
+  UBYTE hidden = m_pFrame->TablesOf()->HiddenDCTBitsOf();
+  
+  if (m_ucScanStart > 0 || m_ucScanStop < 63 || m_ucLowBit > hidden) {
     // is progressive.
-    io->PutWord(0xffc2);
+    if (m_bDifferential) {
+      io->PutWord(0xffc6);
+    } else {
+      io->PutWord(0xffc2);
+    }
   } else {
-    io->PutWord(0xffc1); // not baseline, but sequential. Could check that...
+    if (m_bDifferential) {
+      io->PutWord(0xffc5);
+    } else {
+      io->PutWord(0xffc1); // not baseline, but sequential. Could check that...
+    }
   }
 }
 ///
 
+
+/// SequentialScan::GetRow
+// Return the data to process for component c. Will be overridden
+// for residual scan types.
+class QuantizedRow *SequentialScan::GetRow(UBYTE idx) const
+{
+  return m_pBlockCtrl->CurrentQuantizedRow(idx);
+}
+///
+
+/// SequentialScan::StartRow
+bool SequentialScan::StartRow(void) const
+{
+  return m_pBlockCtrl->StartMCUQuantizerRow(m_pScan);
+}
+///
