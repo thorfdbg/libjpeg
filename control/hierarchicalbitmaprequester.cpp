@@ -50,7 +50,7 @@ the committee itself.
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.20 2012-07-20 22:55:54 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.21 2012-09-15 21:45:51 thor Exp $
 **
 */
 
@@ -256,7 +256,7 @@ void HierarchicalBitmapRequester::PrepareForDecoding(void)
 class ColorTrafo *HierarchicalBitmapRequester::ColorTrafoOf(bool encoding)
 {
   return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,
-					    PixelTypeOf(),m_pFrame->PrecisionOf(),m_ucCount,encoding);
+					    PixelTypeOf(),m_pFrame->HiddenPrecisionOf(),m_ucCount,encoding);
 }
 ///
 
@@ -429,7 +429,7 @@ void HierarchicalBitmapRequester::Release8Lines(UBYTE c)
 void HierarchicalBitmapRequester::EncodeRegion(class BitMapHook *bmh,const struct RectangleRequest *)
 {
   ULONG maxmcu                 = MAX_ULONG;
-  ULONG maxval                 = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval                 = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   class ColorTrafo *ctrafo;
   RectAngle<LONG> region;
   int i;
@@ -599,7 +599,7 @@ void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const 
 {
   ULONG maxmcu  = MAX_ULONG;
   UBYTE i;
-  ULONG maxval  = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval  = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   RectAngle<LONG> region = rr->rr_Request;
   class ColorTrafo *ctrafo;
 

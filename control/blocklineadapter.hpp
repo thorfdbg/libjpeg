@@ -51,7 +51,7 @@ the committee itself.
 ** downsampling filter for the hierarchical mode. This class does not
 ** implement a color transformer or a upsampling filter (in the usual sense)
 **
-** $Id: blocklineadapter.hpp,v 1.14 2012-06-02 10:27:13 thor Exp $
+** $Id: blocklineadapter.hpp,v 1.15 2012-09-10 12:46:33 thor Exp $
 **
 */
 
@@ -140,6 +140,7 @@ public:
   virtual void PrepareForEncoding(void)
   {
     BuildCommon();
+    BlockBuffer::ResetToStartOfScan(NULL);
   }
   //
   // First time usage: Collect all the information for decoding.

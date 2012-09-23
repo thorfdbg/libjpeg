@@ -48,7 +48,7 @@ the committee itself.
 ** This class merges the two sources of a differential frame together,
 ** expanding its non-differential source.
 **
-** $Id: linemerger.cpp,v 1.16 2012-06-02 10:27:13 thor Exp $
+** $Id: linemerger.cpp,v 1.17 2012-09-23 21:10:16 thor Exp $
 **
 */
 
@@ -526,6 +526,14 @@ void LineMerger::ResetToStartOfImage(void)
   for(i = 0;i < m_ucCount;i++) {
     m_pppImage[i] = m_ppFirstLine + i;
     m_pulY[i]     = 0;
+    if (m_ppVBuffer[i]) {
+      FreeLine(m_ppVBuffer[i],i);
+      m_ppVBuffer[i] = NULL;
+    }
+    if (m_ppHBuffer[i]) {
+      FreeLine(m_ppHBuffer[i],i);
+      m_ppHBuffer[i] = NULL;
+    }
   }
 
   if (m_pHighPass) m_pHighPass->ResetToStartOfImage();

@@ -48,7 +48,7 @@ the committee itself.
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbuffer.cpp,v 1.5 2012-06-02 10:27:13 thor Exp $
+** $Id: blockbuffer.cpp,v 1.6 2012-09-09 19:57:02 thor Exp $
 **
 */
 
@@ -172,10 +172,6 @@ void BlockBuffer::BuildCommon(void)
 								 m_ucCount);
 
   for(i = 0;i < m_ucCount;i++) {
-    class Component *comp = m_pFrame->ComponentOf(i);
-    if (m_ppDCT[i] == NULL)
-      m_ppDCT[i]          = m_pFrame->TablesOf()->BuildDCT(comp->QuantizerOf(),m_ucCount);
-
     m_pppQStream[i]       = NULL;
     m_pppRStream[i]       = NULL;
   }
@@ -193,7 +189,10 @@ void BlockBuffer::ResetToStartOfScan(class Scan *scan)
     
     for(UBYTE i = 0;i < ccnt;i++) {
       class Component *comp = scan->ComponentOf(i);
-      UBYTE idx             = comp->IndexOf();
+      UBYTE idx             = comp->IndexOf(); 
+      if (m_ppDCT[idx] == NULL)
+	m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp->QuantizerOf(),m_ucCount);
+
       m_pulY[idx]           = 0;
       m_pulCurrentY[idx]    = 0;
       m_pppQStream[idx]     = NULL;
@@ -201,7 +200,11 @@ void BlockBuffer::ResetToStartOfScan(class Scan *scan)
     }
   } else {
     // All components.
-    for(UBYTE idx = 0;idx < m_ucCount;idx++) {
+    for(UBYTE idx = 0;idx < m_ucCount;idx++) { 
+      class Component *comp = m_pFrame->ComponentOf(idx);
+      if (m_ppDCT[idx] == NULL)
+	m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp->QuantizerOf(),m_ucCount);
+      
       m_pulY[idx]           = 0;
       m_pulCurrentY[idx]    = 0;
       m_pppQStream[idx]     = NULL;

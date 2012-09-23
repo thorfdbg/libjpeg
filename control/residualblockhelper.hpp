@@ -49,7 +49,7 @@ the committee itself.
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.hpp,v 1.10 2012-07-27 09:21:25 thor Exp $
+** $Id: residualblockhelper.hpp,v 1.13 2012-09-14 18:56:35 thor Exp $
 **
 */
 
@@ -65,7 +65,7 @@ the committee itself.
 
 /// Forwards
 struct ImageBitMap;
-class Hadamard;
+class DCT;
 ///
 
 /// Class ResidualBlockHelper
@@ -99,7 +99,7 @@ class ResidualBlockHelper : public JKeeper {
   UWORD               *m_pusIdentity;
   //
   // The Hadamard transformation.
-  class Hadamard     **m_ppTrafo;
+  class DCT          **m_ppTrafo;
   //
   // The luma DC quantization factor if Hadamard transformation
   // is disabled.

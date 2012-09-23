@@ -51,7 +51,7 @@ the committee itself.
 ** downsampling filter for the hierarchical mode. This class does not
 ** implement a color transformer or a upsampling filter (in the usual sense)
 **
-** $Id: blocklineadapter.cpp,v 1.17 2012-07-17 19:39:21 thor Exp $
+** $Id: blocklineadapter.cpp,v 1.18 2012-09-15 21:45:51 thor Exp $
 **
 */
 
@@ -166,7 +166,7 @@ void BlockLineAdapter::BuildCommon(void)
 // point or the line will be neutral grey.
 struct Line *BlockLineAdapter::GetNextLine(UBYTE comp)
 {
-  ULONG maxval  = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval  = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
 
   assert(comp < m_ucCount);
   //
@@ -245,7 +245,7 @@ struct Line *BlockLineAdapter::AllocateLine(UBYTE comp)
 // buffer of the block based coding back-end.
 void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
 { 
-  ULONG maxval                 = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval                 = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   //
   // Check whether a next block of eight lines becomes available, or
   // whether the end of the image is reached.
@@ -375,7 +375,7 @@ ULONG BlockLineAdapter::BufferedLines(UBYTE i) const
 // In case the high-pass has a DC offset in its data, deliver it here.
 LONG BlockLineAdapter::DCOffsetOf(void) const
 {
-  UBYTE bits = m_pFrame->PrecisionOf() + 
+  UBYTE bits = m_pFrame->HiddenPrecisionOf() + 
     m_pFrame->TablesOf()->FractionalColorBitsOf(m_pFrame->DepthOf());
   LONG shift = (1UL << bits) >> 1;
 

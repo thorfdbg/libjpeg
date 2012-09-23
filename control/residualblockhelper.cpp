@@ -49,7 +49,7 @@ the committee itself.
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.cpp,v 1.13 2012-07-29 17:00:39 thor Exp $
+** $Id: residualblockhelper.cpp,v 1.20 2012-09-23 21:11:51 thor Exp $
 **
 */
 
@@ -60,18 +60,21 @@ the committee itself.
 #include "marker/scan.hpp"
 #include "marker/component.hpp"
 #include "marker/residualmarker.hpp"
+#include "marker/residualspecsmarker.hpp"
 #include "interface/imagebitmap.hpp"
 #include "tools/rectangle.hpp"
 #include "colortrafo/colortrafo.hpp"
 #include "colortrafo/trivialtrafo.hpp"
 #include "codestream/tables.hpp"
 #include "dct/hadamard.hpp"
+#include "dct/sermsdct.hpp"
 #include "dct/dct.hpp"
 #include "std/string.hpp"
 ///
     
 /// Defines
 #define NOISE_SHAPING
+//#define TEST_RESIDUALS 1
 ///
 
 /// ResidualBlockHelper::ResidualBlockHelper
@@ -113,7 +116,7 @@ ResidualBlockHelper::~ResidualBlockHelper(void)
     for(i = 0;i < m_ucCount;i++) {
       delete m_ppTrafo[i];
     }
-    m_pEnviron->FreeMem(m_ppTrafo,sizeof(class Hadamard **) * m_ucCount);
+    m_pEnviron->FreeMem(m_ppTrafo,sizeof(class DCT **) * m_ucCount);
   }
 }
 ///
@@ -154,7 +157,7 @@ void ResidualBlockHelper::AddResidual(const RectAngle<LONG> &rect,
 				      LONG * const *residual,ULONG max)
 {
   if (residual) {
-    bool  noiseshaping = m_pFrame->TablesOf()->ResidualDataOf()->isNoiseShapingEnabled();
+    bool  noiseshaping = m_pFrame->TablesOf()->ResidualSpecsOf()->isNoiseShapingEnabled();
     UBYTE i,k;
     //
     max = ((max + 1) << m_ucPointShift) - 1;
@@ -168,6 +171,51 @@ void ResidualBlockHelper::AddResidual(const RectAngle<LONG> &rect,
 	m_ppTrafo[i]->InverseTransformBlock(m_ppReconstructed[i],residual[i],0);
       }
     } else {
+      //
+#ifdef TEST_RESIDUALS
+      {
+	LONG x = rect.ra_MinX;
+	LONG y = rect.ra_MinY;
+	LONG xmax = rect.ra_MaxX & 7;
+	LONG ymax = rect.ra_MaxY & 7;
+	UBYTE i;
+	LONG xp,yp;
+	for(i = 0;i < m_ucCount;i++) {
+	  char resname[60];
+	  char orgname[60];
+	  sprintf(resname,"/tmp/residual_%d_%d_%d",x,y,i);
+	  sprintf(orgname,"/tmp/original_%d_%d_%d",x,y,i);
+	  FILE *res = fopen(resname,"rb");
+	  FILE *org = fopen(orgname,"rb");
+	  assert(res != NULL);
+	  assert(org != NULL);
+	  for(yp = 0;yp <= ymax;yp++) {
+	    for(xp = 0;xp <= xmax;xp++) {
+	      LONG resv,orgv;
+	      LONG t    = 0x0badf00d;
+	      UBYTE *dt = (UBYTE *)(target[i]->ibm_pData);
+	      dt       += xp * target[i]->ibm_cBytesPerPixel;
+	      dt       += yp * target[i]->ibm_lBytesPerRow;
+	      switch(target[i]->ibm_ucPixelType) {
+	      case CTYP_UBYTE:
+		t = *dt;
+		break;
+	      case CTYP_UWORD:
+		t = *(UWORD *)dt;
+		break;
+	      }
+	      fscanf(res,"%d ",&resv);
+	      fscanf(org,"%d ",&orgv);
+	      assert(resv == residual[i][xp + (yp << 3)]);
+	      assert(orgv == t);
+	    }
+	  }
+	  fclose(org);
+	  fclose(res);
+	}
+      }
+#endif
+      //
       // No transformation.
       for(i = 0;i < m_ucCount;i++) {
 	UWORD quant = (i > 0 && i < 3)?(m_usChromaQuant):(m_usLumaQuant); 
@@ -403,7 +451,7 @@ void ResidualBlockHelper::AllocateBuffers(void)
 // and initialize their quantization factors.
 bool ResidualBlockHelper::BuildTransformations(void)
 {
-  class ResidualMarker *residual = m_pFrame->TablesOf()->ResidualDataOf();
+  class ResidualSpecsMarker *residual = m_pFrame->TablesOf()->ResidualSpecsOf();
 
   if (m_ppTrafo == NULL) {
     const UWORD *quant;
@@ -424,11 +472,12 @@ bool ResidualBlockHelper::BuildTransformations(void)
     }
     
     if (residual->isHadamardEnabled()) {
-      m_ppTrafo = (class Hadamard **)m_pEnviron->AllocMem(sizeof(class Hadamard *) * m_ucCount);
-      memset(m_ppTrafo,0,sizeof(class Hadamard *) * m_ucCount);
+      m_ppTrafo = (class DCT **)m_pEnviron->AllocMem(sizeof(class DCT *) * m_ucCount);
+      memset(m_ppTrafo,0,sizeof(class DCT *) * m_ucCount);
       
       for(i = 0;i < m_ucCount;i++) {
 	m_ppTrafo[i] = new(m_pEnviron) class Hadamard(m_pEnviron);
+	//m_ppTrafo[i] = new(m_pEnviron) class SERMSDCT(m_pEnviron);
 	if (i == 0 && hdrluma) {
 	  m_ppTrafo[i]->DefineQuant(hdrluma);
 	} else if (i > 0 && i < 3 && hdrchroma) {
@@ -449,12 +498,12 @@ bool ResidualBlockHelper::BuildTransformations(void)
       return true;
     } else {
       if (hdrluma)
-	m_usLumaQuant = hdrluma[0];
+	m_usLumaQuant = hdrluma[63];
       else
 	m_usLumaQuant = 1;
 
       if (hdrchroma)
-	m_usChromaQuant = hdrchroma[0];
+	m_usChromaQuant = hdrchroma[63];
       else
 	m_usChromaQuant = 1;
 
@@ -476,7 +525,7 @@ void ResidualBlockHelper::ComputeResiduals(const RectAngle<LONG> &r,
   class ColorTrafo *ctrafo = req->ColorTrafoOf(false);
   class DCT *const *dtrafo = req->DCTsOf();
   ULONG pmax               = max;
-  bool  noiseshaping       = m_pFrame->TablesOf()->ResidualDataOf()->isNoiseShapingEnabled();
+  bool  noiseshaping       = m_pFrame->TablesOf()->ResidualSpecsOf()->isNoiseShapingEnabled();
   UBYTE i,k;
   //
   // Adjust the maximum and the level shift to that of the original input.
@@ -590,7 +639,36 @@ void ResidualBlockHelper::ComputeResiduals(const RectAngle<LONG> &r,
 	}
       }
     }
+  }  
+  //
+#ifdef TEST_RESIDUALS
+  {
+    LONG x = r.ra_MinX;
+    LONG y = r.ra_MinY;
+    LONG xmax = r.ra_MaxX & 7;
+    LONG ymax = r.ra_MaxY & 7;
+    UBYTE i;
+    LONG xp,yp;
+    for(i = 0;i < m_ucCount;i++) {
+      char resname[60];
+      char orgname[60];
+      sprintf(resname,"/tmp/residual_%d_%d_%d",x,y,i);
+      sprintf(orgname,"/tmp/original_%d_%d_%d",x,y,i);
+      FILE *res = fopen(resname,"wb");
+      FILE *org = fopen(orgname,"wb");
+      for(yp = 0;yp <= ymax;yp++) {
+	for(xp = 0;xp <= xmax;xp++) {
+	  fprintf(res,"%d ",residual[i][xp + (yp << 3)]);
+	  fprintf(org,"%d ",m_ppReconstructed[i][xp + (yp << 3)]);
+	}
+	fprintf(res,"\n");
+	fprintf(org,"\n");
+      }
+      fclose(org);
+      fclose(res);
+    }
   }
+#endif
   //
 }
 ///

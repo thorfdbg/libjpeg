@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This header provides the main function.
 **
-** $Id: main.cpp,v 1.69 2012-09-02 16:31:43 thor Exp $
+** $Id: main.cpp,v 1.80 2012-09-22 15:09:07 thor Exp $
 **
 */
 
@@ -64,15 +64,132 @@ the committee itself.
 #include "interface/jpeg.hpp"
 ///
 
+/// HalfToDouble
+// Interpret a 16-bit integer as half-float casted to int and
+// return its double interpretation.
+double HalfToDouble(UWORD h)
+{
+  bool sign      = (h & 0x8000)?(true):(false);
+  UBYTE exponent = (h >> 10) & ((1 << 5) - 1);
+  UWORD mantissa = h & ((1 << 10) - 1);
+  double v;
+
+  if (exponent == 0) { // denormalized
+    v = ldexp(mantissa,-14-10);
+  } else if (exponent == 31) {
+    v = HUGE_VAL;
+  } else {
+    v = ldexp(mantissa | (1 << 10),-15-10+exponent);
+  }
+
+  return (sign)?(-v):(v);
+}
+///
+
+/// DoubleToHalf
+// Convert a double to half-precision IEEE and return the bit-pattern
+// as a 16-bit unsigned integer.
+UWORD DoubleToHalf(double v)
+{
+  bool sign = (v < 0.0)?(true):(false);
+  int  exponent;
+  int  mantissa;
+
+  if (v < 0.0) v = -v;
+
+  if (isinf(v)) {
+    exponent = 31;
+    mantissa = 0;
+  } else if (v == 0.0) {
+    exponent = 0;
+    mantissa = 0;
+  } else {
+    double man = 2.0 * frexp(v,&exponent); // must be between 1.0 and 2.0, not 0.5 and 1.
+    // Add the exponent bias.
+    exponent  += 15 - 1; // exponent bias
+    // Normalize the exponent by modifying the mantissa.
+    if (exponent >= 31) { // This must be denormalized into an INF, no chance.
+      exponent = 31;
+      mantissa = 0;
+    } else if (exponent <= 0) {
+      man *= 0.5; // mantissa does not have an implicit one bit.
+      while(exponent < 0) {
+	man *= 0.5;
+	exponent++;
+      }
+      mantissa = int(man * (1 << 10));
+    } else {
+      mantissa = int(man * (1 << 10)) & ((1 << 10) - 1);
+    }
+  }
+
+  return ((sign)?(0x8000):(0x0000)) | (exponent << 10) | mantissa;
+}
+///
+
+/// readFloat
+// Read an IEEE floating point number from a PFM file
+double readFloat(FILE *in,bool bigendian)
+{
+  LONG dt1,dt2,dt3,dt4;
+  union {
+    LONG  long_buf;
+    FLOAT float_buf;
+  } u;
+
+  dt1 = fgetc(in);
+  dt2 = fgetc(in);
+  dt3 = fgetc(in);
+  dt4 = fgetc(in);
+
+  if (bigendian) {
+    u.long_buf = (ULONG(dt1) << 24) | (ULONG(dt2) << 16) | 
+      (ULONG(dt3) <<  8) | (ULONG(dt4) <<  0);
+  } else {
+    u.long_buf = (ULONG(dt4) << 24) | (ULONG(dt3) << 16) | 
+      (ULONG(dt2) <<  8) | (ULONG(dt1) <<  0);
+  }
+
+  return u.float_buf;
+}
+///
+
+/// writeFloat
+// Write a floating point number to a file
+void writeFloat(FILE *out,FLOAT f,bool bigendian)
+{
+  union {
+    LONG  long_buf;
+    FLOAT float_buf;
+  } u;
+
+  u.float_buf = f;
+
+  if (bigendian) {
+    fputc(u.long_buf >> 24,out);
+    fputc(u.long_buf >> 16,out);
+    fputc(u.long_buf >>  8,out);
+    fputc(u.long_buf >>  0,out);
+  } else {
+    fputc(u.long_buf >>  0,out);
+    fputc(u.long_buf >>  8,out);
+    fputc(u.long_buf >> 16,out);
+    fputc(u.long_buf >> 24,out);
+  }
+}
+///
+
 /// Administration of bitmap memory.
 struct BitmapMemory {
-  APTR   bmm_pMemPtr;  // interleaved memory.
-  ULONG  bmm_ulWidth;  // width in pixels.
-  ULONG  bmm_ulHeight; // height in pixels; this is only one block in our application.
-  UWORD  bmm_usDepth;  // number of components.
+  APTR   bmm_pMemPtr;     // interleaved memory.
+  ULONG  bmm_ulWidth;     // width in pixels.
+  ULONG  bmm_ulHeight;    // height in pixels; this is only one block in our application.
+  UWORD  bmm_usDepth;     // number of components.
   UBYTE  bmm_ucPixelType; // depth etc.
-  FILE  *bmm_pTarget;  // where to write the data to.
-  FILE  *bmm_pSource;  // where the data comes from on reading (encoding)
+  FILE  *bmm_pTarget;     // where to write the data to.
+  FILE  *bmm_pSource;     // where the data comes from on reading (encoding)
+  bool   bmm_bFloat;      // is true if the input is floating point
+  bool   bmm_bBigEndian;  // is true if the floating point input is big endian
 };
 ///
 
@@ -122,18 +239,29 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
 	  height = 8;
 	if (bmm->bmm_ucPixelType == CTYP_UBYTE || bmm->bmm_ucPixelType == CTYP_UWORD) {
 	  if (bmm->bmm_pSource) {
-	    fread(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-		  bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pSource);
-#ifdef JPG_LIL_ENDIAN
-	    // On those bloddy little endian machines, an endian swap is necessary
-	    // as PNM is big-endian.
-	    if (bmm->bmm_ucPixelType == CTYP_UWORD) {
+	    if (bmm->bmm_bFloat) {
 	      ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
 	      UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
 	      do {
-		*data = (*data >> 8) | ((*data & 0xff) << 8);
-		data++;
+		double in = readFloat(bmm->bmm_pSource,bmm->bmm_bBigEndian);
+		if (in < 0.0)
+		  in = 0.0; // Clamp. Negative is not allowed and makes no sense here.
+		*data++   = DoubleToHalf(in);
 	      } while(--count);
+	    } else {
+	      fread(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
+		    bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pSource);
+#ifdef JPG_LIL_ENDIAN
+	      // On those bloddy little endian machines, an endian swap is necessary
+	      // as PNM is big-endian.
+	      if (bmm->bmm_ucPixelType == CTYP_UWORD) {
+		ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+		UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
+		do {
+		  *data = (*data >> 8) | ((*data & 0xff) << 8);
+		  data++;
+		} while(--count);
+	      }
 	    }
 #endif
 	  }
@@ -150,20 +278,112 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
 	ULONG height = maxy + 1 - miny;
 	if (bmm->bmm_ucPixelType == CTYP_UBYTE || bmm->bmm_ucPixelType == CTYP_UWORD) {
 	  if (bmm->bmm_pTarget) {
-#ifdef JPG_LIL_ENDIAN
-	    // On those bloddy little endian machines, an endian swap is necessary
-	    // as PNM is big-endian.
-	    if (bmm->bmm_ucPixelType == CTYP_UWORD) {
-	      ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+	    if (bmm->bmm_bFloat) {
+	      ULONG count = bmm->bmm_ulWidth * height;
 	      UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
+	      double r,g,b;
 	      do {
-		*data = (*data >> 8) | ((*data & 0xff) << 8);
-		data++;
+		switch(bmm->bmm_usDepth) {
+		case 1:
+		  r = g = b = HalfToDouble(*data++);
+		  break;
+		case 2:
+		  r = HalfToDouble(*data++);
+		  g = b = HalfToDouble(*data++);
+		  break;
+		case 3:
+		case 4:
+		  r = HalfToDouble(*data++);
+		  g = HalfToDouble(*data++);
+		  b = HalfToDouble(*data++);
+		  break;
+		}
+		writeFloat(bmm->bmm_pTarget,r,bmm->bmm_bBigEndian);
+		writeFloat(bmm->bmm_pTarget,g,bmm->bmm_bBigEndian);
+		writeFloat(bmm->bmm_pTarget,b,bmm->bmm_bBigEndian);
 	      } while(--count);
-	    }
+	    } else {
+	      switch(bmm->bmm_usDepth) {
+	      case 1:
+	      case 3: // The direct cases, can write PPM right away.
+#ifdef JPG_LIL_ENDIAN
+		// On those bloddy little endian machines, an endian swap is necessary
+		// as PNM is big-endian.
+		if (bmm->bmm_ucPixelType == CTYP_UWORD) {
+		  ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+		  UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
+		  do {
+		    *data = (*data >> 8) | ((*data & 0xff) << 8);
+		    data++;
+		  } while(--count);
+		}
 #endif
-	    fwrite(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-		   bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pTarget);
+		fwrite(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
+		       bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pTarget);
+		break;
+	      case 2:
+		// Bummer! What is this supposed to be?
+		if (bmm->bmm_ucPixelType == CTYP_UWORD) {
+		  ULONG count = bmm->bmm_ulWidth * height;
+		  UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
+		  do {
+		    fputc(*data >> 8,bmm->bmm_pTarget); // PPM is big endian.
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    fputc(*data >> 8,bmm->bmm_pTarget); // PPM is big endian.
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    // Oh well, invent a third channel.
+		    fputc(0         ,bmm->bmm_pTarget);
+		    fputc(0         ,bmm->bmm_pTarget);
+		  } while(--count);
+		} else if (bmm->bmm_ucPixelType == CTYP_UBYTE) {
+		  ULONG count = bmm->bmm_ulWidth * height;
+		  UBYTE *data = (UBYTE *)bmm->bmm_pMemPtr;
+		  do {
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    // Oh well, invent a third channel.
+		    fputc(0         ,bmm->bmm_pTarget);
+		  } while(--count);
+		}
+		break;
+	      case 4:
+		// Ignore the alpha channel at this time (if it is alpha at all)
+		// Bummer! What is this supposed to be?
+		if (bmm->bmm_ucPixelType == CTYP_UWORD) {
+		  ULONG count = bmm->bmm_ulWidth * height;
+		  UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
+		  do {
+		    fputc(*data >> 8,bmm->bmm_pTarget); // PPM is big endian.
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    fputc(*data >> 8,bmm->bmm_pTarget); // PPM is big endian.
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++; 
+		    fputc(*data >> 8,bmm->bmm_pTarget); // PPM is big endian.
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    data++;
+		  } while(--count);
+		} else if (bmm->bmm_ucPixelType == CTYP_UBYTE) {
+		  ULONG count = bmm->bmm_ulWidth * height;
+		  UBYTE *data = (UBYTE *)bmm->bmm_pMemPtr;
+		  do {
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    fputc(*data     ,bmm->bmm_pTarget);
+		    data++;
+		    data++;
+		  } while(--count);
+		}
+		break;
+	      }
+	    }
 	  }
 	}
       }
@@ -220,7 +440,7 @@ JPG_LONG FileHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
 // This reconstructs an image from the given input file
 // and writes the output ppm.
 void Reconstruct(const char *infile,const char *outfile,
-		 bool forceint,bool forcefix,int colortrafo)
+		 bool forceint,bool forcefix,int colortrafo,bool pfm)
 {  
   FILE *in = fopen(infile,"rb");
   if (in) {
@@ -255,13 +475,15 @@ void Reconstruct(const char *infile,const char *outfile,
 	  UBYTE *mem   = (UBYTE *)malloc(width * 8 * depth * ((prec > 8)?(2):(1)));
 	  if (mem) {
 	    struct BitmapMemory bmm;
-            bmm.bmm_pMemPtr  = mem;
-	    bmm.bmm_ulWidth  = width;
-	    bmm.bmm_ulHeight = height;
-	    bmm.bmm_usDepth  = depth;
+            bmm.bmm_pMemPtr     = mem;
+	    bmm.bmm_ulWidth     = width;
+	    bmm.bmm_ulHeight    = height;
+	    bmm.bmm_usDepth     = depth;
 	    bmm.bmm_ucPixelType = (prec > 8)?(CTYP_UWORD):(CTYP_UBYTE);
-	    bmm.bmm_pTarget  = fopen(outfile,"wb");
-	    bmm.bmm_pSource  = NULL;
+	    bmm.bmm_pTarget     = fopen(outfile,"wb");
+	    bmm.bmm_pSource     = NULL;
+	    bmm.bmm_bFloat      = pfm;
+	    bmm.bmm_bBigEndian  = true;
 
 	    if (bmm.bmm_pTarget) {
 	      ULONG y = 0; // Just as a demo, run a stripe-based reconstruction.
@@ -273,8 +495,8 @@ void Reconstruct(const char *infile,const char *outfile,
 		JPG_ValueTag(JPGTAG_DECODER_MAXY,y+7),
 		JPG_EndTag
 	      };
-	      fprintf(bmm.bmm_pTarget,"P%c\n%d %d\n%d\n",(depth == 3)?('6'):('5'),
-		      width,height,(1 << prec) - 1);
+	      fprintf(bmm.bmm_pTarget,"P%c\n%d %d\n%d\n",(pfm)?('F'):((depth > 1)?('6'):('5')),
+		      width,height,(pfm)?(1):((1 << prec) - 1));
 
 	      //
 	      // Reconstruct now the buffered image, line by line. Could also
@@ -337,6 +559,8 @@ void ParseSubsamplingFactors(UBYTE *sx,UBYTE *sy,const char *sub,int cnt)
 }
 ///
 
+
+
 /// BuildToneMapping
 // Make a simple attempt to find a reasonable tone mapping from HDR to LDR.
 // This is by no means ideal, but seem to work well in most cases.
@@ -346,10 +570,12 @@ void ParseSubsamplingFactors(UBYTE *sx,UBYTE *sy,const char *sub,int cnt)
 // Erik Reinhard and Kate Devlin. Dynamic Range Reduction Inspired by
 // Photoreceptor Physiology.  IEEE Transactions on Visualization and
 // Computer Graphics (2004).
-void BuildToneMapping(FILE *in,int w,int h,int depth,int count,UWORD tonemapping[256])
+void BuildToneMapping(FILE *in,int w,int h,int depth,int count,UWORD tonemapping[65536],
+		      bool flt,bool bigendian,int hiddenbits)
 {
   long pos    = ftell(in);
   int x,y,i;
+  int maxin   = 256 << hiddenbits;
   double max  = (1 << depth) - 1;
   double lav  = 0.0;
   double llav = 0.0;
@@ -366,19 +592,27 @@ void BuildToneMapping(FILE *in,int w,int h,int depth,int count,UWORD tonemapping
       double y;
 
       if (count == 3) {
-	if (depth <= 8) {
-	  r = fgetc(in);
-	  g = fgetc(in);
-	  b = fgetc(in);
+	if (flt) { 
+	  double rf,gf,bf;
+	  rf = readFloat(in,bigendian);
+	  gf = readFloat(in,bigendian);
+	  bf = readFloat(in,bigendian);
+	  y  = (0.2126 * rf + 0.7152 * gf + 0.0722 * bf);
 	} else {
-	  r  = fgetc(in) << 8;
-	  r |= fgetc(in);
-	  g  = fgetc(in) << 8;
-	  g |= fgetc(in);
-	  b  = fgetc(in) << 8;
-	  b |= fgetc(in);
+	  if (depth <= 8) {
+	    r = fgetc(in);
+	    g = fgetc(in);
+	    b = fgetc(in);
+	  } else {
+	    r  = fgetc(in) << 8;
+	    r |= fgetc(in);
+	    g  = fgetc(in) << 8;
+	    g |= fgetc(in);
+	    b  = fgetc(in) << 8;
+	    b |= fgetc(in);
+	  }
+	  y    = (0.2126 * r + 0.7152 * g + 0.0722 * b) / max;
 	}
-	y    = (0.2126 * r + 0.7152 * g + 0.0722 * b) / max;
       } else {
 	if (depth <= 8) {
 	  g  = fgetc(in);
@@ -420,13 +654,21 @@ void BuildToneMapping(FILE *in,int w,int h,int depth,int count,UWORD tonemapping
 
   fseek(in,pos,SEEK_SET);
 
-  for(i = 0;i < 256;i++) {
-    double out = i / 256.0;
-    double in  = max * (miny + (maxy - miny) * pow(lav,m) * out / (1.0 - out));
-    if (in < 0.0) in = 0.0;
-    if (in > max) in = max;
-    
-    tonemapping[i] = in;
+  for(i = 0;i < maxin;i++) {
+    if (flt) {
+      double out = i / double(maxin);
+      double in  = pow(pow(lav,m) * out / (1.0 - out),2.2);
+      if (in < 0.0) in = 0.0;
+      
+      tonemapping[i] = DoubleToHalf(in);
+    } else {
+      double out = i / double(maxin);
+      double in  = max * (miny + (maxy - miny) * pow(lav,m) * out / (1.0 - out));
+      if (in < 0.0) in = 0.0;
+      if (in > max) in = max;
+      
+      tonemapping[i] = in;
+    }
   }
 }
 ///
@@ -436,7 +678,7 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 	    int colortrafo,bool lossless,bool progressive,
 	    bool reversible,bool residual,bool optimize,bool accoding,bool dconly,
 	    UBYTE levels,bool pyramidal,bool writednl,UWORD restart,double gamma,
-	    int lsmode,bool hadamard,bool noiseshaping,const char *sub)
+	    int lsmode,bool hadamard,bool noiseshaping,int hiddenbits,const char *sub)
 { 
   struct JPG_TagItem dcscan[] = { // scan parameters for the first DCOnly scan
     JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
@@ -492,7 +734,7 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
     JPG_ValueTag(JPGTAG_SCAN_APPROXIMATION_HI,1),
     JPG_EndTag
   };
-  UWORD ldrtohdr[256]; // The tone mapping curve. Currently, only one.
+  UWORD ldrtohdr[65536]; // The tone mapping curve. Currently, only one.
   const UWORD *tonemapping = NULL; // points to the above if used.
   UBYTE subx[4],suby[4];
   memset(subx,0,sizeof(subx));
@@ -504,14 +746,16 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 
   FILE *in = fopen(source,"rb");
   if (in) {
-    char id;
-    int type,width,height,max,depth,prec;
-    if (fscanf(in,"%c%d\n",&id,&type) == 2) {
-      if (id == 'P' && (type == 5 || type == 6)) {
+    char id,type;
+    int width,height,max,depth,prec;
+    bool flt = false;
+    bool big = false;
+    if (fscanf(in,"%c%c\n",&id,&type) == 2) {
+      if (id == 'P' && (type == '5' || type == '6' || type == 'f' || type == 'F')) {
 	if (type == 5) {
 	  depth = 1;
 	} else {
-	  depth = 3;
+	  depth = 3; // PFM is three-component.
 	}
 	while((id = fgetc(in)) == '#') {
 	  char buffer[256];
@@ -522,25 +766,39 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 	  prec = 0;
 	  while((1 << prec) < max)
 	    prec++;
+	  if (type == 'f' || type == 'F') {
+	    prec = 16;
+	    flt  = true;
+	    if (type == 'F')
+	      big = true; // is bigendian
+	  }
 
 	  // Create the tone mapping curve if gamma != 1.0
-	  if (gamma != 1.0) {
+	  if (gamma != 1.0 || hiddenbits) {
 	    if (gamma <= 0.0) {
-	      BuildToneMapping(in,width,height,prec,depth,ldrtohdr);
+	      BuildToneMapping(in,width,height,prec,depth,ldrtohdr,flt,big,hiddenbits);
 	    } else {
 	      int i;
-	      for(i = 0;i < 256;i++) {
-		double in = i / 255.0;
+	      int outmax  = (flt)?(0x7bff):(256 << hiddenbits); // 0x7c00 is INF in half-float
+	      int inmax   = 256 << hiddenbits;
+	      double knee = 0.04045;
+	      double divs = pow((knee + 0.055) / 1.055,gamma) / knee;
+	      for(i = 0;i < inmax;i++) {
+		double in = i / double(inmax - 1);
 		double out;
 		int int_out;
-		if (in > 0.04045) {
-		  out = pow((in + 0.055) / 1.055,gamma);
+		if (gamma != 1.0) {
+		  if (in > knee) {
+		    out = pow((in + 0.055) / 1.055,gamma);
+		  } else {
+		    out = in * divs;
+		  }
+		  int_out = outmax * out + 0.5;
 		} else {
-		  out = in / 12.92;
+		  int_out = outmax * in + 0.5;
 		}
-		int_out = max * out + 0.5;
-		if (int_out > max) int_out = max;
-		if (int_out < 0  ) int_out = 0;
+		if (int_out > outmax) int_out = outmax;
+		if (int_out < 0     ) int_out = 0;
 		ldrtohdr[i] = int_out;
 	      }
 	    }
@@ -591,11 +849,15 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 		JPG_ValueTag(JPGTAG_IMAGE_RESTART_INTERVAL,restart),
 		JPG_ValueTag(JPGTAG_IMAGE_ENABLE_HADAMARD,hadamard),
 		JPG_ValueTag(JPGTAG_IMAGE_ENABLE_NOISESHAPING,noiseshaping),
+		JPG_ValueTag(JPGTAG_IMAGE_HIDDEN_DCTBITS,hiddenbits),
 		JPG_PointerTag(JPGTAG_IMAGE_SUBX,subx),
 		JPG_PointerTag(JPGTAG_IMAGE_SUBY,suby),
-		JPG_PointerTag((tonemapping)?(JPGTAG_IMAGE_TONEMAPPING0):JPGTAG_TAG_IGNORE,tonemapping),
-		JPG_PointerTag((tonemapping && depth > 1)?(JPGTAG_IMAGE_TONEMAPPING1):JPGTAG_TAG_IGNORE,tonemapping),
-		JPG_PointerTag((tonemapping && depth > 2)?(JPGTAG_IMAGE_TONEMAPPING2):JPGTAG_TAG_IGNORE,tonemapping),
+		JPG_PointerTag((tonemapping)?(JPGTAG_IMAGE_TONEMAPPING0):JPGTAG_TAG_IGNORE,
+			       const_cast<UWORD *>(tonemapping)),
+		JPG_PointerTag((tonemapping && depth > 1)?(JPGTAG_IMAGE_TONEMAPPING1):JPGTAG_TAG_IGNORE,
+			       const_cast<UWORD *>(tonemapping)),
+		JPG_PointerTag((tonemapping && depth > 2)?(JPGTAG_IMAGE_TONEMAPPING2):JPGTAG_TAG_IGNORE,
+			       const_cast<UWORD *>(tonemapping)),
 		JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(dconly)?(dcscan):(pscan1)),
 		JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan2),
 		JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan3),
@@ -611,14 +873,15 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 	      if (jpeg) {
 		UBYTE *mem = (UBYTE *)malloc(width * 8 * depth * ((prec > 8)?(2):(1)));
 		if (mem) {
-		  bmm.bmm_pMemPtr  = mem;
-		  bmm.bmm_ulWidth  = width;
-		  bmm.bmm_ulHeight = height;
-		  bmm.bmm_usDepth  = depth;
+		  bmm.bmm_pMemPtr     = mem;
+		  bmm.bmm_ulWidth     = width;
+		  bmm.bmm_ulHeight    = height;
+		  bmm.bmm_usDepth     = depth;
 		  bmm.bmm_ucPixelType = (prec > 8)?(CTYP_UWORD):(CTYP_UBYTE);
-		  bmm.bmm_pTarget  = NULL;
-		  bmm.bmm_pSource  = in;
-
+		  bmm.bmm_pTarget     = NULL;
+		  bmm.bmm_pSource     = in;
+		  bmm.bmm_bFloat      = flt;
+		  bmm.bmm_bBigEndian  = big;
 	      
 		  //
 		  // Push the image into the frame. We could
@@ -676,28 +939,30 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 /// main
 int main(int argc,char **argv)
 {
-  int quality     = -1;
-  int hdrquality  = -1;
-  int maxerror    = 0;
-  int levels      = 0;
-  int restart     = 0;
-  int lsmode      = -1; // Use JPEGLS
-  double gamma    = 1.0;
-  bool pyramidal  = false;
-  bool reversible = false;
-  bool residuals  = false;
-  int  colortrafo = JPGFLAG_IMAGE_COLORTRANSFORMATION_YCBCR;
-  bool forceint   = false;
-  bool forcefix   = false;
-  bool lossless   = false;
-  bool optimize   = false;
-  bool accoding   = false;
-  bool dconly     = false;
-  bool progressive= false;
-  bool writednl   = false;
-  bool hadamard   = false;
+  int quality       = -1;
+  int hdrquality    = -1;
+  int maxerror      = 0;
+  int levels        = 0;
+  int restart       = 0;
+  int lsmode        = -1; // Use JPEGLS
+  int hiddenbits    = 0;  // hidden DCT bits
+  double gamma      = 1.0;
+  bool pyramidal    = false;
+  bool reversible   = false;
+  bool residuals    = false;
+  int  colortrafo   = JPGFLAG_IMAGE_COLORTRANSFORMATION_YCBCR;
+  bool forceint     = false;
+  bool forcefix     = false;
+  bool lossless     = false;
+  bool optimize     = false;
+  bool accoding     = false;
+  bool dconly       = false;
+  bool progressive  = false;
+  bool writednl     = false;
+  bool hadamard     = false;
   bool noiseshaping = false;
-  const char *sub = NULL;
+  bool pfm          = false;
+  const char *sub   = NULL;
 
   printf("libjpeg,jpeg Copyright (C) 2011-2012 Accusoft, Thomas Richter\n"
 	 "This program comes with ABSOLUTELY NO WARRANTY; for details see README.license\n"
@@ -722,6 +987,21 @@ int main(int argc,char **argv)
       hdrquality = atoi(argv[2]);
       argv += 2;
       argc -= 2;
+    } else if (!strcmp(argv[1],"-quality")) {
+      if (argv[2] == NULL) {
+	fprintf(stderr,"-quality expects a numeric argument\n");
+	return 20;
+      }
+      hdrquality = atoi(argv[2]);
+      if (hdrquality < 90) {
+	quality    = hdrquality;
+	hdrquality = 0;
+      } else {
+	quality    = 90;
+	hdrquality = hdrquality - 90;
+      }
+      argv += 2;
+      argc -= 2;
     } else if (!strcmp(argv[1],"-m")) {
       if (argv[2] == NULL) {
 	fprintf(stderr,"-m expects a numeric argument\n");
@@ -742,6 +1022,14 @@ int main(int argc,char **argv)
       residuals = true;
       argv++;
       argc--;
+    } else if (!strcmp(argv[1],"-R")) {
+      if (argv[2] == NULL) {
+	fprintf(stderr,"-R expects a numeric argument\n");
+	return 20;
+      }
+      hiddenbits = atoi(argv[2]);
+      argv += 2;
+      argc -= 2;
     } else if (!strcmp(argv[1],"-l")) {
       reversible = true;
       argv++;
@@ -829,6 +1117,10 @@ int main(int argc,char **argv)
       lsmode = atoi(argv[2]);
       argv += 2;
       argc -= 2;
+    } else if (!strcmp(argv[1],"-pfm")) {
+      pfm = true;
+      argv++;
+      argc--;
     } else {
       fprintf(stderr,"unsupported command line switch %s\n",argv[1]);
       return 20;
@@ -842,8 +1134,12 @@ int main(int argc,char **argv)
 	    "use -q [1..100] or -p to enforce encoding\n\n"
 	    "-q quality : encodes the PPM input and writes JPEG with the given quality\n"
 	    "-Q quality : defines the quality for the extension layer\n"
+	    "-quality q : defines the base layer quality as max(q,90) and the\n"
+	    "             extensions layer quality as max(q-90,0)\n"
 	    "-r         : enable lossless coding by encoding residuals, \n"
 	    "             also requires -q to define the base quality\n"
+	    "-R bits    : enable coding of hidden DCT bits. This works like -r but\n"
+	    "             in the DCT domain.\n"
 	    "-N         : enable noise shaping of the prediction residual\n"
 	    "-l         : enable lossless coding by an int-to-int DCT\n"
 	    "             also requires -c and -q 100 for true lossless\n"
@@ -866,7 +1162,7 @@ int main(int argc,char **argv)
 	    "             for true lossless. If levels is one, then the lossy initial scan\n"
 	    "             is downscaled by a power of two.\n"
 	    "-g gamma   : define the exponent for the gamma for the LDR domain, or rather, for\n"
-	    "             mapping HDR to LDR. A suggested value is 2.4 for mapping scRGB to sRBG\n"
+	    "             mapping HDR to LDR. A suggested value is 2.4 for mapping scRGB to sRBG.\n"
 	    "             setting gamma to zero enables an automatic tone mapping\n"
 	    "-z mcus    : define the restart interval size, zero disables it\n"
 	    "-n         : indicate the image height by a DNL marker\n"
@@ -874,7 +1170,7 @@ int main(int argc,char **argv)
 	    "-s WxH,... : define subsampling factors for all components\n"
 	    "             note that these are NOT MCU sizes\n"
 	    "             Default is 1x1,1x1,1x1 (444 subsampling)\n"
-	    "             1x1,2x2,2x2 is the 422 subsampling often used\n"
+	    "             1x1,2x2,2x2 is the 420 subsampling often used\n"
 	    "-ls mode   : encode in JPEG LS (NOT 10918) mode, where 0 is scan-interleaved,\n"
 	    "             1 is line interleaved and 2 is sample interleaved.\n"
 	    "             NOTE THAT THIS IS NOT 10918 (JPEG) COMPLIANT, BUT COMPLIANT TO\n"
@@ -894,17 +1190,18 @@ int main(int argc,char **argv)
 	    "-cls       : Use a JPEG LS part-2 conforming pseudo-RCT color transformation.\n"
 	    "             Note that this transformation is only CONFORMING TO 14495-2\n"
 	    "             AND NOT CONFORMING TO 10918-1. Works for near-lossless JPEG LS\n"
-	    "             DO NOT USE FOR LOSSY 10918-1, it will also create artifacts.\n",
+	    "             DO NOT USE FOR LOSSY 10918-1, it will also create artifacts.\n"
+	    "-pfm       : write 16 bit output as pfm files\n",
 	    argv[0]);
     return 5;
   }
 
   if (quality < 0 && lossless == false && lsmode < 0) {
-    Reconstruct(argv[1],argv[2],forceint,forcefix,colortrafo);
+    Reconstruct(argv[1],argv[2],forceint,forcefix,colortrafo,pfm);
   } else {
     Encode(argv[1],argv[2],quality,hdrquality,maxerror,colortrafo,lossless,progressive,
 	   reversible,residuals,optimize,accoding,dconly,levels,pyramidal,writednl,restart,
-	   gamma,lsmode,hadamard,noiseshaping,sub);
+	   gamma,lsmode,hadamard,noiseshaping,hiddenbits,sub);
   }
   
   return 0;

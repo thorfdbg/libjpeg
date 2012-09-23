@@ -48,7 +48,7 @@ the committee itself.
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: linebitmaprequester.cpp,v 1.16 2012-07-20 13:57:55 thor Exp $
+** $Id: linebitmaprequester.cpp,v 1.17 2012-09-15 21:45:51 thor Exp $
 **
 */
 
@@ -221,7 +221,7 @@ void LineBitmapRequester::ResetToStartOfImage(void)
 class ColorTrafo *LineBitmapRequester::ColorTrafoOf(bool encoding)
 {
   return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,
-					    PixelTypeOf(),m_pFrame->PrecisionOf(),m_ucCount,encoding);
+					    PixelTypeOf(),m_pFrame->HiddenPrecisionOf(),m_ucCount,encoding);
 }
 ///
 
@@ -261,7 +261,7 @@ void LineBitmapRequester::Next8Lines(UBYTE c)
 void LineBitmapRequester::EncodeRegion(class BitMapHook *bmh,const struct RectangleRequest *)
 {
   ULONG maxmcu                 = MAX_ULONG;
-  ULONG maxval                 = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval                 = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   class ColorTrafo *ctrafo;
   RectAngle<LONG> region;
   int i;
@@ -421,7 +421,7 @@ void LineBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const struct R
 {
   ULONG maxmcu  = MAX_ULONG;
   UBYTE i;
-  ULONG maxval  = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval  = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   RectAngle<LONG> region = rr->rr_Request;
   class ColorTrafo *ctrafo;
 

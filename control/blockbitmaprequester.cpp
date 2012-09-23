@@ -48,7 +48,7 @@ the committee itself.
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.cpp,v 1.21 2012-07-27 09:21:25 thor Exp $
+** $Id: blockbitmaprequester.cpp,v 1.23 2012-09-15 21:45:51 thor Exp $
 **
 */
 
@@ -195,6 +195,9 @@ void BlockBitmapRequester::PrepareForEncoding(void)
   UBYTE i;
   
   BuildCommon();
+  
+  // Build the DCT transformers.
+  ResetToStartOfScan(NULL);
 
   if (m_ppDownsampler == NULL) {
     m_ppDownsampler = (class DownsamplerBase **)m_pEnviron->AllocMem(sizeof(class DownsamplerBase *) * m_ucCount);
@@ -262,7 +265,7 @@ void BlockBitmapRequester::ResetToStartOfImage(void)
 class ColorTrafo *BlockBitmapRequester::ColorTrafoOf(bool encoding)
 {
   return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,
-					    PixelTypeOf(),m_pFrame->PrecisionOf(),m_ucCount,encoding);
+					    PixelTypeOf(),m_pFrame->HiddenPrecisionOf(),m_ucCount,encoding);
 }
 ///
 
@@ -286,7 +289,7 @@ class QuantizedRow *BlockBitmapRequester::BuildImageRow(class QuantizedRow **qro
 void BlockBitmapRequester::EncodeRegion(class BitMapHook *bmh,const struct RectangleRequest *)
 {
   ULONG maxmcu                 = MAX_ULONG;
-  ULONG maxval                 = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval                 = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   class ColorTrafo *ctrafo;
   RectAngle<LONG> region;
   int i;
@@ -470,7 +473,7 @@ void BlockBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const struct 
 {
   ULONG maxmcu  = MAX_ULONG;
   UBYTE i;
-  ULONG maxval  = (1UL << m_pFrame->PrecisionOf()) - 1;
+  ULONG maxval  = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   RectAngle<LONG> region = rr->rr_Request;
   class ColorTrafo *ctrafo;
 
