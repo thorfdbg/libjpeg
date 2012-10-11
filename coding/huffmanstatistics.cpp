@@ -47,7 +47,7 @@ the committee itself.
 ** This class collects the huffman coder statistics for optimized huffman
 ** coding.
 **
-** $Id: huffmanstatistics.cpp,v 1.7 2012-07-18 19:35:45 thor Exp $
+** $Id: huffmanstatistics.cpp,v 1.8 2012-10-07 20:42:32 thor Exp $
 **
 */
 
@@ -75,13 +75,13 @@ const UBYTE *HuffmanStatistics::CodesizesOf(void)
   memcpy(stat,m_ulCount,sizeof(stat));
 
   do {
-    ULONG freqs[513];   // combined frequencies.
-    UWORD top[513];     // links
+    ULONG freqs[514];   // combined frequencies.
+    UWORD top[514];     // links
     int   free = 257;   // next available symbol
 
     // Copy statistics over, reset them.
     memcpy(freqs       ,stat     ,256 * sizeof(LONG));
-    memset(freqs + 257,0         ,256 * sizeof(LONG));
+    memset(freqs + 257,0         ,257 * sizeof(LONG));
     memset(top        ,MAX_UBYTE ,sizeof(top));
     freqs[256] = 1; // this will get the all-1 code which is not allowed.
     
@@ -91,7 +91,7 @@ const UBYTE *HuffmanStatistics::CodesizesOf(void)
       int minarg1 = 0,minarg2 = 0; // shut up the compiler. Not used if less than two symbols.
       int i;
       
-      for(i = 0;i <= 512;i++) {
+      for(i = 0;i < 514;i++) {
 	if (freqs[i] > 0) {
 	  if (freqs[i] < min1) {
 	    // min1 becomes available, swap to min2?
@@ -118,7 +118,7 @@ const UBYTE *HuffmanStatistics::CodesizesOf(void)
       top[minarg2]    = free;
       
       free++;
-      assert(free <= 512);
+      assert(free < 514);
     } while(true);
     
     // 
@@ -182,3 +182,40 @@ const UBYTE *HuffmanStatistics::CodesizesOf(void)
   } while(true);
 }
 ///
+
+/// HuffmanStatistics::MergeStatistics
+// Merge the counts with the recorded count values in the file.
+#ifdef COLLECT_STATISTICS
+void HuffmanStatistics::MergeStatistics(FILE *stats)
+{
+  while(!feof(stats)) {
+    int symbol,count;
+    if (fscanf(stats,"%d\t%d\n",&symbol,&count) == 2) {
+      if (symbol >= 0 && symbol < 256) {
+	m_ulCount[symbol] += count;
+      }
+    }
+  }
+}
+#endif
+///
+
+/// HuffmanStatistics::WriteStatistics
+// Write the (combined) statistics back to the file.
+#ifdef COLLECT_STATISTICS
+void HuffmanStatistics::WriteStatistics(FILE *stats)
+{
+  int symbol;
+  
+  for(symbol = 0;symbol < 256;symbol++) {
+    if (m_ulCount[symbol]) {
+      fprintf(stats,"%d\t%d\n",symbol,m_ulCount[symbol]);
+    } else {
+      fprintf(stats,"%d\t%d\n",symbol,1);
+    }
+  }
+}
+#endif
+///
+
+

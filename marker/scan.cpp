@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.75 2012-09-23 14:10:12 thor Exp $
+** $Id: scan.cpp,v 1.77 2012-10-07 15:58:08 thor Exp $
 **
 */
 
@@ -70,6 +70,7 @@ the committee itself.
 #include "codestream/lineinterleavedlsscan.hpp"
 #include "codestream/sampleinterleavedlsscan.hpp"
 #include "codestream/vesascan.hpp"
+#include "codestream/vesadctscan.hpp"
 #include "coding/huffmantemplate.hpp"
 #include "marker/huffmantable.hpp"
 #include "marker/actable.hpp"
@@ -223,7 +224,7 @@ void Scan::ParseMarker(class ByteStream *io,ScanType type)
     if (data > 63)
       JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","end of scan index is out of range, must be between 0 and 63");
   } else {
-    if (data > 3 /*2*/)
+    if (data > 4 /*2*/)
       JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","interleave specification is out of range, must be between 0 and 2"); 
   }
   m_ucScanStop = data;
@@ -430,6 +431,13 @@ void Scan::CreateParser(void)
 						 m_ucScanStart,
 						 m_ucMappingTable,
 						 m_ucLowBit + m_ucHiddenBits);
+      break;
+    case 4:
+      m_pParser = new(m_pEnviron) class VesaDCTScan(m_pFrame,this,
+						    m_ucScanStart,
+						    m_ucMappingTable,
+						    m_ucLowBit + m_ucHiddenBits);
+      
       break; 
     }
     break;
@@ -616,7 +624,10 @@ void Scan::InstallDefaults(UBYTE depth,const struct JPG_TagItem *tags)
     case JPGFLAG_SCAN_LS_VESASCAN:
       m_ucScanStop = 3;
       break;
-    default:
+    case JPGFLAG_SCAN_LS_VESADCTSCAN:
+      m_ucScanStop = 4;
+      break;
+     default:
       JPG_THROW(INVALID_PARAMETER,"Scan::InstallDefaults",
 		"Invalid component interleaving mode for JPEG LS scans");
       break;
@@ -997,7 +1008,8 @@ class HuffmanDecoder *Scan::DCHuffmanDecoderOf(UBYTE idx) const
 
   assert(idx < 4);
   
-  t = m_pFrame->TablesOf()->FindDCHuffmanTable(m_ucDCTable[idx]);
+  t = m_pFrame->TablesOf()->FindDCHuffmanTable(m_ucDCTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
+					       m_pFrame->HiddenPrecisionOf(),m_pFrame->TablesOf()->UseResiduals());
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::DCHuffmanDecoderOf","requested DC Huffman coding table not defined");
 
@@ -1014,7 +1026,8 @@ class HuffmanDecoder *Scan::ACHuffmanDecoderOf(UBYTE idx) const
 
   assert(idx < 4);
 
-  t = m_pFrame->TablesOf()->FindACHuffmanTable(m_ucDCTable[idx]);
+  t = m_pFrame->TablesOf()->FindACHuffmanTable(m_ucDCTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
+					       m_pFrame->HiddenPrecisionOf(),m_pFrame->TablesOf()->UseResiduals());
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanDecoderOf","requested AC Huffman coding table not defined");
 
@@ -1030,7 +1043,8 @@ class HuffmanCoder *Scan::DCHuffmanCoderOf(UBYTE idx) const
   
   assert(idx < 4);
 
-  t = m_pHuffman->DCTemplateOf(m_ucDCTable[idx]);
+  t = m_pHuffman->DCTemplateOf(m_ucDCTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
+			       m_pFrame->HiddenPrecisionOf(),m_pFrame->TablesOf()->UseResiduals());
   if (t == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::DCHuffmanCoderOf","requested DC Huffman coding table not defined");
 
@@ -1048,7 +1062,8 @@ class HuffmanCoder *Scan::ACHuffmanCoderOf(UBYTE idx) const
   
   assert(idx < 4);
 
-  t = m_pHuffman->ACTemplateOf(m_ucACTable[idx]);
+  t = m_pHuffman->ACTemplateOf(m_ucACTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
+			       m_pFrame->HiddenPrecisionOf(),m_pFrame->TablesOf()->UseResiduals());
   if (t == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanCoderOf","requested DC Huffman coding table not defined");
 
@@ -1066,7 +1081,8 @@ class HuffmanStatistics *Scan::DCHuffmanStatisticsOf(UBYTE idx) const
   
   assert(idx < 4);
 
-  t = m_pHuffman->DCTemplateOf(m_ucDCTable[idx]);
+  t = m_pHuffman->DCTemplateOf(m_ucDCTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
+			       m_pFrame->HiddenPrecisionOf(),m_pFrame->TablesOf()->UseResiduals());
   if (t == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::DCHuffmanStatisticsOf","requested DC Huffman coding table not defined");
 
@@ -1082,7 +1098,8 @@ class HuffmanStatistics *Scan::ACHuffmanStatisticsOf(UBYTE idx) const
   
   assert(idx < 4);
 
-  t = m_pHuffman->ACTemplateOf(m_ucACTable[idx]);
+  t = m_pHuffman->ACTemplateOf(m_ucACTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
+			       m_pFrame->HiddenPrecisionOf(),m_pFrame->TablesOf()->UseResiduals());
   if (t == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanStatisticsOf","requested AC Huffman coding table not defined");
 

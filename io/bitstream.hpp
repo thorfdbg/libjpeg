@@ -47,7 +47,7 @@ the committee itself.
 ** This class allows to read individual bits from a stream of bytes.
 ** This class implements the bytestuffing as required.
 **
-** $Id: bitstream.hpp,v 1.18 2012-09-09 15:53:51 thor Exp $
+** $Id: bitstream.hpp,v 1.21 2012-10-07 11:13:33 thor Exp $
 **
 */
 
@@ -107,7 +107,8 @@ class BitStream : public JObject {
 	  // A marker. Do not advance over the marker, but
 	  // rather stay at it so the logic upwards can fix it.
 	  // Be consistent with QM and fit zeros in.
-	  dt = 0;
+	  // Probably a bad idea as we may have pseudo-fill-bytes.
+	  dt = 0xff;
 	}
       }
     } else if (dt == ByteStream::EOF) {
@@ -221,12 +222,22 @@ public:
   void Flush(void)
   {
     if (m_ucBits < 8) {
+      // The standard suggests (in an informative note) to fill in
+      // remaining bits by 1's, which interestingly creates the likelyhood
+      // of a bitstuffing case. Interestingly, the standard also says that
+      // a 0xff in front of a marker is a "fill byte" that may be dropped.
+      // Conclusion is that we may have a 0xff just in front of a marker without
+      // the byte stuffing. Wierd.
+      if (!bitstuffing)
+	m_ucB   |= (1 << m_ucBits) - 1;
       m_pIO->Put(m_ucB);
       m_ucBits = 8;
       if (m_ucB == 0xff) {  // stuffing case? 
 	m_pIO->Put(0x00);    // stuff a zero byte
 	// Note that this must also happen if we are bitstuffing to avoid a pseudo-0xffff
 	// marker (JPEG 2000 could have dropped the 0xff here, but we can't).
+	// Actually, such markers are allowable, or rather might be, but
+	// be conservative and avoid writing them.
       }
       m_ucB = 0;
     }

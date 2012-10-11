@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: lslosslesstrafo.hpp,v 1.3 2012-07-20 16:30:00 thor Exp $
+** $Id: lslosslesstrafo.hpp,v 1.4 2012-09-28 10:53:49 thor Exp $
 **
 */
 
@@ -63,6 +63,7 @@ the committee itself.
 
 /// Forwards
 class Frame;
+class LSColorTrafo;
 ///
 
 /// Class LSLosslessTrafo

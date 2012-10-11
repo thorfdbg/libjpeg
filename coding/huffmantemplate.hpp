@@ -47,7 +47,7 @@ the committee itself.
 ** This class is responsible for parsing the huffman specific part of the
 ** DHT marker and generating the corresponding decoder classes.
 **
-** $Id: huffmantemplate.hpp,v 1.8 2012-06-02 10:27:13 thor Exp $
+** $Id: huffmantemplate.hpp,v 1.11 2012-10-07 20:43:17 thor Exp $
 **
 */
 
@@ -56,6 +56,11 @@ the committee itself.
 
 /// Includes
 #include "tools/environment.hpp"
+#include "marker/scantypes.hpp"
+///
+
+/// Defines
+//#define COLLECT_STATISTICS 1
 ///
 
 /// Forwards
@@ -85,6 +90,15 @@ class HuffmanTemplate : public JKeeper {
   // The huffman statistics collector, used to optimize the
   // huffman encoder.
   class HuffmanStatistics *m_pStatistics;
+  //
+#ifdef COLLECT_STATISTICS
+  // The AC/DC switch. True for AC
+  bool                     m_bAC;
+  //
+  // The chroma/luma switch. True for chroma.
+  bool                     m_bChroma;
+  //
+#endif
   //
   // Reset the huffman table for an alphabet with N entries.
   void ResetEntries(ULONG count);
@@ -117,16 +131,16 @@ public:
   // might work as well, or should even perform better.
   //
   // Install the default Luminance DC default table.
-  void InitDCLuminanceDefault(void);
+  void InitDCLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden,bool residual);
   //
   // Install the default Chrominance DC table.
-  void InitDCChrominanceDefault(void);
+  void InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden,bool residual);
   //
   // Install the default Luminance AC default table.
-  void InitACLuminanceDefault(void);
+  void InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden,bool residual);
   //
   // Install the default Chrominance AC table.
-  void InitACChrominanceDefault(void);
+  void InitACChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden,bool residual);
   //
   // Use the collected statistics to build an optimized
   // huffman table.

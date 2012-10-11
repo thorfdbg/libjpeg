@@ -47,7 +47,7 @@ the committee itself.
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.55 2012-09-23 12:58:39 thor Exp $
+** $Id: tables.cpp,v 1.56 2012-10-07 15:58:08 thor Exp $
 **
 */
 
@@ -675,14 +675,14 @@ void Tables::ParseTables(class ByteStream *io)
 
 /// Tables::FindDCHuffmanTable
 // Find the DC huffman table of the indicated index.
-class HuffmanTemplate *Tables::FindDCHuffmanTable(UBYTE idx) const
+class HuffmanTemplate *Tables::FindDCHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual) const
 {
   class HuffmanTemplate *t;
 
   if (m_pHuffman == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindDCHuffmanTable","DHT marker missing for huffman encoded scan");
 
-  t = m_pHuffman->DCTemplateOf(idx);
+  t = m_pHuffman->DCTemplateOf(idx,type,depth,hidden,residual);
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindDCHuffmanTable","requested DC huffman coding table not defined");
   return t;
@@ -691,14 +691,14 @@ class HuffmanTemplate *Tables::FindDCHuffmanTable(UBYTE idx) const
 
 /// Tables::FindACHuffmanTable
 // Find the AC huffman table of the indicated index.
-class HuffmanTemplate *Tables::FindACHuffmanTable(UBYTE idx) const
+class HuffmanTemplate *Tables::FindACHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual) const
 { 
   class HuffmanTemplate *t;
 
   if (m_pHuffman == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindACHuffmanTable","DHT marker missing for huffman encoded scan");
 
-  t = m_pHuffman->ACTemplateOf(idx);
+  t = m_pHuffman->ACTemplateOf(idx,type,depth,hidden,residual);
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindACHuffmanTable","requested AC huffman coding table not defined");
   return t;

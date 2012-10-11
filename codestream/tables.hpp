@@ -47,7 +47,7 @@ the committee itself.
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.hpp,v 1.30 2012-09-15 17:27:27 thor Exp $
+** $Id: tables.hpp,v 1.31 2012-10-07 15:58:08 thor Exp $
 **
 */
 
@@ -57,6 +57,7 @@ the committee itself.
 /// Include
 #include "interface/types.hpp"
 #include "tools/environment.hpp"
+#include "marker/scantypes.hpp"
 ///
 
 /// Forwards
@@ -167,10 +168,10 @@ public:
   void InstallDefaultTables(const struct JPG_TagItem *tags);
   //
   // Find the DC huffman table of the indicated index.
-  class HuffmanTemplate *FindDCHuffmanTable(UBYTE idx) const;
+  class HuffmanTemplate *FindDCHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual) const;
   //
   // Find the AC huffman table of the indicated index.
-  class HuffmanTemplate *FindACHuffmanTable(UBYTE idx) const;
+  class HuffmanTemplate *FindACHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual) const;
   //
   // Find the AC conditioner table for the indicated index
   // and the DC band.

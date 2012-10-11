@@ -47,7 +47,7 @@ the committee itself.
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.hpp,v 1.18 2012-09-22 20:51:40 thor Exp $
+** $Id: jpeglsscan.hpp,v 1.19 2012-09-27 20:33:06 thor Exp $
 **
 */
 
@@ -371,7 +371,8 @@ protected:
   {
     UBYTE k;
 
-    for(k = 0;(m_lN[context] << k) < m_lA[context] && k < 32;k++);
+    for(k = 0;(m_lN[context] << k) < m_lA[context] && k < 32;k++) {
+    }
 
     if (k == 32) {
       JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombParameter",
@@ -588,7 +589,8 @@ protected:
       temp = m_lA[0];
     }
     
-    for(k = 0;(m_lN[rtype] << k) < temp;k++);
+    for(k = 0;(m_lN[rtype] << k) < temp;k++) {
+    }
 
     return k;
   }

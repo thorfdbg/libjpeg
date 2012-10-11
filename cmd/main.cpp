@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This header provides the main function.
 **
-** $Id: main.cpp,v 1.80 2012-09-22 15:09:07 thor Exp $
+** $Id: main.cpp,v 1.81 2012-10-11 12:54:03 thor Exp $
 **
 */
 
@@ -1182,11 +1182,12 @@ int main(int argc,char **argv)
 	    "             Note that the UBC software will not able to decode streams created by\n"
 	    "             this software due to a limitation of the UBC code - the streams are\n"
 	    "             nevertheless fully conforming.\n"
-	    "             Mode 3 is also available, but not a JPEG LS conforming profile.\n"
-	    "             It rather implements an experimental simple online compression for\n"
-	    "             a call from VESA. For -ls 3, the available bandwidth can be provided\n"
-	    "             with the -m command line argument. -m 100 specifies 100%% bandwidth,\n"
-	    "             i.e. all data is transmitted. -m 25 is a 1:4 compression at 25%% bandwidth.\n"
+	    "             Modes 3 and 4 are also available, but not JPEG LS conforming profiles.\n"
+	    "             They rather implement an experimental simple online compression for\n"
+	    "             a call from VESA, either using a wavelet or a Hadamard transformation.\n"
+	    "             For both modes, the available bandwidth must be provided with the -m\n"
+	    "             command line argument. -m 100 specifies 100%% bandwidth, i.e. all \n"
+	    "             data is transmitted. -m 25 is a 1:4 compression at 25%% bandwidth.\n"
 	    "-cls       : Use a JPEG LS part-2 conforming pseudo-RCT color transformation.\n"
 	    "             Note that this transformation is only CONFORMING TO 14495-2\n"
 	    "             AND NOT CONFORMING TO 10918-1. Works for near-lossless JPEG LS\n"

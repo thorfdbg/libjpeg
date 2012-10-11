@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This class contains and maintains the huffman code parsers.
 **
-** $Id: huffmantable.hpp,v 1.8 2012-06-02 10:27:14 thor Exp $
+** $Id: huffmantable.hpp,v 1.9 2012-10-07 15:58:08 thor Exp $
 **
 */
 
@@ -55,6 +55,7 @@ the committee itself.
 
 /// Includes
 #include "tools/environment.hpp"
+#include "marker/scantypes.hpp"
 ///
 
 /// Forwards
@@ -80,10 +81,10 @@ public:
   void ParseMarker(class ByteStream *io);
   //
   // Get the template for the indicated DC table or NULL if it doesn't exist.
-  class HuffmanTemplate *DCTemplateOf(UBYTE idx);
+  class HuffmanTemplate *DCTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual);
   //
   // Get the template for the indicated AC table or NULL if it doesn't exist.
-  class HuffmanTemplate *ACTemplateOf(UBYTE idx);
+  class HuffmanTemplate *ACTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual);
   //
   // Adjust all coders in here to the statistics collected before, i.e.
   // find optimal codes.

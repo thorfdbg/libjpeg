@@ -65,7 +65,7 @@ LDFLAGS="$machine_option $LDFLAGS"
 AC_SUBST(BITSIZE,${machine_option})
 #
 # Checks for programs.
-AC_PROG_CXX([g++-4.4 g++-4.3 g++-4.2 g++-4.1 g++-4.0 g++-3.4 g++-3.3 g++-3.2 g++ icc c++ gpp cxx cc++])
+AC_PROG_CXX([g++-4.7 g++-4.4 g++-4.3 g++-4.2 g++-4.1 g++-4.0 g++-3.4 g++-3.3 g++-3.2 g++ icc c++ gpp cxx cc++])
 AC_PROG_CC
 AC_PROG_CC_STDC
 AC_C_BIGENDIAN([AC_DEFINE(JPG_BIG_ENDIAN,[1],[Define to 1 for big endian])],[AC_DEFINE(JPG_LIL_ENDIAN,[1],[Define to 1 for little endian])])

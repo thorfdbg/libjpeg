@@ -47,7 +47,7 @@ the committee itself.
 ** This class collects the huffman coder statistics for optimized huffman
 ** coding.
 **
-** $Id: huffmanstatistics.hpp,v 1.3 2012-06-02 10:27:13 thor Exp $
+** $Id: huffmanstatistics.hpp,v 1.4 2012-10-07 20:42:32 thor Exp $
 **
 */
 
@@ -59,6 +59,10 @@ the committee itself.
 #include "io/bitstream.hpp"
 #include "std/string.hpp"
 #include "std/assert.hpp"
+#include "coding/huffmantemplate.hpp"
+#ifdef COLLECT_STATISTICS
+#include "std/stdio.hpp"
+#endif
 ///
 
 /// class HuffmanStatistics
@@ -90,6 +94,17 @@ public:
   // Find the number of codesizes of the optimal huffman tree.
   // This returns an array of 256 elements, one entry per symbol.
   const UBYTE *CodesizesOf(void);
+  //
+  // Functions for measuring the statistics over a larger set of files.
+#ifdef COLLECT_STATISTICS
+  //
+  // Merge the counts with the recorded count values in the file.
+  void MergeStatistics(FILE *stats);
+  //
+  // Write the (combined) statistics back to the file.
+  void WriteStatistics(FILE *stats);
+  //
+#endif
 };
 ///
 

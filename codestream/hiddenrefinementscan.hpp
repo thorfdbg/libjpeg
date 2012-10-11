@@ -48,7 +48,7 @@ the committee itself.
 ** data goes into a special APP9 marker. It works otherwise like any other
 ** refinement scan.
 **
-** $Id: hiddenrefinementscan.hpp,v 1.3 2012-09-23 12:58:39 thor Exp $
+** $Id: hiddenrefinementscan.hpp,v 1.4 2012-09-28 10:53:49 thor Exp $
 **
 */
 
@@ -74,6 +74,8 @@ class ByteStream;
 class Frame;
 class MemoryStream;
 class ByteStream;
+class Scan;
+class ResidualMarker;
 ///
 
 /// class RefinementScan

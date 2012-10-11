@@ -48,7 +48,7 @@ the committee itself.
  * client application to define all the parameters the jpeg library
  * needs. 
  *
- * $Id: parameters.hpp,v 1.25 2012-09-15 10:11:41 thor Exp $
+ * $Id: parameters.hpp,v 1.26 2012-09-28 17:05:21 thor Exp $
  *
  * These parameters are specified by the user upon invocation of
  * the library.
@@ -286,6 +286,8 @@ the committee itself.
 //
 // Experimental Vesa proposal.
 #define JPGFLAG_SCAN_LS_VESASCAN 3
+// Ditto with DCT instead of wavelet.
+#define JPGFLAG_SCAN_LS_VESADCTSCAN 4
 ///
 
 /// Tag definitions for the bitmap IO hook

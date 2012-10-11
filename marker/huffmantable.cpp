@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This class contains and maintains the huffman code parsers.
 **
-** $Id: huffmantable.cpp,v 1.9 2012-06-02 10:27:14 thor Exp $
+** $Id: huffmantable.cpp,v 1.10 2012-10-07 15:58:08 thor Exp $
 **
 */
 
@@ -166,7 +166,7 @@ void HuffmanTable::AdjustToStatistics(void)
 
 /// HuffmanTable::DCTemplateOf
 // Get the template for the indicated DC table or NULL if it doesn't exist.
-class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx)
+class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual)
 {
   assert(m_pCoder && idx < 4);
   
@@ -175,9 +175,9 @@ class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx)
     // Provide a default that seems sensible. Everything else requires
     // measurement.
     if (idx == 0) {
-      m_pCoder[idx]->InitDCLuminanceDefault();
+      m_pCoder[idx]->InitDCLuminanceDefault(type,depth,hidden,residual);
     } else {
-      m_pCoder[idx]->InitDCChrominanceDefault();
+      m_pCoder[idx]->InitDCChrominanceDefault(type,depth,hidden,residual);
     }
   }
   
@@ -187,7 +187,7 @@ class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx)
 
 /// HuffmanTable::ACTemplateOf
 // Get the template for the indicated AC table or NULL if it doesn't exist.
-class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx)
+class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual)
 {
   assert(m_pCoder && idx < 4);
 
@@ -198,9 +198,9 @@ class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx)
     // Provide a default that seems sensible. Everything else requires
     // measurement.
     if (idx == 0) {
-      m_pCoder[idx]->InitACLuminanceDefault();
+      m_pCoder[idx]->InitACLuminanceDefault(type,depth,hidden,residual);
     } else {
-      m_pCoder[idx]->InitACChrominanceDefault();
+      m_pCoder[idx]->InitACChrominanceDefault(type,depth,hidden,residual);
     }
   }
   

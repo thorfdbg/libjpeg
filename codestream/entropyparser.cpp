@@ -48,7 +48,7 @@ the committee itself.
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.cpp,v 1.13 2012-09-22 20:51:40 thor Exp $
+** $Id: entropyparser.cpp,v 1.14 2012-09-26 20:19:59 thor Exp $
 **
 */
 
@@ -179,8 +179,9 @@ void EntropyParser::ParseRestartMarker(class ByteStream *io)
 	  return;
 	} else {
 	  // Some garbadge data, or a 0xff00. Just eat it up, and continue
-	  // scanning.
-	  io->GetWord();
+	  // scanning. Note that a single Get is used here to eventually
+	  // skip over a "fill byte".
+	  io->Get();
 	}
       }
     } while(true);

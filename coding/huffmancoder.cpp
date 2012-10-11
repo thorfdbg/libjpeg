@@ -47,7 +47,7 @@ the committee itself.
 ** This class implements an encoder for a single group of bits in a huffman
 ** decoder.
 **
-** $Id: huffmancoder.cpp,v 1.3 2012-06-02 10:27:13 thor Exp $
+** $Id: huffmancoder.cpp,v 1.4 2012-10-07 20:42:32 thor Exp $
 **
 */
 
@@ -74,6 +74,7 @@ HuffmanCoder::HuffmanCoder(const UBYTE *lengths,const UBYTE *symbols)
 	m_ucBits[symbol] = i + 1; // size in bits
 	m_usCode[symbol] = value;
 	value++;                  // next code
+	assert(value < (1UL << (i + 1))); // Overflow?
 	cnt++;                    // next entry in the table.
       } while(--j);
     }

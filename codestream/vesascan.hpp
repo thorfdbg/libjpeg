@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** A variant of JPEG LS for the proposed vesa compression. Experimental.
 **
-** $Id: vesascan.hpp,v 1.17 2012-09-13 19:28:57 thor Exp $
+** $Id: vesascan.hpp,v 1.19 2012-09-26 13:48:18 thor Exp $
 **
 */
 
@@ -127,7 +127,7 @@ class VesaScan : public JPEGLSScan {
     } else if (b < minac) {
       return (b + minac) >> 1;
     } else {
-      return b; // works better than a mid-point prediction.
+      return (a + (b << 1) + c) >> 2; // works better than a mid-point prediction.
     }
   }
   //
@@ -332,6 +332,18 @@ class VesaScan : public JPEGLSScan {
       data[x] |= Encoded;
   }
   //
+  // Check whether a coefficient has children.
+  bool static hasChildren(ULONG x,UBYTE inc,bool lowpass)
+  {
+    ULONG increment = 1UL << inc;
+    
+    if ((lowpass && ((x >> inc) & 1)) || (!lowpass && increment > 2)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  //
   // Encode a bitplane level with the EZW 
   void EncodeEZWLevel(ULONG *data,ULONG width,UBYTE inc,ULONG bitmask,bool lowpass)
   {
@@ -345,25 +357,30 @@ class VesaScan : public JPEGLSScan {
       } else if ((data[x] & Encoded) == 0) {
 	if (data[x] & bitmask) {
 	  // Not a zero-tree, becomes significant.
-	  m_Stream.Put<1>(1);m_ulUsedBits++;
+	  if (hasChildren(x,inc,lowpass)) {
+	    m_Stream.Put<2>(3);m_ulUsedBits+=2;
+	  } else {
+	    m_Stream.Put<1>(1);m_ulUsedBits++;
+	  }
 	  // Sign-coding.
 	  m_Stream.Put<1>((data[x] & Signed)?(true):(false));m_ulUsedBits++;
 	  // Becomes significant.
 	  data[x] |= Significant;
 	} else {
 	  // Not significant.
-	  m_Stream.Put<1>(0);m_ulUsedBits++;
 	  // May be a zero-tree. Makes only sense to test
 	  // if this is not the lowest level anyhow or if there are children.
 	  // For even position in the lowpass, there are no children either.
-	  if ((lowpass && ((x >> inc) & 1)) || (!lowpass && increment > 2)) {
+	  if (hasChildren(x,inc,lowpass)) {
 	    if (isZeroTree(data,width,x,(lowpass)?(increment):(increment >> 1),bitmask)) {
-	      m_Stream.Put<1>(1);m_ulUsedBits++;
+	      m_Stream.Put<1>(0);m_ulUsedBits++;
 	      markTreeAsEncoded(data,width,x,(lowpass)?(increment):(increment >> 1));
 	    } else {
 	      // Isolated zero.
-	      m_Stream.Put<1>(0);m_ulUsedBits++;
+	      m_Stream.Put<2>(2);m_ulUsedBits+=2;
 	    }
+	  } else {
+	    m_Stream.Put<1>(0);m_ulUsedBits++; // Counts as ZT
 	  }
 	}
       }
@@ -383,7 +400,12 @@ class VesaScan : public JPEGLSScan {
 	  data[x] |=  bitmask; // Get the bit itself.
       } else if ((data[x] & Encoded) == 0) {
 	if ((m_ulUsedBits++,m_Stream.Get<1>())) { // Zero or not?
-	  // Here not zero. Get the sign.
+	  // Here not zero or isolated zero. 
+	  if (hasChildren(x,inc,lowpass)) {
+	    if ((m_ulUsedBits++,m_Stream.Get<1>()) == 0)
+	      continue; // was isolated zero.
+	  }
+	  // Get the sign.
 	  data[x] |= bitmask;
 	  // Get the sign bit.
 	  if ((m_ulUsedBits++,m_Stream.Get<1>())) 
@@ -391,15 +413,11 @@ class VesaScan : public JPEGLSScan {
 	  // Becomes significant.
 	  data[x] |= Significant;
 	} else {
-	  if ((lowpass && ((x >> inc) & 1)) || (!lowpass && increment > 2)) {
-	    // Here a zero-tree or an isolated zero.
-	    if (m_ulUsedBits++,m_Stream.Get<1>()) { 
-	      // Zero tree.
-	      assert(data[x] == 0);
-	      markTreeAsEncoded(data,width,x,(lowpass)?(increment):(increment >> 1));
-	    }
-	  }
-	} 
+	  // Zero tree.
+	  assert(data[x] == 0);
+	  if (hasChildren(x,inc,lowpass))
+	    markTreeAsEncoded(data,width,x,(lowpass)?(increment):(increment >> 1));
+	}
       }
     }
   }
