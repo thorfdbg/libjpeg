@@ -1,0 +1,31 @@
+##
+## $Id: automakefile.in,v 1.2 2012-05-20 16:17:27 thor Exp $
+##
+#######################################################################
+## Makefile for the jpeg project,
+## THOR Software, May 20, 2012, Thomas Richter
+#######################################################################
+##
+##
+## The following variable defines the compiler we use
+## for running the code.
+##
+COMPILER_CMD	=	g++-4.4
+CC_ONLY         =       gcc -std=gnu99
+SETTINGS	=	gcc
+PREFIX		=	/home/thor/bin/wavelet
+PTHREADCFLAGS	=	
+PTHREADLDFLAGS	=	
+PTHREADLIBS	=	
+HWTYPE		=	x86_64
+HAVE_ADDONS	=	
+BITSIZE		=	
+##
+## Additional options
+ADDOPTS		=	-DUSE_AUTOCONF -mfpmath=387  
+LIB_OPTS	=	 -fPIC -DBUILD_LIB
+EXTRA_LIBS	=	-lgcc_s 
+##
+## Miscellaneous compiler options
+CPU		=	
+TUNE		=	

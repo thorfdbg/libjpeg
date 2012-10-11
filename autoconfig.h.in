@@ -1,0 +1,503 @@
+/* autoconfig.h.in.  Generated from configure.in by autoheader.  */
+
+/* Define if building universal (internal helper macro) */
+#undef AC_APPLE_UNIVERSAL_BUILD
+
+/* Define to path for platform specific include file */
+#undef ADDON_FILE
+
+/* Define to 1 if compiler threads static member derived from same base thru
+   multiple paths as ambigious */
+#undef AMBIGIOUS_NEW_BUG
+
+/* Define for short name of hardware platform */
+#undef HARDWARE
+
+/* Define to 1 if __attribute((aligned)) works */
+#undef HAS_ALIGNED
+
+/* Define to 1 if the GNU __attribute__ extension is available */
+#undef HAS_ATTRIBUTES
+
+/* Define to 1 if the variable CLK_TCK is available */
+#undef HAS_CLK_TCK
+
+/* Define to 1 if const_cast<> works */
+#undef HAS_CONST_CAST
+
+/* Define to 1 if the variable HZ is available */
+#undef HAS_HZ
+
+/* Define to 1 if the C99 type int16_t is available */
+#undef HAS_INT16_T
+
+/* Define to 1 if the C99 type int32_t is available */
+#undef HAS_INT32_T
+
+/* Define to 1 if the C99 type int64_t is available */
+#undef HAS_INT64_T
+
+/* Define to 1 if the C99 type int8_t is available */
+#undef HAS_INT8_T
+
+/* Define to 1 if integer constants are valid template arguments */
+#undef HAS_INT_TEMPLATE_ARGS
+
+/* Define to 1 if templated subclasses are correctly in the namespace of the
+   parent class */
+#undef HAS_LOCAL_TEMPLATES
+
+/* Define to 1 if __attribute((may_alias)) works */
+#undef HAS_MAY_ALIAS
+
+/* Define to 1 if initializers of static const integral members work */
+#undef HAS_MEMBER_INIT
+
+/* Define to 1 if subclasses have access to private members */
+#undef HAS_PRIVATE_ACCESS
+
+/* Define to 1 if ptrdiff_t type is available */
+#undef HAS_PTRDIFF_T
+
+/* Define to 1 if reinterpret_cast<> works */
+#undef HAS_REINTERPRET_CAST
+
+/* Define to 1 if _SC_CLK_TCK is available for sysconf */
+#undef HAS_SC_CLK_TCK
+
+/* Define to 1 if the STDERR_FILENO define is available */
+#undef HAS_STDERR_FILENO
+
+/* Define to 1 if the STDIN_FILENO define is available */
+#undef HAS_STDIN_FILENO
+
+/* Define to 1 if the STDOUT_FILENO define is available */
+#undef HAS_STDOUT_FILENO
+
+/* Define to 1 if struct timeval is available */
+#undef HAS_STRUCT_TIMEVAL
+
+/* Define to 1 if struct tms is available */
+#undef HAS_STRUCT_TMS
+
+/* Define to 1 if casting in template arguments work */
+#undef HAS_TEMPLATE_CASTS
+
+/* Define to 1 if the C99 type uint16_t is available */
+#undef HAS_UINT16_T
+
+/* Define to 1 if the C99 type uint32_t is available */
+#undef HAS_UINT32_T
+
+/* Define to 1 if the C99 type uint64_t is available */
+#undef HAS_UINT64_T
+
+/* Define to 1 if the C99 type uint8_t is available */
+#undef HAS_UINT8_T
+
+/* Define to 1 if __attribute((visibility("default"))) works */
+#undef HAS_VISIBILITY_DEFAULT
+
+/* Define to 1 if __attribute((visibility("hidden"))) works */
+#undef HAS_VISIBILITY_HIDDEN
+
+/* Define to 1 if __attribute((visibility("internal"))) works */
+#undef HAS_VISIBILITY_INTERNAL
+
+/* Define to 1 if the __null keyword is available */
+#undef HAS__NULL_TYPE
+
+/* Define if additional settings are required for this architecture */
+#undef HAVE_ADDONS
+
+/* Define to 1 if the always_inline attribute is available */
+#undef HAVE_ALWAYS_INLINE
+
+/* Define to 1 if you have the <assert.h> header file. */
+#undef HAVE_ASSERT_H
+
+/* Define to 1 if __sync arithmetic functions are available */
+#undef HAVE_ATOMIC_ADDSUB
+
+/* Define to 1 if __sync_val_compare_and_swap is available */
+#undef HAVE_ATOMIC_COMPARE_AND_SWAP
+
+/* Define to 1 if you have the <bstrings.h> header file. */
+#undef HAVE_BSTRINGS_H
+
+/* Define to 1 if you have the <bstring.h> header file. */
+#undef HAVE_BSTRING_H
+
+/* Define to 1 if __builtin_expect is available */
+#undef HAVE_BUILTIN_EXPECT
+
+/* Define to 1 if __builtin_memcpy is available */
+#undef HAVE_BUILTIN_MEMCPY
+
+/* Define to 1 if __builtin_memmove is available */
+#undef HAVE_BUILTIN_MEMMOVE
+
+/* Define to 1 if __builtin_memset is available */
+#undef HAVE_BUILTIN_MEMSET
+
+/* Define to 1 if you have the `clock' function. */
+#undef HAVE_CLOCK
+
+/* Define to 1 if you have the `close' function. */
+#undef HAVE_CLOSE
+
+/* Define to 1 if you have the <ctype.h> header file. */
+#undef HAVE_CTYPE_H
+
+/* Define to 1 if you don't have `vprintf' but do have `_doprnt.' */
+#undef HAVE_DOPRNT
+
+/* Define to 1 if you have the `dup' function. */
+#undef HAVE_DUP
+
+/* Define to 1 if you have the `dup2' function. */
+#undef HAVE_DUP2
+
+/* Define to 1 if you have the <errno.h> header file. */
+#undef HAVE_ERRNO_H
+
+/* Define to 1 if you have the `execve' function. */
+#undef HAVE_EXECVE
+
+/* Define to 1 if you have the <fcntl.h> header file. */
+#undef HAVE_FCNTL_H
+
+/* Define to 1 to use the autoconfig feature selection */
+#undef HAVE_FEATURE_SELECTION
+
+/* Define to 1 if float SIMD data types are available */
+#undef HAVE_FLOAT_SIMD
+
+/* Define to 1 if you have the `fopen64' function. */
+#undef HAVE_FOPEN64
+
+/* Define to 1 if you have the `fork' function. */
+#undef HAVE_FORK
+
+/* Define to 1 if you have the `free' function. */
+#undef HAVE_FREE
+
+/* Define to 1 if you have the `fstat' function. */
+#undef HAVE_FSTAT
+
+/* Define to 1 if you have the `gettimeofday' function. */
+#undef HAVE_GETTIMEOFDAY
+
+/* Define to 1 if you have the `htonl' function. */
+#undef HAVE_HTONL
+
+/* Define to 1 if you have the `htons' function. */
+#undef HAVE_HTONS
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the `isspace' function. */
+#undef HAVE_ISSPACE
+
+/* Define to 1 if you have the `kill' function. */
+#undef HAVE_KILL
+
+/* Define to 1 if llseek is available */
+#undef HAVE_LLSEEK
+
+/* Define to 1 if you have the `longjmp' function. */
+#undef HAVE_LONGJMP
+
+/* Define to 1 if the system has the type `long long'. */
+#undef HAVE_LONG_LONG
+
+/* Define to 1 if you have the `lseek' function. */
+#undef HAVE_LSEEK
+
+/* Define to 1 if lseek64 is available */
+#undef HAVE_LSEEK64
+
+/* Define to 1 if you have the `malloc' function. */
+#undef HAVE_MALLOC
+
+/* Define to 1 if you have the <math.h> header file. */
+#undef HAVE_MATH_H
+
+/* Define to 1 if you have the `memchr' function. */
+#undef HAVE_MEMCHR
+
+/* Define to 1 if you have the `memmove' function. */
+#undef HAVE_MEMMOVE
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the `memset' function. */
+#undef HAVE_MEMSET
+
+/* Define to 1 if you have the <netinet/in.h> header file. */
+#undef HAVE_NETINET_IN_H
+
+/* Define to 1 if the noreturn attribute is available */
+#undef HAVE_NORETURN
+
+/* Define to 1 if you have the `ntohl' function. */
+#undef HAVE_NTOHL
+
+/* Define to 1 if you have the `ntohs' function. */
+#undef HAVE_NTOHS
+
+/* Define to 1 if you have the `open' function. */
+#undef HAVE_OPEN
+
+/* Define to 1 if you have the `pipe' function. */
+#undef HAVE_PIPE
+
+/* Define if you have POSIX threads libraries and header files. */
+#undef HAVE_PTHREAD
+
+/* Define to 1 if you have the `pthread_create' function. */
+#undef HAVE_PTHREAD_CREATE
+
+/* Define to 1 if PTHREAD_CREATE_DETACHED is available */
+#undef HAVE_PTHREAD_CREATE_DETACHED
+
+/* Define to 1 if you have the `pthread_detach' function. */
+#undef HAVE_PTHREAD_DETACH
+
+/* Define to 1 if you have the `pthread_equal' function. */
+#undef HAVE_PTHREAD_EQUAL
+
+/* Define to 1 if you have the <pthread.h> header file. */
+#undef HAVE_PTHREAD_H
+
+/* Define to 1 if you have the `pthread_mutexattr_init' function. */
+#undef HAVE_PTHREAD_MUTEXATTR_INIT
+
+/* Define to 1 if you have the `pthread_mutex_init' function. */
+#undef HAVE_PTHREAD_MUTEX_INIT
+
+/* Define to 1 if you have the `pthread_self' function. */
+#undef HAVE_PTHREAD_SELF
+
+/* Define to 1 if you have the `read' function. */
+#undef HAVE_READ
+
+/* Define to 1 if you have the `rename' function. */
+#undef HAVE_RENAME
+
+/* Define to 1 if the __restrict__ pointer attribute is available */
+#undef HAVE_RESTRICTED_PTRS
+
+/* Define to 1 if you have the <semaphore.h> header file. */
+#undef HAVE_SEMAPHORE_H
+
+/* Define to 1 if you have the `sem_init' function. */
+#undef HAVE_SEM_INIT
+
+/* Define to 1 if you have the <setjmp.h> header file. */
+#undef HAVE_SETJMP_H
+
+/* Define to 1 if you have the `sigaction' function. */
+#undef HAVE_SIGACTION
+
+/* Define to 1 if you have the `sigemptyset' function. */
+#undef HAVE_SIGEMPTYSET
+
+/* Define to 1 if you have the `signal' function. */
+#undef HAVE_SIGNAL
+
+/* Define to 1 if you have the <signal.h> header file. */
+#undef HAVE_SIGNAL_H
+
+/* Define to 1 if SIGSEGV signal works */
+#undef HAVE_SIGSEGV
+
+/* Define to 1 if you have the `sleep' function. */
+#undef HAVE_SLEEP
+
+/* Define to 1 if you have the `snprintf' function. */
+#undef HAVE_SNPRINTF
+
+/* Define to 1 if you have the <stdarg.h> header file. */
+#undef HAVE_STDARG_H
+
+/* Define to 1 if you have the <stddef.h> header file. */
+#undef HAVE_STDDEF_H
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#undef HAVE_STDIO_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the `strchr' function. */
+#undef HAVE_STRCHR
+
+/* Define to 1 if you have the `strerror' function. */
+#undef HAVE_STRERROR
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the `strrchr' function. */
+#undef HAVE_STRRCHR
+
+/* Define to 1 if you have the `strtod' function. */
+#undef HAVE_STRTOD
+
+/* Define to 1 if you have the `strtol' function. */
+#undef HAVE_STRTOL
+
+/* Define to 1 if you have the `sysconf' function. */
+#undef HAVE_SYSCONF
+
+/* Define to 1 if you have the `system' function. */
+#undef HAVE_SYSTEM
+
+/* Define to 1 if you have the <sys/param.h> header file. */
+#undef HAVE_SYS_PARAM_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/times.h> header file. */
+#undef HAVE_SYS_TIMES_H
+
+/* Define to 1 if you have the <sys/time.h> header file. */
+#undef HAVE_SYS_TIME_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the `time' function. */
+#undef HAVE_TIME
+
+/* Define to 1 if you have the `times' function. */
+#undef HAVE_TIMES
+
+/* Define to 1 if you have the <time.h> header file. */
+#undef HAVE_TIME_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to 1 if the system has the type `unsigned long long'. */
+#undef HAVE_UNSIGNED_LONG_LONG
+
+/* Define to 1 if you have the `vprintf' function. */
+#undef HAVE_VPRINTF
+
+/* Define to 1 if you have the `vsnprintf' function. */
+#undef HAVE_VSNPRINTF
+
+/* Define to 1 if you have the `write' function. */
+#undef HAVE_WRITE
+
+/* Define to 1 if the system has the type `__int64'. */
+#undef HAVE___INT64
+
+/* Define to 1 for big endian */
+#undef JPG_BIG_ENDIAN
+
+/* Define to 1 for little endian */
+#undef JPG_LIL_ENDIAN
+
+/* Define to the exponent of a power of two giving the worst-case alignment of
+   components */
+#undef NATURAL_ALIGNMENT
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Define to the necessary symbol if this constant uses a non-standard name on
+   your system. */
+#undef PTHREAD_CREATE_JOINABLE
+
+/* Define as the return type of signal handlers (`int' or `void'). */
+#undef RETSIGTYPE
+
+/* Define to 1 if required argument to signal handlers is "..." */
+#undef SIG_ARG_TYPE_DOTS
+
+/* Define to 1 if required argument to signal handlers is int */
+#undef SIG_ARG_TYPE_INT
+
+/* The size of `char', as computed by sizeof. */
+#undef SIZEOF_CHAR
+
+/* The size of `int', as computed by sizeof. */
+#undef SIZEOF_INT
+
+/* The size of `long', as computed by sizeof. */
+#undef SIZEOF_LONG
+
+/* The size of `long long', as computed by sizeof. */
+#undef SIZEOF_LONG_LONG
+
+/* The size of `short', as computed by sizeof. */
+#undef SIZEOF_SHORT
+
+/* The size of `void *', as computed by sizeof. */
+#undef SIZEOF_VOID_P
+
+/* The size of `__int64', as computed by sizeof. */
+#undef SIZEOF___INT64
+
+/* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
+#undef STAT_MACROS_BROKEN
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
+#undef TIME_WITH_SYS_TIME
+
+/* Define if you want to use multithreading. */
+#undef USE_MULTITHREADING
+
+/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+   significant byte first (like Motorola and SPARC, unlike Intel). */
+#if defined AC_APPLE_UNIVERSAL_BUILD
+# if defined __BIG_ENDIAN__
+#  define WORDS_BIGENDIAN 1
+# endif
+#else
+# ifndef WORDS_BIGENDIAN
+#  undef WORDS_BIGENDIAN
+# endif
+#endif
+
+/* Define to empty if `const' does not conform to ANSI C. */
+#undef const
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif
+
+/* Define to `unsigned int' if <sys/types.h> does not define. */
+#undef size_t
