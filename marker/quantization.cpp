@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.cpp,v 1.18 2012-09-23 19:27:16 thor Exp $
+** $Id: quantization.cpp,v 1.19 2012-11-09 13:09:16 thor Exp $
 **
 */
 
@@ -124,7 +124,7 @@ void Quantization::WriteMarker(class ByteStream *io)
 void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortrafo)
 {
   int i,j;
-  const int *table;
+  const int *table = NULL;
   int scale;
   int hdrscale;
 

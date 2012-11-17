@@ -46,7 +46,7 @@
 #** Configuration script for the jpeg project,
 #** THOR Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.5 2012-06-02 18:24:12 thor Exp $
+#** $Id: configure.in,v 1.6 2012-10-11 13:41:50 thor Exp $
 #**
 #** In this module: autoconf script for libjpeg
 #**********************************************************************************/

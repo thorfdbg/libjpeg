@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** A variant of JPEG LS for the proposed vesa compression. Experimental.
 **
-** $Id: vesadctscan.hpp,v 1.7 2012-10-06 17:50:42 thor Exp $
+** $Id: vesadctscan.hpp,v 1.8 2012-11-01 17:24:32 thor Exp $
 **
 */
 
@@ -195,7 +195,7 @@ class VesaDCTScan : public JPEGLSScan {
   //
   // Update the DC value to what the decoder would reconstruct.
   // Bitlevel is the last bitplane that has been coded.
-  void UpdateDC(UBYTE cx,UBYTE bitlevel);
+  void UpdateDC(UBYTE cx,UBYTE bitlevel,int xstart,int xend);
   //
   // Decode a single level in a block.
   void DecodeEZWLevel(UBYTE cx,ULONG x,ULONG bitmask,UBYTE freq)

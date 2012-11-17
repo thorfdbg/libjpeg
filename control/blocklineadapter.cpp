@@ -51,7 +51,7 @@ the committee itself.
 ** downsampling filter for the hierarchical mode. This class does not
 ** implement a color transformer or a upsampling filter (in the usual sense)
 **
-** $Id: blocklineadapter.cpp,v 1.18 2012-09-15 21:45:51 thor Exp $
+** $Id: blocklineadapter.cpp,v 1.19 2012-11-17 09:26:13 thor Exp $
 **
 */
 
@@ -314,8 +314,13 @@ void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
 void BlockLineAdapter::ResetToStartOfImage(void)
 { 
   for(UBYTE i = 0;i < m_ucCount;i++) {
+    struct Line *line;
     m_pppQImage[i]     = &m_ppQTop[i];
     m_pppImage[i]      = &m_ppTop[i];
+    while ((line = m_ppTop[i])) {
+      m_ppTop[i] = line->m_pNext;
+      FreeLine(line,i);
+    }
     m_pulReadyLines[i] = 0;
   }
 }

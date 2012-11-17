@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This header provides the main function.
 **
-** $Id: main.cpp,v 1.81 2012-10-11 12:54:03 thor Exp $
+** $Id: main.cpp,v 1.84 2012-11-16 19:47:27 thor Exp $
 **
 */
 
@@ -281,7 +281,7 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
 	    if (bmm->bmm_bFloat) {
 	      ULONG count = bmm->bmm_ulWidth * height;
 	      UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
-	      double r,g,b;
+	      double r = 0.0,g = 0.0,b = 0.0; // shut up the compiler.
 	      do {
 		switch(bmm->bmm_usDepth) {
 		case 1:
@@ -752,7 +752,7 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
     bool big = false;
     if (fscanf(in,"%c%c\n",&id,&type) == 2) {
       if (id == 'P' && (type == '5' || type == '6' || type == 'f' || type == 'F')) {
-	if (type == 5) {
+	if (type == '5') {
 	  depth = 1;
 	} else {
 	  depth = 3; // PFM is three-component.
@@ -762,7 +762,7 @@ void Encode(const char *source,const char *target,int quality,int hdrquality,int
 	  fgets(buffer,sizeof(buffer),in);
 	}
 	ungetc(id,in);
-	if (fscanf(in,"%d %d %d\n",&width,&height,&max) == 3) {
+	if (fscanf(in,"%d %d %d%*c",&width,&height,&max) == 3) {
 	  prec = 0;
 	  while((1 << prec) < max)
 	    prec++;

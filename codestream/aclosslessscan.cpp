@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents the scan including the scan header.
 **
-** $Id: aclosslessscan.cpp,v 1.25 2012-09-22 20:51:40 thor Exp $
+** $Id: aclosslessscan.cpp,v 1.26 2012-11-02 20:50:17 thor Exp $
 **
 */
 
@@ -134,6 +134,8 @@ void ACLosslessScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
   int i;
 
   FindComponentDimensions();
+
+  m_bNoPrediction = true;
   
   for(i = 0;i < m_ucCount;i++) {
     dc = m_pScan->DCConditionerOf(i);
@@ -166,6 +168,8 @@ void ACLosslessScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
 
   FindComponentDimensions();
 
+  m_bNoPrediction = true;
+  
   for(i = 0;i < m_ucCount;i++) {
     dc = m_pScan->DCConditionerOf(i);
 

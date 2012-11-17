@@ -46,13 +46,15 @@ the committee itself.
 /*
 ** A variant of JPEG LS for the proposed vesa compression. Experimental.
 **
-** $Id: vesadctscan.cpp,v 1.9 2012-10-06 17:50:42 thor Exp $
+** $Id: vesadctscan.cpp,v 1.11 2012-11-09 13:09:16 thor Exp $
 **
 */
 
 /// Includes
 #include "codestream/jpeglsscan.hpp"
 #include "codestream/vesadctscan.hpp"
+#include "codestream/tables.hpp"
+#include "marker/frame.hpp"
 ///
 
 /// Scan pattern.
@@ -149,6 +151,7 @@ VesaDCTScan::~VesaDCTScan(void)
 // Also called (indirectly) to start writing or parsing a new scan.
 void VesaDCTScan::FindComponentDimensions(void)
 { 
+  UWORD restart = m_pFrame->TablesOf()->RestartIntervalOf();
   UBYTE cx;
   ULONG y;
    
@@ -187,6 +190,8 @@ void VesaDCTScan::FindComponentDimensions(void)
       m_ulMaxOvershoot = m_ulWidth[cx] << 1;
   }
   m_ulBandwidth      = (8 * m_lNear * m_ulSamplesPerLine * 4) / 100;
+  if (restart)
+    m_ulBandwidth   /= restart;
   m_ulBitBudget      = m_ulBandwidth;
 }
 ///
@@ -194,11 +199,11 @@ void VesaDCTScan::FindComponentDimensions(void)
 /// VesaDCTScan::UpdateDC
 // Update the DC value to what the decoder would reconstruct.
 // Bitlevel is the last bitplane that has been coded.
-void VesaDCTScan::UpdateDC(UBYTE cx,UBYTE bitlevel)
+void VesaDCTScan::UpdateDC(UBYTE cx,UBYTE bitlevel,int xstart,int xend)
 {
-  LONG x;
+  int x;
   
-  for(x = 0;x < LONG(m_ulWidth[cx]);x+=4) { 
+  for(x = xstart;x < xend;x+=4) { 
     LONG v = m_plBuffer[cx][0][x];
     // Mask out all bitplanes below the coded bitplane.
     v     &= ~((1 << bitlevel) - 1);
@@ -230,6 +235,10 @@ bool VesaDCTScan::ParseMCU(void)
 {
   int lines             = m_ulRemaining[0]; // total number of MCU lines processed.
   bool second           = false;
+  UWORD restart         = m_pFrame->TablesOf()->RestartIntervalOf();
+  int xstart[4];
+  int xend[4];          // Start and end of the precincts.
+  int precwidth[4];
   UBYTE cx;
   UBYTE bits[4];
   UBYTE maxbits;
@@ -246,67 +255,112 @@ bool VesaDCTScan::ParseMCU(void)
 
   lines = (lines + 3) & -4;
 
+  //
+  // Loop over the lines.
   do {
-    // Get the max bit counter from the stream.
-    UBYTE m = 0;
-    maxbits = 0;
     for(cx = 0;cx < m_ucCount;cx++) {
-      m = 0;
-      while((m_Stream.Get<1>()))
-	m++;
-      bits[cx] = m;
-      if (m > maxbits)
-	maxbits = m;
-      //
-      // Clear the data.
-      for(y = 0;y < 4;y++) {
-	memset(m_plBuffer[cx][y],0,((m_ulWidth[cx] + 3) & (-4)) * sizeof(LONG));
+      if (restart == 0) {
+	precwidth[cx] = m_ulWidth[cx];
+      } else {
+	precwidth[cx] = (m_ulWidth[cx] + restart - 1) / restart;
       }
+      xstart[cx] = 0;
     }
     //
-    // Receive the bits.
-    {
-      bool abort          = false;
-      UBYTE bitlevel;
-      assert(m_ucCount < 4);
+    // Loop over the precincts.
+    bool more = false;
+    do {
+      // Compute the end of the current precinct.
+      for(cx = 0;cx < m_ucCount;cx++) {
+	xend[cx] = xstart[cx] + precwidth[cx];
+	if (xend[cx] > LONG(m_ulWidth[cx]))
+	  xend[cx] = m_ulWidth[cx];
+	xend[cx] = (xend[cx] + 3) & -4;
+      }
       //
-      bitlevel = maxbits;
-      while(bitlevel && abort == false) {
-	ULONG level  = 0; // Position within the DCT scan pattern.
-	for(cx = 0;cx < m_ucCount;cx++) {
-	  for(y = 0;y < 4;y++) {
-	    ClearEncodedFlags((ULONG *)(m_plBuffer[cx][y]),(m_ulWidth[cx] + 3) & -4);
-	  }
+      // Get the max bit counter from the stream. This is always over a precinct
+      // and all components.
+      UBYTE m = 0;
+      maxbits = 0;
+      for(cx = 0;cx < m_ucCount;cx++) {
+	m = 0;
+	while((m_Stream.Get<1>()))
+	  m++;
+	bits[cx] = m;
+	if (m > maxbits)
+	  maxbits = m;
+	//
+	// Clear the data.
+	for(y = 0;y < 4;y++) {
+	  memset(m_plBuffer[cx][y] + xstart[cx],0,(xend[cx] - xstart[cx]) * sizeof(LONG));
 	}
-	bitlevel--;
-	do {
+      }
+      //
+      // Receive the bits.
+      {
+	bool abort          = false;
+	UBYTE bitlevel;
+	assert(m_ucCount < 4);
+	//
+	bitlevel = maxbits;
+	while(bitlevel && abort == false) {
+	  ULONG level  = 0; // Position within the DCT scan pattern.
 	  for(cx = 0;cx < m_ucCount;cx++) {
-	    if (bitlevel < bits[cx]) {
-	      // Enough data available?
-	      if (m_ulUsedBits + (((m_ulWidth[cx] + 3) >> 2) << 2) >= m_ulBitBudget) {
-		abort = true;
-		break;
-	      } else {
-		for(x = 0;x < LONG(m_ulWidth[cx]);x += 4) {
-		  DecodeEZWLevel(cx,x,1UL << bitlevel,level);
-		  //printf("%d:%d\n",x,m_ulUsedBits);
+	    for(y = 0;y < 4;y++) {
+	      ClearEncodedFlags((ULONG *)(m_plBuffer[cx][y] + xstart[cx]),xend[cx] - xstart[cx]);
+	    }
+	  }
+	  bitlevel--;
+	  do {
+	    for(cx = 0;cx < m_ucCount;cx++) {
+	      if (bitlevel < bits[cx]) {
+		// Enough data available?
+		if (m_ulUsedBits + (((xend[cx] - xstart[cx]) >> 2) << 2) >= m_ulBitBudget) {
+		  abort = true;
+		  break;
+		} else {
+		  for(x = xstart[cx];x < xend[cx];x += 4) {
+		    DecodeEZWLevel(cx,x,1UL << bitlevel,level);
+		    //printf("%d:%d\n",x,m_ulUsedBits);
+		  }
 		}
 	      }
 	    }
-	  }
-	} while(abort == false && ++level < 16);
+	  } while(abort == false && ++level < 16);
+	}
       }
-    }
-    // 
-    // Check how many bits are available for the next line.
-    if (m_ulUsedBits < m_ulBitBudget) {
-      m_ulBitBudget -= m_ulUsedBits;
-    } else {
-      m_ulBitBudget  = 0;
-    }
-    m_ulBitBudget   += m_ulBandwidth;
-    m_ulUsedBits     = 0;
-    //
+      //
+      // Advance to the next precinct.
+      more = false;
+      for(cx = 0;cx < m_ucCount;cx++) {
+	if (xend[cx] > xstart[cx]) {
+	  more = true;
+	  xstart[cx] = xend[cx];
+	}
+      }
+      //
+      // Check how many bits are available for the next line.
+      if (m_ulUsedBits < m_ulBitBudget) {
+	m_ulBitBudget -= m_ulUsedBits;
+      } else {
+	m_ulBitBudget  = 0;
+      }
+      m_ulBitBudget   += m_ulBandwidth;
+      m_ulUsedBits     = 0;
+      //
+      // Check for a restart marker. This is a simple 0xff byte here.
+      if (restart) {
+	m_Stream.SkipStuffing();
+	if (m_Stream.ByteStreamOf()->Get() != 0xff) {
+	  JPG_WARN(MALFORMED_STREAM,"VesaDCTScan::ParseMCU",
+		   "missing synchronization byte, trying to resync");
+	  while(m_Stream.ByteStreamOf()->Get() != 0xff){}
+	}
+	m_Stream.OpenForRead(m_Stream.ByteStreamOf());
+      }
+      //
+      // Repeat until there are no more precincts on the line.
+    } while(more);
     //
     // Inverse transform the data.
     for(cx = 0;cx < m_ucCount;cx++) {
@@ -329,14 +383,14 @@ bool VesaDCTScan::ParseMCU(void)
 	m_plBuffer[cx][0][x] += m_plDC[cx][x >> 2];
 	m_plDC[cx][x >> 2]    = m_plBuffer[cx][0][x];
 	/*
-	if (cx == 0 && x == 0) 
+	  if (cx == 0 && x == 0) 
 	  printf("%d %d\n",x,m_plDC[cx][x >> 2]);
 	*/
 	BackwardDCT(m_plBuffer[cx][0]+x,m_plBuffer[cx][1]+x,
 		    m_plBuffer[cx][2]+x,m_plBuffer[cx][3]+x);
       }
       /*
-      if (cx == 0) 
+	if (cx == 0) 
 	printf("\n");
       */
       //
@@ -361,7 +415,7 @@ bool VesaDCTScan::ParseMCU(void)
     lines           -= 4;
     second           = true;
   } while(lines);
-
+  
   return false;
 }
 ///
@@ -372,6 +426,10 @@ bool VesaDCTScan::WriteMCU(void)
 {
   int lines             = m_ulRemaining[0]; // total number of MCU lines processed.
   bool second           = false;
+  UWORD restart         = m_pFrame->TablesOf()->RestartIntervalOf();
+  int precwidth[4];   // size of a precinct in pixels.
+  int xstart[4];      // start X position of the current precinct.
+  int xend[4];        // end of the precinct.
   UBYTE cx;
   UBYTE bits[4];
   UBYTE maxbits;
@@ -400,6 +458,15 @@ bool VesaDCTScan::WriteMCU(void)
 	}
       }
       //
+      // Compute the precinct width and initialize the start
+      // position of the precinct.
+      if (restart == 0) {
+	precwidth[cx] = m_ulWidth[cx];
+      } else {
+	precwidth[cx] = (m_ulWidth[cx] + restart - 1) / restart;
+      }
+      xstart[cx] = 0;
+      //
       for(y = 0;y < 4;y++) {
 	LONG last;
 	memcpy(m_plBuffer[cx][y],line->m_pData,m_ulWidth[cx] * sizeof(LONG));
@@ -425,93 +492,121 @@ bool VesaDCTScan::WriteMCU(void)
       }
     }
     //
-    // Find the maximum for each component and transmit.
-    maxbits = 0;
-    for(cx = 0;cx < m_ucCount;cx++) {
-      ULONG max = 0;
-      for(y = 0;y < 4;y++) {
-	for(x = 0;x < (LONG(m_ulWidth[cx] + 3) & -4);x++) {
-	  LONG v = m_plBuffer[cx][y][x];
-	  if (v < 0) {
-	    v = -v;
-	    m_plBuffer[cx][y][x] = v | Signed;
+    // Loop over the precincts.
+    bool more = false;
+    do {
+      // Find the maximum for each component and transmit.
+      maxbits = 0;
+      more    = false;
+      for(cx = 0;cx < m_ucCount;cx++) {
+	ULONG max = 0;
+	//
+	// Compute the end position of the precinct.
+	xend[cx] = xstart[cx] + precwidth[cx];
+	if (xend[cx] > LONG(m_ulWidth[cx]))
+	  xend[cx] = m_ulWidth[cx];
+	xend[cx] = (xend[cx] + 3) & -4;
+	//
+	for(y = 0;y < 4;y++) {
+	  for(x = xstart[cx];x < xend[cx];x++) {
+	    LONG v = m_plBuffer[cx][y][x];
+	    if (v < 0) {
+	      v = -v;
+	      m_plBuffer[cx][y][x] = v | Signed;
+	    }
+	    if (ULONG(v) > max) max = v;
 	  }
-	  if (ULONG(v) > max) max = v;
 	}
+	bits[cx] = 0;
+	while(max) {
+	  m_Stream.Put<1>(1);
+	  max >>=1;
+	  bits[cx]++;
+	  if (bits[cx] > maxbits)
+	    maxbits = bits[cx];
+	}
+	m_Stream.Put<1>(0);
       }
-      bits[cx] = 0;
-      while(max) {
-	m_Stream.Put<1>(1);
-	max >>=1;
-	bits[cx]++;
-	if (bits[cx] > maxbits)
-	  maxbits = bits[cx];
-      }
-      m_Stream.Put<1>(0);
-    }
-    //
-    // Transmit the bits.
-    {
-      bool abort          = false;
-      UBYTE bitlevel;
-      assert(m_ucCount < 4);
       //
-      bitlevel = maxbits;
-      while(bitlevel && abort == false) {
-	ULONG level  = 0; // Position within the DCT scan pattern.
-	for(cx = 0;cx < m_ucCount;cx++) {
-	  for(y = 0;y < 4;y++) {
-	    ClearEncodedFlags((ULONG *)(m_plBuffer[cx][y]),(m_ulWidth[cx] + 3) & -4);
-	  }
-	}
-	bitlevel--;
-	do {
+      // Transmit the bits.
+      {
+	bool abort          = false;
+	UBYTE bitlevel;
+	assert(m_ucCount < 4);
+	//
+	bitlevel = maxbits;
+	while(bitlevel && abort == false) {
+	  ULONG level  = 0; // Position within the DCT scan pattern.
 	  for(cx = 0;cx < m_ucCount;cx++) {
-	    if (bitlevel < bits[cx]) {
-	      // Enough data available?
-	      if (m_ulUsedBits + (((m_ulWidth[cx] + 3) >> 2) << 2) >= m_ulBitBudget) {
-		UBYTE c;
-		abort = true;
-		if (level) {
-		  for(c = 0;c < m_ucCount;c++) {
-		    UpdateDC(c,bitlevel);
-		  }
-		} else {
-		  for(c = 0;c < cx;c++) {
-		    UpdateDC(c,bitlevel);
-		  }
-		  if (bitlevel + 1 < maxbits) {
-		    for(c = cx;c < m_ucCount;c++) {
-		      UpdateDC(c,bitlevel + 1);
+	    for(y = 0;y < 4;y++) {
+	      ClearEncodedFlags((ULONG *)(m_plBuffer[cx][y] + xstart[cx]),xend[cx] - xstart[cx]);
+	    }
+	  }
+	  bitlevel--;
+	  do {
+	    for(cx = 0;cx < m_ucCount;cx++) {
+	      if (bitlevel < bits[cx]) {
+		// Enough data available?
+		if (m_ulUsedBits + (((xend[cx] - xstart[cx]) >> 2) << 2) >= m_ulBitBudget) {
+		  UBYTE c;
+		  abort = true;
+		  if (level) {
+		    for(c = 0;c < m_ucCount;c++) {
+		      UpdateDC(c,bitlevel,xstart[cx],xend[cx]);
+		    }
+		  } else {
+		    for(c = 0;c < cx;c++) {
+		      UpdateDC(c,bitlevel,xstart[cx],xend[cx]);
+		    }
+		    if (bitlevel + 1 < maxbits) {
+		      for(c = cx;c < m_ucCount;c++) {
+			UpdateDC(c,bitlevel + 1,xstart[cx],xend[cx]);
+		      }
 		    }
 		  }
-		}
-		break;
-	      } else {
-		for(x = 0;x < LONG(m_ulWidth[cx]);x += 4) {
-		  EncodeEZWLevel(cx,x,1UL << bitlevel,level);
-		  //printf("%d:%d\n",x,m_ulUsedBits);
+		  break;
+		} else {
+		  for(x = xstart[cx];x < xend[cx];x += 4) {
+		    EncodeEZWLevel(cx,x,1UL << bitlevel,level);
+		    //printf("%d:%d\n",x,m_ulUsedBits);
+		  }
 		}
 	      }
 	    }
+	  } while(abort == false && ++level < 16);
+	}
+	if (abort == false) {
+	  for(cx = 0;cx < m_ucCount;cx++) {
+	    UpdateDC(cx,0,xstart[cx],xend[cx]);
 	  }
-	} while(abort == false && ++level < 16);
-      }
-      if (abort == false) {
-	for(cx = 0;cx < m_ucCount;cx++) {
-	  UpdateDC(cx,0);
 	}
       }
-    }
-    // 
-    // Check how many bits are available for the next line.
-    if (m_ulUsedBits < m_ulBitBudget) {
-      m_ulBitBudget -= m_ulUsedBits;
-    } else {
+      //
+      // 
+      // Check how many bits are available for the next line.
+      if (m_ulUsedBits < m_ulBitBudget) {
+	m_ulBitBudget -= m_ulUsedBits;
+      } else {
       m_ulBitBudget  = 0;
-    }
-    m_ulBitBudget   += m_ulBandwidth;
-    m_ulUsedBits     = 0;
+      }
+      m_ulBitBudget   += m_ulBandwidth;
+      m_ulUsedBits     = 0;
+      //
+      // Advance to the next precinct.
+      for(cx = 0;cx < m_ucCount;cx++) {
+	if (xend[cx] > xstart[cx]) {
+	  more = true;
+	  xstart[cx] = xend[cx];
+	}
+      }
+      //
+      // Write a restart indicator - here a simple 0xff byte.
+      if (restart) {
+	m_Stream.Flush();
+	m_Stream.ByteStreamOf()->Put(0xff);
+      }
+    } while(more);
+    //
     lines           -= 4;
     second           = true;
   } while(lines);
