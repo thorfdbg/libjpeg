@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.77 2012-10-07 15:58:08 thor Exp $
+** $Id: scan.cpp,v 1.78 2012-11-25 16:18:05 thor Exp $
 **
 */
 
@@ -502,7 +502,7 @@ void Scan::InstallDefaults(UBYTE depth,const struct JPG_TagItem *tags)
   for(UBYTE i = 0;i < depth;i++) {
     m_ucComponent[i] = i; // simply sequential
 
-    if (ishuffman && colortrafo) {
+    if (/*ishuffman &&*/ colortrafo) {
       m_ucDCTable[i] = (i == 0)?(0):(1);
     } else {
       m_ucDCTable[i] = 0;
@@ -510,7 +510,7 @@ void Scan::InstallDefaults(UBYTE depth,const struct JPG_TagItem *tags)
 
     //
     // AC coding not required for predictive.
-    if (ishuffman && !ispredictive && colortrafo) {
+    if (/*ishuffman &&*/ !ispredictive && colortrafo) {
       m_ucACTable[i] = (i == 0)?(0):(1);
     } else {
       m_ucACTable[i] = 0;

@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: lslosslesstrafo.cpp,v 1.3 2012-07-20 16:30:00 thor Exp $
+** $Id: lslosslesstrafo.cpp,v 1.4 2012-11-26 11:43:01 thor Exp $
 **
 */
 
@@ -197,14 +197,14 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
 	  switch(count) {
 	  case 4:
 	    if (dst[3] < m_lNear)               dst[3] = m_lNear;
-	    if (dst[3] > m_lMaxTrans + m_lNear) dst[3] = m_lMaxTrans - m_lNear;
+	    if (dst[3] > m_lMaxTrans - m_lNear) dst[3] = m_lMaxTrans - m_lNear;
 	  case 3:
 	    if (dst[2] < m_lNear)               dst[2] = m_lNear;
-	    if (dst[2] > m_lMaxTrans + m_lNear) dst[2] = m_lMaxTrans - m_lNear;
+	    if (dst[2] > m_lMaxTrans - m_lNear) dst[2] = m_lMaxTrans - m_lNear;
 	    if (dst[1] < m_lNear)               dst[1] = m_lNear;
-	    if (dst[1] > m_lMaxTrans + m_lNear) dst[1] = m_lMaxTrans - m_lNear;
+	    if (dst[1] > m_lMaxTrans - m_lNear) dst[1] = m_lMaxTrans - m_lNear;
 	    if (dst[0] < m_lNear)               dst[0] = m_lNear;
-	    if (dst[0] > m_lMaxTrans + m_lNear) dst[0] = m_lMaxTrans - m_lNear;
+	    if (dst[0] > m_lMaxTrans - m_lNear) dst[0] = m_lMaxTrans - m_lNear;
 	  }
 	}
 	// Step two: Transform with the matrix using the lifting steps of the
