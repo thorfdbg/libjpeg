@@ -46,7 +46,7 @@ the committee itself.
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: lslosslesstrafo.cpp,v 1.4 2012-11-26 11:43:01 thor Exp $
+** $Id: lslosslesstrafo.cpp,v 1.5 2012-12-04 18:47:06 thor Exp $
 **
 */
 
@@ -450,8 +450,8 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,const s
 	  out[2]   = m_usMatrix[2][0] * out[0] + m_usMatrix[2][1] * out[1];
 	  out[2] >>= m_ucRightShift[2];
 	  out[2]   = (m_bCentered[2])?(src[2] - out[2]):(src[2] + out[2]);
-	  if (out[2] < 0)         out[2] += m_lModulo;
-	  if (out[2] > m_lModulo) out[2] -= m_lModulo;
+	  if (out[2] < 0)          out[2] += m_lModulo;
+	  if (out[2] >= m_lModulo) out[2] -= m_lModulo;
 	  break;
 	}
 	//
