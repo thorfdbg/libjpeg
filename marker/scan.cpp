@@ -47,7 +47,7 @@ the committee itself.
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.78 2012-11-25 16:18:05 thor Exp $
+** $Id: scan.cpp,v 1.79 2013-01-05 13:30:27 thor Exp $
 **
 */
 
@@ -1026,7 +1026,7 @@ class HuffmanDecoder *Scan::ACHuffmanDecoderOf(UBYTE idx) const
 
   assert(idx < 4);
 
-  t = m_pFrame->TablesOf()->FindACHuffmanTable(m_ucDCTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
+  t = m_pFrame->TablesOf()->FindACHuffmanTable(m_ucACTable[idx],m_pFrame->ScanTypeOf(),m_pFrame->PrecisionOf(),
 					       m_pFrame->HiddenPrecisionOf(),m_pFrame->TablesOf()->UseResiduals());
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanDecoderOf","requested AC Huffman coding table not defined");
