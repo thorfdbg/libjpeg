@@ -548,7 +548,7 @@ void HuffmanTemplate::BuildDecoder(void)
 	  JPG_THROW(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker","Huffman table marker depends on undefined data");
 	// There are codes of this lengths.
 	code += m_ucLengths[i];
-	if (code >= 1UL << (i + 1))
+	if (code > 1UL << (i + 1) || (code == 1UL << (i + 1) && values + m_ucLengths[i] < m_pucValues + m_ulCodewords))
 	  JPG_THROW(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker",
 		    "Huffman table corrupt - entry depends on more bits than available for the bit length");
 	class HuffmanDecoder *huff = new(m_pEnviron) class HuffmanDecoder(values,i+1-lastbits,
