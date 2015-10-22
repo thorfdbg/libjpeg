@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
  * The Art-Deco (MQ) decoder and encoder as specified by the jpeg2000 
  * standard, FDIS, Annex C
  *
- * $Id: arthdeco.hpp,v 1.8 2012-06-02 10:27:13 thor Exp $
+ * $Id: arthdeco.hpp,v 1.16 2014/09/30 08:33:16 thor Exp $
  *
  */
 
@@ -61,8 +41,13 @@ the committee itself.
 #include "std/string.hpp"
 ///
 
+/// Forwards
+class Checksum;
+///
+
 /// MQCoder
 // The coder itself.
+#if ACCUSOFT_CODE
 class MQCoder : public JObject {
   //
 public:
@@ -95,10 +80,13 @@ private:
   // The bytestream we code from or code into.
   class ByteStream *m_pIO;
   //
+  // The checksum we keep updating.
+  class Checksum   *m_pChk;
+  //
   // A single context information
   struct MQContext {
     UBYTE m_ucIndex; // status in the index table
-    UBYTE m_bMPS;    // most probable symbol
+    bool  m_bMPS;    // most probable symbol
   }       m_Contexts[Count];
   //
   // Qe probability estimates.
@@ -128,10 +116,10 @@ public:
   }
   //
   // Open for writing.
-  void OpenForWrite(class ByteStream *io);
+  void OpenForWrite(class ByteStream *io,class Checksum *chk);
   //
   // Open for reading.
-  void OpenForRead(class ByteStream *io);
+  void OpenForRead(class ByteStream *io,class Checksum *chk);
   //
   // Read a single bit from the MQ coder in the given context.
   bool Get(UBYTE ctxt);
@@ -144,6 +132,7 @@ public:
   void Flush();
   //
 };
+#endif
 ///
 
 ///

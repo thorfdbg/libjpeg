@@ -84,3 +84,282 @@ change until the ISO committee decides on the technology.
 
 Finally, a couple of workarounds for earlier releases of the g++ compiler have
 been added.
+
+
+Release 0.7:
+-----------------------------
+
+This is a major release of the software which adds a lot of missing
+functionality and brings it up to date to the latest working draft of
+18477-2. In specific, boxes are now written according to the latest
+specification, and three proposals to encode HDR data are now
+implemented: mult1 (quotient method), mult2 (overflow/truncation
+method) and residual coding. The HDR to LDR non-linear point
+transformation can now be explicitly specified giving a file name on
+the command line (-gf option) which must contain 256 lines, one line
+per LDR input sample value. Each line shall contain an ASCII encoded
+decimal number, the output value a reconstructed LDR sample value is
+mapped to.
+
+This release also supports (finally) subsampling in residual and
+multiplicative coding, just specify the subsampling factors. In this
+release, the frontend only allows the same subsampling factors for
+both images (legacy and residual) though the back-end is more powerful
+and would allow arbitrary combinations.  Lossless coding by residuals
+is also supported, residual image subsampling factors are set to 1:1:1
+in case the quality of the residual is 100.
+
+The SERMS DCT that was removed in the earlier releases is now back and
+can be enabled by the "-l" option. Note well that you also need to
+specify "-c" to disable the YCbCr transformation.
+
+The experimental VESA coding modes that have been part of this code
+are now gone for good as they are not part of the specification.
+
+A huge number of bugs have been fixed, in specific for the handling of
+grey-only images. These should work fine now.
+
+This release supports now two variations of the encoding mode,
+open-loop and closed-loop.  In closed-loop coding, which was the
+default so far, the residual/multiplicative encoder is feed by the
+residual (additive or multiplicative) of the reconstructed LDR and
+original image. For openloop coding, the encoder does not need to go
+through a full encoding/decoding cycle of the legacy stream and feeds
+in the legacy image derived from the original image to the residual
+coder right away. NOTE THAT THIS MEANS THAT LOSSLESS CODING WILL NOT
+OPERATIONAL IN OPEN LOOP MODE, and additive residual coding will be
+rather pointless. However, this mode does make sense for the
+multiplicative modes. Regardless of whether open or closed loop coding
+is used, the encoded codestream is conforming, though coding results
+may be different.
+
+
+Release 0.71:
+-----------------------------
+
+This is a minor bugfix release which also adds one functionality, namely
+the encodign of HDR images in the floating point domain via -mult1.
+Previous versions took a round-trip through the integer domain and
+hence required output clipping. The direct-float mode can now be enabled
+by disabling the output-clipping process with "-oc". 
+
+Additionally, this release fixes two bugs, mostly related to the internal
+stream management. Due to an oversight, the marker-peek-ahead logic for
+residual streams did not work, causing a potential race condition
+when a marker was overlapping a chunk-boundary of the internal stream
+representation. Length computation of the internal stream representation
+was also broken on encoding, causing a potential race condition when the
+huffman table marker was overlapping with a chunk boundary. A third
+bug, namely a missing EOC at the end of the residual codestream, was
+fixed, too.
+
+Release 0.72:
+-----------------------------
+
+This release fixes a one-line oversight in the handling of subsampled "residual" coding,
+namely the quantization output buffer did not advance, causing an assertion failure.
+This release fixes the issue.
+
+
+-------------------------------------------------------------------------------------
+
+Release 0.8:
+
+This is again an update of the software in order to synchronize it with
+the latest Working Draft (proposed CD text) document; that is, boxes
+are written now according to the latest specifications. Furthermore, support
+for refinement scans in the residual domain have been added (with -rR),
+residual data is DCT transformed unless lossless coding is desired.
+This release also adds the checksum box, computes the checksum on encoding
+and tests it on decoding. In case it does not fit, a warning is generated.
+
+Quantization setup changed a bit, using now smaller buckets in the residual
+stream which avoids the paradoxical situation that a finer base layer
+quantization can cause a quality drop for the overall image.
+
+A serious bug in legacy coding modes was removed that caused the encoder
+or decoder to crash if no residual image was present.
+
+This version of the encoder also supports encoding and decoding of images
+in wider color spaces; for demonstration purposes, it encodes images in the
+XYZ colorspace using the command line option -xyz, or -cxyz where the latter
+uses a slightly less efficient method how to represent the images.
+
+At this time, the text based format is not supported, and support for the
+two other profiles (-mult1, -mult2) has been temporarely removed until the
+standardization committee provides a clean solution how to integrate them.
+
+-------------------------------------------------------------------------------------
+
+Release 0.9:
+
+This is just another update. This update introduces new DCTs, the Z0 DCT from
+ISO/IEC 23002-2, the Z1a DCT from the same authors and the CD document of this
+standard, and a lifting-based DCT. Tests show that Z0 and the lifting DCT do not 
+perform very well, so the default is current Z1 and SERMS.
+Furthermore, processing of RCT has changed slightly to ensure that the output
+is always in-range, not only for 16 bit output.
+DCT-bypass entropy coding was extended to use the full Huffman table, and includes
+now special handling for the race-condition of having to code the value 0x8000
+which was simply not possible before.
+The codestream syntax has been modified again to reflect the latest edition of
+the standard document, namely the CD of 18477-3.
+Lots of other minor fixes have been made, as for example in the selection and
+encoding of the precision of the residual frame and the computation of the
+checksum.
+
+
+-------------------------------------------------------------------------------------
+
+Release 0.91:
+
+This release fixes a wrong DC offset in the residual coding path that compromized
+compression efficiency, and a wrong computation in the residual bits.
+
+-------------------------------------------------------------------------------------
+
+Release 0.92:
+
+This release improves the computation of the LDR to HDR inverse TMO computation for
+profile C and gains by that sometimes up to 2dB in PSNR. It also provides a "-sp"
+command line switch to use separate separate tables, one per component. This may
+help in case the image contains some extreme colors.
+
+-------------------------------------------------------------------------------------
+
+Release 1.00alpha1:
+
+This is the first complete release of the demo software. It adds again support
+for profiles a and b for lossy HDR image coding and follows the new box-based
+design of 18477-3.
+
+-------------------------------------------------------------------------------------
+
+Release 1.00beta1:
+
+This is a fully verified version of the software, i.e. all modes of operation have
+been tested by an automatic unit test. This of course does not exclude any bugs,
+or any modifications before the finalization of the standard.
+
+In comparison to the alpha1 release, the following bugs have been fixed:
+
+- Predictive lossless mode with restart markers forgot to reconstruct the last line
+in some configurations.
+- Due to an oversight, hierarchical mode did not work in combination with AC coding.
+- Hierarchical mode did not work in the "semi-lossless" configuration where the finest
+frame is defined by a lossless predictive scan.
+- Predictive lossless could have forgotten the last line on streams using the DNL marker
+to signal the height of the image.
+- JPEG LS restart markers did not work in plane and sample interleaved mode. Note,
+however, that restart marker handling in the JPEG LS reference software is broken and
+does not follow the specifications. (Defect report is pending.)
+- Grey scale coding in profiles A and B did not work.
+- Coding in RGB-colorspace did not work in profiles A and B.
+- Encoding in JPEG-LS erraneously inserted JPEG XT boxes into the codestream. While this
+is harmless, it increases the rate unnecessarily.
+
+-------------------------------------------------------------------------------------
+
+Release 1.00beta2:
+
+This release includes the changes made on the standard in the Strasbourg meeting
+of the JPEG committee, in particular it includes a rounding mode specifier of
+the CURV boxes. Additionally, it allows now the inclusion of an arbitrary LDR image
+within profile B. Previous releases only supported the gamma-plus-clamping tone
+mapper which was built into the source. In addition to the new features, this
+release also includes an improved Huffman decoder that should be considerably
+faster than the previous trivial bit-by-bit decoder.
+
+-------------------------------------------------------------------------------------
+
+Release 1.00beta2.2:
+
+Only a short fix in the handling of lossless JPEG scans: This release fixes one
+issue, namely correct decoding of 16-bit images where the carry-over was not
+computed correctly. This change required a careful distinction between differential
+predictive and regular-predictive mode, which is interestingly not mentioned in
+the specs (probably nobody tested). A second race was fixed in JPEG-LS handling
+where bit-stuffing could have left a single isolated zero at the end of a JPEG-LS
+scan, causing a warning in the upwards marker parser (though no corrupt reconstruction).
+
+-------------------------------------------------------------------------------------
+
+Release 1.20:
+
+This version adds support for alpha channels as defined by ISO/IEC 18477-9
+to the code. Alpha channels are specified by one-component grey-scale images,
+of bit depths between 8 and 16 bits per sample. They may also consist of
+floating point samples between 0 and 1. To add an alpha channel, use the command
+line options -al <filename> -aq <quality> for simple alpha channels of 8 bits per
+sample. For more precise alpha channels, residual coding in the alpha domain
+must be enabled with -ar, and an alpha channel residual quality must be specified
+with -aQ <ext-quality>. The coding tools for alpha channels are otherwise identical
+for that of the base image. Alpha coding can be combined with any other coding
+tools, i.e. parts 6,7 and 8.
+
+-------------------------------------------------------------------------------------
+
+Release 1.21:
+
+This is only a minor maintenance release which removes three experimental DCT
+implementations that are no longer required, fixes two possible un-initialized
+variables and fixes a bug in the box enumeration. Release 1.20 and above started
+for some boxes the box enumeration at zero even though it should start at one.
+
+-------------------------------------------------------------------------------------
+
+Release 1.30:
+
+This release fixes a bug in the line-based operation mode that is not available from
+the front end and only works for baseline sequential. Unlike other modes, it does
+not require full internal buffering of the image. It is also synchronized again to
+the latest edition of the standard, offering the additional upscaling in the residual
+path for parts 6 and part 7 profile C. It has been cross-tested with other 
+implementations, thus interoperability is granted. Clipping for floating-point output
+has been corrected to avoid the representations of NAN and INF.
+Last but not least, this release offers the possibility to select between nine different
+quantization matrices (-qt 0 to -qt 9), of which -qt 1 is PSNR-optimal and -qt 3 is
+a good candidate for high visual compression. See the command line parameters for
+details. Furthermore, the -dz parameter enables a deadzone quantizer that improves
+the compression performance by 0.3 dB on average.
+
+-------------------------------------------------------------------------------------
+
+Release 1.31:
+
+This release includes two minor changes that have been made to the specs at the last 
+Warsaw meeting in June 2015. The order of the FDCT (fixed point DCT) has been adjusted
+to match the order of ISO/IEC 23002-2 (MPEG C) and to be consistent with the order of
+the IDCT (integer DCT). Second, the specs allow now Integer Table Lookup boxes with
+sample size > 16 bits to allow the usage of a Table lookup in the residual coding
+path for part 8 of the specs.
+
+-------------------------------------------------------------------------------------
+
+Release 1.40:
+
+In this release, we included additional support for "full profile" encoding, i.e.
+encoding parameters that do not fit any of the four profiles specified in 18477-7.
+Using such encoding parameters will generate a warning on the command line, but
+encoding will proceed anyhow, generating a bitstream that conforms to 18477-7, but
+not to any of the profiles in this standard.
+
+With "-profile a -g 0" or "-profile b -g 0" the encoder will generate a file that
+uses an inverse TMO lookup similar to profile C with other encoding parameters
+identical to those defined by profiles A and B.
+
+The command line option "-lr" will use a logarithmic encoding instead of the gamma
+encoding for profile B. Again, this will leave the profile, but will be within the
+bounds of 18477-7.
+
+Other than that, a couple of bug fixes have been made. Profile A and B setup could
+not reset the toe value for the inverse gamma map, due to a typo of one of the
+parameters. Profile B accepted a different gamma value than the default, but never
+communicated it to the core code, i.e. it was simply ignored. Profile B setup ignored
+the epsilon values for numerator and denomiator, and they were communicated wrongly
+into the core code. This was corrected, and epsilons can now be specified on the
+command line. The JPEG LS part-2 encoder was broken due to a modification of the
+color transformer factory, and the (non-standardized, proprietary) residual
+refinement arithmetic coding scan mode did not work correctly by depending on a non-
+existing context.
+

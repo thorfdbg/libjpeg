@@ -1,11 +1,23 @@
 /*
 ** Config file for jpeg, defines some static rules for jpeg generation
-** $Id: config.h,v 1.5 2012-06-02 12:13:49 thor Exp $
+** $Id: config.h,v 1.8 2014/09/30 08:26:08 thor Exp $
 **
 */
 
 #ifndef CONFIG_H
 #define CONFIG_H
+
+/// Code configurations
+// If this is defined, and you have the full code,
+// the all code options (AC-coding, hierarchical, lossless, JPEG-LS)
+// become available, not just JPEG XT.
+#define ACCUSOFT_CODE 1
+
+// If this is defined, and you have the full code,
+// then patented code options (profile A and profile B) become
+// available, not only JPEG XT profile C
+#define ISO_CODE 1
+///
 
 /// Autoconfig inclusion
 //
@@ -165,7 +177,7 @@
 // Bummer! None of the VS compilers does have stdint.h
 //
 // Disable the bogus deprecation warnings of VS8
-#ifdef _VS8_
+#if defined(_VS8_) || defined(_VS10_) 
 #define _CRT_SECURE_NO_DEPRECATE(a)
 #endif
 // Disable this dumb VS 6 warning about a "this" identifier

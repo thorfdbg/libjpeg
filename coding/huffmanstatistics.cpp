@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 ** This class collects the huffman coder statistics for optimized huffman
 ** coding.
 **
-** $Id: huffmanstatistics.cpp,v 1.8 2012-10-07 20:42:32 thor Exp $
+** $Id: huffmanstatistics.cpp,v 1.17 2014/09/30 08:33:16 thor Exp $
 **
 */
 
@@ -57,10 +37,33 @@ the committee itself.
 #include "coding/huffmanstatistics.hpp"
 ///
 
+/// Defines
+// Set the following define to create a universal
+// Huffman code that is valid for all sources by
+// setting the frequency of all symbols to at least
+// one.
+//#define COMPLETE_CODESET
+///
+
 /// HuffmanStatistics::HuffmanStatistics
-HuffmanStatistics::HuffmanStatistics(void)
+#ifdef COMPLETE_CODESET
+HuffmanStatistics::HuffmanStatistics(bool dc)
+#else
+HuffmanStatistics::HuffmanStatistics(bool)
+#endif
 {
+#ifdef COMPLETE_CODESET
+  int i,last = 256;
+  if (dc)
+    last = 16;
+  // This should only be set for training purposes
   memset(m_ulCount,0,sizeof(m_ulCount));
+  for(i = 0;i < last;i++) {
+    m_ulCount[i] = 1;
+  }
+#else
+  memset(m_ulCount,0,sizeof(m_ulCount));
+#endif
 }
 ///
 
@@ -69,117 +72,117 @@ HuffmanStatistics::HuffmanStatistics(void)
 // This returns an array of 256 elements, one entry per symbol.
 const UBYTE *HuffmanStatistics::CodesizesOf(void)
 {
-  ULONG stat[256];    // measured but modified statistics.
-  bool valid;
+  ULONG freq[257];    // measured but modified statistics.
+  ULONG mstt[256];    // modified statistics.
+  int   next[257];    // linkage to other symbols in the same branch.
+  UBYTE size[257];
+  int i;
 
-  memcpy(stat,m_ulCount,sizeof(stat));
+  memcpy(mstt,m_ulCount,sizeof(mstt));
 
   do {
-    ULONG freqs[514];   // combined frequencies.
-    UWORD top[514];     // links
-    int   free = 257;   // next available symbol
-
-    // Copy statistics over, reset them.
-    memcpy(freqs       ,stat     ,256 * sizeof(LONG));
-    memset(freqs + 257,0         ,257 * sizeof(LONG));
-    memset(top        ,MAX_UBYTE ,sizeof(top));
-    freqs[256] = 1; // this will get the all-1 code which is not allowed.
-    
+    bool valid = true;
+    // Copy statistics over from the temporary.
+    for(i = 0;i < 256;i++) {
+      freq[i] = mstt[i];
+      next[i] = -1;
+      size[i] = 0;
+    }
+    freq[256] = 1;
+    next[256] = -1;
+    size[256] = 0;
+    // Merge frequencies. Always move into the least probable symbol, then remove the
+    // second highest. As long as there are symbols left.
     do {
-      // Find the two minimal code entries.
       ULONG min1 = MAX_ULONG,min2 = MAX_ULONG;
       int minarg1 = 0,minarg2 = 0; // shut up the compiler. Not used if less than two symbols.
-      int i;
       
-      for(i = 0;i < 514;i++) {
-	if (freqs[i] > 0) {
-	  if (freqs[i] < min1) {
-	    // min1 becomes available, swap to min2?
-	    assert(min1 <= min2 || min1 == MAX_ULONG);
-	    min2    = min1;
-	    minarg2 = minarg1;
-	    min1    = freqs[i];
-	    minarg1 = i;
-	  } else if (freqs[i] < min2) {
-	    min2    = freqs[i];
-	    minarg2 = i;
-	  }
-	}
+      for(i = 0;i <= 256;i++) {
+        if (freq[i] > 0) { // Only valid entries
+          if (freq[i] < min1) {
+            // min1 becomes available, swap to min2?
+            assert(min1 <= min2 || min1 == MAX_ULONG);
+            min2    = min1;
+            minarg2 = minarg1;
+            min1    = freq[i];
+            minarg1 = i;
+          } else if (freq[i] < min2) {
+            min2    = freq[i];
+            minarg2 = i;
+          }
+        }
       }
-      if (min2 == MAX_ULONG)
-	break;
-      assert(minarg1 != minarg2);   
+      // If there is only one entry left, exit.
+      if (min2 == MAX_ULONG) {
+        // If there is only a single symbol, make sure it gets a codesize.
+        if (freq[minarg1] == 0)
+          freq[minarg1]++;
+        break;
+      }
       //
-      // Combine the two minimum symbols.
-      freqs[free]     = freqs[minarg1] + freqs[minarg2];
-      freqs[minarg1]  = 0; // remove both subtrees.
-      freqs[minarg2]  = 0;
-      top[minarg1]    = free;
-      top[minarg2]    = free;
-      
-      free++;
-      assert(free < 514);
+      // Merge now, remove the least symbol.
+      freq[minarg1] += freq[minarg2];
+      freq[minarg2]  = 0;
+      //
+      // Update the codesize for the subtree at the current position.
+      do {
+        i = minarg1;
+        size[minarg1]++;
+        minarg1 = next[minarg1];
+      } while(minarg1 >= 0);
+      //
+      // Merge the two subtrees.
+      next[i] = minarg2;
+      do {
+        size[minarg2]++;
+        minarg2 = next[minarg2];
+      } while(minarg2 >= 0);
     } while(true);
-    
-    // 
-    // Now assign the codesizes to all entries.
-    valid = true;
     //
-    for(int i = 0;i < 256;i++) {
-      if (freqs[i] > 0) {
-	// Special case: A single element.
-	m_ucCodeSize[i] = 1;
-      } else {
-	int codesize = 0,symbol = i;
-	// Codesize is the length of the path to
-	// the root.
-	while(top[symbol] < MAX_UWORD) {
-	  codesize++;
-	  symbol = top[symbol];
-	}
-	m_ucCodeSize[i] = codesize;
-	//
-	// The JPEG markers allow only a maximal code size of 16
-	// bits. If the codesize grows beyond that, bail out.
-	if (codesize > 16) {
-	  valid = false;
-	  break;
-	}
+    // Ok, now check whether all the sizes are at most 16.
+    for(i = 0;i < 256;i++) {
+      if (size[i] > 16) {
+        valid = false;
+        break;
       }
+      m_ucCodeSize[i] = size[i];
     }
-
+    //
+    // If this is a valid assignment, leave.
     if (valid)
-      return m_ucCodeSize;
-
+      break;
+    //
     // Here the optimal huffman code is not JPEG compliant
     // Modify the statistics at the low-frequency end.
     {
       // Find the two minimal *disjoint* code entries.
       ULONG min1 = MAX_ULONG,min2 = MAX_ULONG;
-      int i;
-      
+      //
       for(i = 0;i < 256;i++) {
-	if (stat[i] > 0 && stat[i] < min1) {
-	  min1    = stat[i];
-	}
+        if (mstt[i] > 0) {
+          if (mstt[i] < min1) {
+            // min1 becomes available, swap to min2?
+            assert(min1 <= min2 || min1 == MAX_ULONG);
+            min2    = min1;
+            min1    = mstt[i];
+          } else if (mstt[i] < min2 && mstt[i] > min1) {
+            min2    = mstt[i];
+          }
+        }
       }
-      for(i = 0;i < 256;i++) {
-	if (stat[i] > min1 && stat[i] < min2) {
-	  min2    = stat[i];
-	}
-      }
-
       //
       // Set everything smaller than the second smallest
       // to the second smallest. This will flatten
       // the statistics and hence balance the tree a bit.
       for(i = 0;i < 256;i++) {
-	if (stat[i] > 0 && stat[i] < min2) {
-	  stat[i] = min2;
-	}
+        if (mstt[i] > 0 && mstt[i] < min2) {
+          mstt[i] = min2;
+        }
       }
     }
   } while(true);
+
+  return m_ucCodeSize;
 }
 ///
 
@@ -192,7 +195,7 @@ void HuffmanStatistics::MergeStatistics(FILE *stats)
     int symbol,count;
     if (fscanf(stats,"%d\t%d\n",&symbol,&count) == 2) {
       if (symbol >= 0 && symbol < 256) {
-	m_ulCount[symbol] += count;
+        m_ulCount[symbol] += count;
       }
     }
   }

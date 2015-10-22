@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +29,7 @@ the committee itself.
 ** services useful to implement them such that the derived classes can
 ** focus on the actual algorithm.
 **
-** $Id: predictivescan.hpp,v 1.2 2012-09-11 13:30:00 thor Exp $
+** $Id: predictivescan.hpp,v 1.11 2014/11/16 15:49:58 thor Exp $
 **
 */
 
@@ -59,6 +39,7 @@ the committee itself.
 /// Includes
 #include "tools/environment.hpp"
 #include "codestream/entropyparser.hpp"
+#include "codestream/predictorbase.hpp"
 #include "tools/line.hpp"
 ///
 
@@ -81,6 +62,8 @@ class PredictiveScan : public EntropyParser {
   // Services for the derived classes.
 protected:
   //
+#if ACCUSOFT_CODE
+  //
   // The class used for pulling and pushing data.
   class LineBuffer          *m_pLineCtrl;
   //
@@ -100,73 +83,32 @@ protected:
   UBYTE                      m_ucMCUWidth[4];
   UBYTE                      m_ucMCUHeight[4];
   //
+  // The currently active predictors for the MCU processed.
+  class PredictorBase       *m_pPredict[4];
+  class PredictorBase       *m_pLinePredict[4];
+  //
   // The predictor to use.
   UBYTE                      m_ucPredictor;
   //
   // The low bit for the point transform.
   UBYTE                      m_ucLowBit;
   //
-  // The neutral color. Grey or zero for differential.
-  LONG                       m_lNeutral;
-  //
-  // Disable prediction as if we were at the first line.
-  // Used behind restart markers.
-  bool                       m_bNoPrediction;
-  //
-  //
   // Encoding a differential scan.
   bool                       m_bDifferential;
   //
+  // The predictors used to encode or decode the scan.
+  // Prediction always starts with the entry [0] and then
+  // uses the down/right functions to advance the predictor.
+  class PredictorBase       *m_pPredictors[4];
+  //
+#endif
   // Collect component information and install the component dimensions.
   void FindComponentDimensions(void);
   //
   // Clear the entire MCU
-  void ClearMCU(class Line **top);
+  void ClearMCU(struct Line **top);
   //
-  // Get the prediction mode given a couple of flags.
-  UBYTE PredictionMode(LONG x,LONG y) const
-  {
-    // prediction is turned off if : This is a differential line, or
-    // the first sample, or the first sample after a restart marker.
-    if (m_bDifferential || (x == 0 && y == 0)) 
-      return 0;
-    // Predict from left if this is on the first line or after a restart
-    // marker.
-    if (y == 0)
-      return 1; // Predict from left.
-    //
-    // Predict from above at the start of the line.
-    if (x == 0) 
-      return 2; // Predict from above.
-    return m_ucPredictor;
-  }
-  //
-  // Predict a sample value depending on the prediction mode.
-  // lp is the pointer to the current line, pp the one to the previous line.
-  LONG PredictSample(UBYTE mode,UBYTE preshift,const LONG *lp,LONG *pp) const
-  {
-    switch(mode) {
-    case 0: // No prediction. 
-      return m_lNeutral >> preshift;
-    case 1: // predict from left
-      return lp[-1] >> preshift;
-    case 2: // predict from top
-      return pp[0] >> preshift;
-    case 3: // predict from left-top
-      return pp[-1] >> preshift;
-    case 4: // linear interpolation
-      return (lp[-1]  >> preshift) + (pp[0]  >> preshift) - (pp[-1] >> preshift);
-    case 5: // linear interpolation with weight on A
-      return (lp[-1]  >> preshift) + (((pp[0]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-    case 6: // linear interpolation with weight on B
-      return (pp[0]  >> preshift) + (((lp[-1]  >> preshift) - (pp[-1] >> preshift)) >> 1);
-    case 7: // Only between A and B
-      return ((lp[-1] >> preshift) + (pp[0] >> preshift)) >> 1;
-    default:
-      assert(!"impossible prediction mode, did the check in the scan header fail?");
-      return 0;
-    }
-  }  
+#if ACCUSOFT_CODE
   //
   // Advance to the next MCU to the right. Returns true if there
   // are more MCUs to the right.
@@ -176,9 +118,10 @@ protected:
     bool  more;
 
     for(i = 0,more = true;i < m_ucCount;i++) {
-      m_ulX[i] += m_ucMCUWidth[i];
+      m_ulX[i]     += m_ucMCUWidth[i];
+      m_pPredict[i] = m_pPredict[i]->MoveRight();
       if (m_ulX[i] >= m_ulWidth[i])
-	more = false;
+        more = false;
     }
     return more;
   }
@@ -192,25 +135,29 @@ protected:
     //
     // Advance to the next line.
     for(i = 0,more = true;i < m_ucCount;i++) {
-      UBYTE cnt      = m_ucMCUHeight[i];
-      m_ulX[i]       = 0;
-      m_ulY[i]      += cnt;
+      UBYTE cnt         = m_ucMCUHeight[i];
+      m_ulX[i]          = 0;
+      m_ulY[i]         += cnt;
+      m_pLinePredict[i] = m_pLinePredict[i]->MoveDown();
+      m_pPredict[i]     = m_pLinePredict[i];
       if (m_ulHeight[i] && m_ulY[i] >= m_ulHeight[i]) {
-	more = false;
+        more = false;
       } else do {
-	  prev[i] = top[i];
-	  if (top[i]->m_pNext) {
-	    top[i] = top[i]->m_pNext;
-	  }
-	} while(--cnt);
+          prev[i] = top[i];
+          if (top[i]->m_pNext) {
+            top[i] = top[i]->m_pNext;
+          }
+        } while(--cnt);
     }
     
     return more;
   }
   //
+#endif
+  //
   // Build a predictive scan: This is not stand alone, let subclasses do that.
   PredictiveScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit,
-		 bool differential = false);
+                 bool differential = false);
   //
   // Destroy a predictive scan.
   virtual ~PredictiveScan(void);
@@ -222,7 +169,17 @@ protected:
   virtual bool ParseMCU(void) = 0;
   //
   // Write a single MCU in this scan.
-  virtual bool WriteMCU(void) = 0; 
+  virtual bool WriteMCU(void) = 0;
+  //
+  // Flush at the end of a restart interval
+  // when writing out code. Reset predictors, check
+  // for the correctness of the restart alignment.
+  void FlushOnMarker(void);
+  //
+  // Restart after reading a full restart interval,
+  // reset the predictors, check for the correctness
+  // of the restart interval.
+  void RestartOnMarker(void);
 };
 ///
 

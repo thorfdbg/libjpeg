@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
  * Base class for all IO support functions, the abstract ByteStream
  * class.
  *
- * $Id: bytestream.hpp,v 1.3 2012-09-09 15:53:51 thor Exp $
+ * $Id: bytestream.hpp,v 1.11 2015/03/30 09:39:09 thor Exp $
  *
  */
 
@@ -67,10 +47,10 @@ the committee itself.
 /// Design
 /** Design
 ******************************************************************
-** class ByteStream						**
-** Super Class:	none						**
-** Sub Classes: IOHook, MemoryStream, DecoderStream, NULStream	**
-** Friends:	none						**
+** class ByteStream                                             **
+** Super Class: none                                            **
+** Sub Classes: IOHook, MemoryStream, DecoderStream, NULStream  **
+** Friends:     none                                            **
 ******************************************************************
 
 The ByteStream is an abstract class that implements byte oriented
@@ -98,6 +78,7 @@ for some of the higher magic of the error resiliance features.
 class ByteStream : public JKeeper {
   // As sad as it sounds, but the segmented stream
   // must grab into the following to steal buffers.
+  friend class ChecksumAdapter;
   //
 protected:
   ULONG       m_ulBufSize;   // Size of our (internal) IO buffer
@@ -177,9 +158,9 @@ public:
   // inlined for maximal performance.
   LONG Get(void)                          // read a single byte (inlined)
   {
-    if (m_pucBufPtr >= m_pucBufEnd) {
+    if (unlikely(m_pucBufPtr >= m_pucBufEnd)) {
       if (Fill() == 0)                    // Found EOF
-	return EOF;
+        return EOF;
     }
     return *m_pucBufPtr++;
   }
@@ -204,7 +185,7 @@ public:
   // Just the same for writing data.
   void Put(UBYTE byte)           // write a single byte (inlined)
   {
-    if (m_pucBufPtr >= m_pucBufEnd) {
+    if (unlikely(m_pucBufPtr >= m_pucBufEnd)) {
       Flush();                   // note that this will also allocate a buffer
     }
 
@@ -235,7 +216,9 @@ public:
   // Return the last byte written/read and un-put/get it.
   UBYTE LastUnDo(void)
   {
-    assert(m_pucBufPtr > m_pucBuffer);
+    // Actually, this may be valid in case we want to un-do an EOF
+    // read. Hence, this is only an error if there was a buffer before.
+    assert(m_pucBufPtr == NULL || m_pucBufPtr > m_pucBuffer);
     
     if (m_pucBufPtr > m_pucBuffer) {
       m_pucBufPtr--;
@@ -261,58 +244,8 @@ public:
   // to resynchronize.
   // Returns the detected marker, or EOF.
   LONG SkipToMarker(UWORD marker1,UWORD marker2 = 0,
-		    UWORD marker3 = 0,UWORD marker4 = 0,
-		    UWORD marker5 = 0);
-  //
-  // Allow direct access to the buffered bytes in case this can
-  // be done. Returns an access to the buffer and its size,
-  // if available. Returns a size of zero and a NULL buffer otherwise.
-  UBYTE *GetBuffered(ULONG &size)
-  {
-    if (m_pucBufPtr >= m_pucBufEnd)
-      Fill();
-    if (m_pucBuffer) {
-      size  = m_pucBufEnd - m_pucBufPtr;
-      return m_pucBufPtr;
-    }
-    size = 0;
-    return NULL;
-  }
-  //
-  // Release the buffer whose first unread byte is at the indicated
-  // buffer position. Also requires the storage back to fixup the buffer.
-  // Call this only in case GetBuffered returned with a non-NULL
-  // exit status.
-  void ReleaseBuffered(const UBYTE *lastptr)
-  {
-    // Now advance the buffer pointer by the indicated amount.
-    SkipBytes(lastptr - m_pucBufPtr);
-  }
-  //
-  // Allow direct access to the output buffer of a bytestream
-  // on writing. This returns a pointer to the first available
-  // byte of the buffer and returns its size in the argument.
-  // If the buffer is full, first release it with the call below
-  // and fetch a new buffer with this call here.
-  UBYTE *GetOutputBuffered(ULONG &size)
-  {
-    if (m_pucBufPtr >= m_pucBufEnd) {
-      Flush();                   // note that this will also allocate a buffer
-    }
-    
-    size = m_pucBufEnd - m_pucBufPtr;
-
-    return m_pucBufPtr;
-  }
-  //
-  // Release the output buffer. This *MUST* be called
-  // with the pointer *beyond* the last valid byte in the output
-  // buffer since the last time GetOutputBuffered
-  // has been used to get access to the buffer. 
-  void ReleaseOutputBuffered(UBYTE *lastptr)
-  {
-    m_pucBufPtr = lastptr; // yes, that's really all.
-  }
+                    UWORD marker3 = 0,UWORD marker4 = 0,
+                    UWORD marker5 = 0);
 };
 ///
 

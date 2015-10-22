@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
  * Member functions of the bitmap hook class
  * 
- * $Id: bitmaphook.cpp,v 1.2 2012-06-02 10:27:14 thor Exp $
+ * $Id: bitmaphook.cpp,v 1.10 2015/03/16 08:55:33 thor Exp $
  *
  */
 
@@ -58,15 +38,30 @@ the committee itself.
 #include "interface/parameters.hpp"
 #include "marker/component.hpp"
 #include "tools/environment.hpp"
+#include "tools/traits.hpp"
 #include "std/assert.hpp"
 ///
 
 /// BitMapHook::BitMapHook
 BitMapHook::BitMapHook(const struct JPG_TagItem *tags)
-  : m_pHook(NULL)
+  : m_pHook(NULL), m_pLDRHook(NULL), m_pAlphaHook(NULL)
 {
-  assert(tags);
-  Init(tags);
+  // Fill in use useful defaults. This really depends on the user
+  // As the following tags are all optional.
+  //
+  m_DefaultImageLayout.ibm_pData           = NULL;
+  m_DefaultImageLayout.ibm_ulWidth         = 0;
+  m_DefaultImageLayout.ibm_ulHeight        = 0;
+  m_DefaultImageLayout.ibm_lBytesPerRow    = 0;
+  m_DefaultImageLayout.ibm_cBytesPerPixel  = 0;
+  m_DefaultImageLayout.ibm_ucPixelType     = 0;
+  m_DefaultImageLayout.ibm_pUserData       = NULL;
+  //
+  InitHookTags(m_BitmapTags);
+  InitHookTags(m_LDRTags);
+
+  if (tags)
+    ParseTags(tags); // Parse off the user tags.
 }
 ///
 
@@ -102,61 +97,132 @@ void BitMapHook::ParseTags(const struct JPG_TagItem *tag)
       break;
     case JPGTAG_BIH_HOOK:
       m_pHook                                  = (struct JPG_Hook *)tag->ti_Data.ti_pPtr;
+      break;
+    case JPGTAG_BIH_LDRHOOK:
+      m_pLDRHook                               = (struct JPG_Hook *)tag->ti_Data.ti_pPtr;
+      break;
+    case JPGTAG_BIH_ALPHAHOOK:
+      m_pAlphaHook                             = (struct JPG_Hook *)tag->ti_Data.ti_pPtr;
+      break;
     }
     tag = tag->NextTagItem();
   }
 }
 ///
 
-/// BitMapHook::Init
-// Init the tags for the given canvas/slice coordinates.
-void BitMapHook::Init(const struct JPG_TagItem *tag)
+/// BitMapHook::InitHookTags
+// Setup the input parameter tags for the user hook.
+void BitMapHook::InitHookTags(struct JPG_TagItem *tags)
 {
-  //
-  // Fill in use useful defaults. This really depends on the user
-  // As the following tags are all optional.
-  //
-  m_DefaultImageLayout.ibm_pData           = NULL;
-  m_DefaultImageLayout.ibm_ulWidth         = 0;
-  m_DefaultImageLayout.ibm_ulHeight        = 0;
-  m_DefaultImageLayout.ibm_lBytesPerRow    = 0;
-  m_DefaultImageLayout.ibm_cBytesPerPixel  = 0;
-  m_DefaultImageLayout.ibm_ucPixelType     = 0;
-  m_DefaultImageLayout.ibm_pUserData       = NULL;
-  //
-  //
-  if (tag)
-    ParseTags(tag); // Parse off the user tags.
-  //
   // Setup the tags for the bitmap/image data
-  m_BitmapTags[0].ti_Tag              = JPGTAG_BIO_ACTION;
-  m_BitmapTags[1].ti_Tag              = JPGTAG_BIO_MEMORY;
-  m_BitmapTags[2].ti_Tag              = JPGTAG_BIO_WIDTH;
-  m_BitmapTags[3].ti_Tag              = JPGTAG_BIO_HEIGHT;
-  m_BitmapTags[4].ti_Tag              = JPGTAG_BIO_BYTESPERROW;
-  m_BitmapTags[5].ti_Tag              = JPGTAG_BIO_BYTESPERPIXEL;
-  m_BitmapTags[6].ti_Tag              = JPGTAG_BIO_PIXELTYPE;
-  m_BitmapTags[7].ti_Tag              = JPGTAG_BIO_ROI;
-  m_BitmapTags[7].ti_Data.ti_lData    = false;
-  m_BitmapTags[8].ti_Tag              = JPGTAG_BIO_COMPONENT;
-  m_BitmapTags[9].ti_Tag              = JPGTAG_BIO_USERDATA;
-  m_BitmapTags[9].ti_Data.ti_pPtr     = m_DefaultImageLayout.ibm_pUserData;
-  m_BitmapTags[10].ti_Tag             = JPGTAG_BIO_MINX;
-  m_BitmapTags[11].ti_Tag             = JPGTAG_BIO_MINY;
-  m_BitmapTags[12].ti_Tag             = JPGTAG_BIO_MAXX;
-  m_BitmapTags[13].ti_Tag             = JPGTAG_BIO_MAXY;
-  m_BitmapTags[14].ti_Tag             = JPGTAG_TAG_IGNORE;
-  m_BitmapTags[14].ti_Data.ti_lData   = 0;
-  m_BitmapTags[15].ti_Tag             = JPGTAG_TAG_IGNORE; // was: BIO_SLICE;
-  m_BitmapTags[15].ti_Data.ti_lData   = 0;
-  m_BitmapTags[16].ti_Tag             = JPGTAG_TAG_IGNORE; // was: JPGTAG_BIO_COLOR;
-  m_BitmapTags[17].ti_Tag             = JPGTAG_BIO_PIXEL_MINX;
-  m_BitmapTags[18].ti_Tag             = JPGTAG_BIO_PIXEL_MINY;
-  m_BitmapTags[19].ti_Tag             = JPGTAG_BIO_PIXEL_MAXX;
-  m_BitmapTags[20].ti_Tag             = JPGTAG_BIO_PIXEL_MAXY;
-  m_BitmapTags[21].ti_Tag             = JPGTAG_BIO_PIXEL_XORG;
-  m_BitmapTags[22].ti_Tag             = JPGTAG_BIO_PIXEL_YORG;
-  m_BitmapTags[23].ti_Tag             = JPGTAG_TAG_DONE;
+  tags[0].ti_Tag              = JPGTAG_BIO_ACTION;
+  tags[1].ti_Tag              = JPGTAG_BIO_MEMORY;
+  tags[2].ti_Tag              = JPGTAG_BIO_WIDTH;
+  tags[3].ti_Tag              = JPGTAG_BIO_HEIGHT;
+  tags[4].ti_Tag              = JPGTAG_BIO_BYTESPERROW;
+  tags[5].ti_Tag              = JPGTAG_BIO_BYTESPERPIXEL;
+  tags[6].ti_Tag              = JPGTAG_BIO_PIXELTYPE;
+  tags[7].ti_Tag              = JPGTAG_BIO_ROI;
+  tags[7].ti_Data.ti_lData    = false;
+  tags[8].ti_Tag              = JPGTAG_BIO_COMPONENT;
+  tags[9].ti_Tag              = JPGTAG_BIO_USERDATA;
+  tags[9].ti_Data.ti_pPtr     = m_DefaultImageLayout.ibm_pUserData;
+  tags[10].ti_Tag             = JPGTAG_BIO_MINX;
+  tags[11].ti_Tag             = JPGTAG_BIO_MINY;
+  tags[12].ti_Tag             = JPGTAG_BIO_MAXX;
+  tags[13].ti_Tag             = JPGTAG_BIO_MAXY;
+  tags[14].ti_Tag             = JPGTAG_BIO_ALPHA;
+  tags[14].ti_Data.ti_lData   = false;
+  tags[15].ti_Tag             = JPGTAG_TAG_IGNORE; // was: BIO_SLICE;
+  tags[15].ti_Data.ti_lData   = 0;
+  tags[16].ti_Tag             = JPGTAG_TAG_IGNORE; // was: JPGTAG_BIO_COLOR;
+  tags[17].ti_Tag             = JPGTAG_BIO_PIXEL_MINX;
+  tags[18].ti_Tag             = JPGTAG_BIO_PIXEL_MINY;
+  tags[19].ti_Tag             = JPGTAG_BIO_PIXEL_MAXX;
+  tags[20].ti_Tag             = JPGTAG_BIO_PIXEL_MAXY;
+  tags[21].ti_Tag             = JPGTAG_BIO_PIXEL_XORG;
+  tags[22].ti_Tag             = JPGTAG_BIO_PIXEL_YORG;
+  tags[23].ti_Tag             = JPGTAG_TAG_DONE;
+}
+///
+
+/// BitMapHook::Request
+// Fill the tag items for a request call and make the call.
+void BitMapHook::Request(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
+                         const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
+                         const class Component *comp,bool alpha)
+{
+  // Fill in the encoding tags.
+  tags[0].ti_Data.ti_lData  = JPGFLAG_BIO_REQUEST;
+  tags[1].ti_Data.ti_pPtr   = m_DefaultImageLayout.ibm_pData;
+  tags[2].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_ulWidth;
+  tags[3].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_ulHeight;
+  tags[4].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_lBytesPerRow;
+  tags[5].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_cBytesPerPixel;
+  tags[6].ti_Data.ti_lData  = pixeltype;
+  tags[8].ti_Data.ti_lData  = comp->IndexOf();
+  tags[9].ti_Data.ti_pPtr   = m_DefaultImageLayout.ibm_pUserData;
+  tags[10].ti_Data.ti_lData = rect.ra_MinX;
+  tags[11].ti_Data.ti_lData = rect.ra_MinY;
+  tags[12].ti_Data.ti_lData = rect.ra_MaxX;
+  tags[13].ti_Data.ti_lData = rect.ra_MaxY;
+  tags[14].ti_Data.ti_lData = alpha;
+  tags[15].ti_Data.ti_lData = 0;
+  tags[16].ti_Data.ti_lData = comp->IndexOf();
+  tags[17].ti_Data.ti_lData = (rect.ra_MinX + comp->SubXOf() - 1) / comp->SubXOf();
+  tags[18].ti_Data.ti_lData = (rect.ra_MinY + comp->SubYOf() - 1) / comp->SubYOf();
+  tags[19].ti_Data.ti_lData = (rect.ra_MaxX + comp->SubXOf() + 1 - 1) / comp->SubXOf() - 1;
+  tags[20].ti_Data.ti_lData = (rect.ra_MaxY + comp->SubYOf() + 1 - 1) / comp->SubYOf() - 1;
+  tags[21].ti_Data.ti_lData = 0;
+  tags[22].ti_Data.ti_lData = 0;
+  //
+  // Now call the hook if it exists
+  if (hook)
+    hook->CallLong(tags);
+
+  // and now, finally, scan what we got back
+  ibm->ibm_pData           = tags[1].ti_Data.ti_pPtr;
+  ibm->ibm_ulWidth         = tags[2].ti_Data.ti_lData;
+  ibm->ibm_ulHeight        = tags[3].ti_Data.ti_lData;
+  ibm->ibm_lBytesPerRow    = tags[4].ti_Data.ti_lData;
+  ibm->ibm_cBytesPerPixel  = tags[5].ti_Data.ti_lData;
+  ibm->ibm_ucPixelType     = tags[6].ti_Data.ti_lData;
+  ibm->ibm_pUserData       = tags[9].ti_Data.ti_pPtr;
+}
+///
+
+/// BitMapHook::Release
+// Release the tag items for a release call and make the call.
+void BitMapHook::Release(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
+                         const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
+                         const class Component *comp,bool alpha)
+{
+  if (hook) {
+    tags[0].ti_Data.ti_lData  = JPGFLAG_BIO_RELEASE;
+    tags[1].ti_Data.ti_pPtr   = ibm->ibm_pData;
+    tags[2].ti_Data.ti_lData  = ibm->ibm_ulWidth;
+    tags[3].ti_Data.ti_lData  = ibm->ibm_ulHeight;
+    tags[4].ti_Data.ti_lData  = ibm->ibm_lBytesPerRow;
+    tags[5].ti_Data.ti_lData  = ibm->ibm_cBytesPerPixel;
+    tags[6].ti_Data.ti_lData  = pixeltype;
+    tags[8].ti_Data.ti_lData  = comp->IndexOf();
+    tags[9].ti_Data.ti_pPtr   = ibm->ibm_pUserData;
+    tags[10].ti_Data.ti_lData = rect.ra_MinX;
+    tags[11].ti_Data.ti_lData = rect.ra_MinY;
+    tags[12].ti_Data.ti_lData = rect.ra_MaxX;
+    tags[13].ti_Data.ti_lData = rect.ra_MaxY;
+    tags[14].ti_Data.ti_lData = alpha;
+    tags[15].ti_Data.ti_lData = 0;
+    tags[16].ti_Data.ti_lData = comp->IndexOf();
+    tags[17].ti_Data.ti_lData = (rect.ra_MinX + comp->SubXOf() - 1) / comp->SubXOf();
+    tags[18].ti_Data.ti_lData = (rect.ra_MinY + comp->SubYOf() - 1) / comp->SubYOf();
+    tags[19].ti_Data.ti_lData = (rect.ra_MaxX + comp->SubXOf() + 1 - 1) / comp->SubXOf() - 1;
+    tags[20].ti_Data.ti_lData = (rect.ra_MaxY + comp->SubYOf() + 1 - 1) / comp->SubYOf() - 1;
+    tags[21].ti_Data.ti_lData = 0;
+    tags[22].ti_Data.ti_lData = 0;
+    
+    hook->CallLong(tags);
+  }
 }
 ///
 
@@ -165,44 +231,9 @@ void BitMapHook::Init(const struct JPG_TagItem *tag)
 // let the user fill out this tag list and
 // fill out the image bitmap from this stuff.
 void BitMapHook::RequestClientData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-				   const class Component *comp)
+                                   const class Component *comp)
 {
-  //
-  // Fill in the encoding tags.
-  m_BitmapTags[0].ti_Data.ti_lData  = JPGFLAG_BIO_REQUEST;
-  m_BitmapTags[1].ti_Data.ti_pPtr   = m_DefaultImageLayout.ibm_pData;
-  m_BitmapTags[2].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_ulWidth;
-  m_BitmapTags[3].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_ulHeight;
-  m_BitmapTags[4].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_lBytesPerRow;
-  m_BitmapTags[5].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_cBytesPerPixel;
-  m_BitmapTags[6].ti_Data.ti_lData  = m_DefaultImageLayout.ibm_ucPixelType;
-  m_BitmapTags[8].ti_Data.ti_lData  = comp->IndexOf();
-  m_BitmapTags[9].ti_Data.ti_pPtr   = m_DefaultImageLayout.ibm_pUserData;
-  m_BitmapTags[10].ti_Data.ti_lData = rect.ra_MinX;
-  m_BitmapTags[11].ti_Data.ti_lData = rect.ra_MinY;
-  m_BitmapTags[12].ti_Data.ti_lData = rect.ra_MaxX;
-  m_BitmapTags[13].ti_Data.ti_lData = rect.ra_MaxY;
-  m_BitmapTags[15].ti_Data.ti_lData = 0;
-  m_BitmapTags[16].ti_Data.ti_lData = comp->IndexOf();
-  m_BitmapTags[17].ti_Data.ti_lData = (rect.ra_MinX + comp->SubXOf() - 1) / comp->SubXOf();
-  m_BitmapTags[18].ti_Data.ti_lData = (rect.ra_MinY + comp->SubYOf() - 1) / comp->SubYOf();
-  m_BitmapTags[19].ti_Data.ti_lData = (rect.ra_MaxX + comp->SubXOf() + 1 - 1) / comp->SubXOf() - 1;
-  m_BitmapTags[20].ti_Data.ti_lData = (rect.ra_MaxY + comp->SubYOf() + 1 - 1) / comp->SubYOf() - 1;
-  m_BitmapTags[21].ti_Data.ti_lData = 0;
-  m_BitmapTags[22].ti_Data.ti_lData = 0;
-  //
-  // Now call the hook if it exists
-  if (m_pHook)
-    m_pHook->CallLong(m_BitmapTags);
-
-  // and now, finally, scan what we got back
-  ibm->ibm_pData           = m_BitmapTags[1].ti_Data.ti_pPtr;
-  ibm->ibm_ulWidth         = m_BitmapTags[2].ti_Data.ti_lData;
-  ibm->ibm_ulHeight        = m_BitmapTags[3].ti_Data.ti_lData;
-  ibm->ibm_lBytesPerRow    = m_BitmapTags[4].ti_Data.ti_lData;
-  ibm->ibm_cBytesPerPixel  = m_BitmapTags[5].ti_Data.ti_lData;
-  ibm->ibm_ucPixelType     = m_BitmapTags[6].ti_Data.ti_lData;
-  ibm->ibm_pUserData       = m_BitmapTags[9].ti_Data.ti_pPtr;
+  Request(m_pHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,false);
 }
 ///
 
@@ -211,32 +242,54 @@ void BitMapHook::RequestClientData(const RectAngle<LONG> &rect,struct ImageBitMa
 // and release it. The user may use this
 // call here to release temporary memory, etc, etc.
 void BitMapHook::ReleaseClientData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-				   const class Component *comp)
+                                   const class Component *comp)
 {
-  if (m_pHook) {
-    m_BitmapTags[0].ti_Data.ti_lData  = JPGFLAG_BIO_RELEASE;
-    m_BitmapTags[1].ti_Data.ti_pPtr   = ibm->ibm_pData;
-    m_BitmapTags[2].ti_Data.ti_lData  = ibm->ibm_ulWidth;
-    m_BitmapTags[3].ti_Data.ti_lData  = ibm->ibm_ulHeight;
-    m_BitmapTags[4].ti_Data.ti_lData  = ibm->ibm_lBytesPerRow;
-    m_BitmapTags[5].ti_Data.ti_lData  = ibm->ibm_cBytesPerPixel;
-    m_BitmapTags[6].ti_Data.ti_lData  = ibm->ibm_ucPixelType;
-    m_BitmapTags[8].ti_Data.ti_lData  = comp->IndexOf();
-    m_BitmapTags[9].ti_Data.ti_pPtr   = ibm->ibm_pUserData;
-    m_BitmapTags[10].ti_Data.ti_lData = rect.ra_MinX;
-    m_BitmapTags[11].ti_Data.ti_lData = rect.ra_MinY;
-    m_BitmapTags[12].ti_Data.ti_lData = rect.ra_MaxX;
-    m_BitmapTags[13].ti_Data.ti_lData = rect.ra_MaxY;
-    m_BitmapTags[15].ti_Data.ti_lData = 0;
-    m_BitmapTags[16].ti_Data.ti_lData = comp->IndexOf();
-    m_BitmapTags[17].ti_Data.ti_lData = (rect.ra_MinX + comp->SubXOf() - 1) / comp->SubXOf();
-    m_BitmapTags[18].ti_Data.ti_lData = (rect.ra_MinY + comp->SubYOf() - 1) / comp->SubYOf();
-    m_BitmapTags[19].ti_Data.ti_lData = (rect.ra_MaxX + comp->SubXOf() + 1 - 1) / comp->SubXOf() - 1;
-    m_BitmapTags[20].ti_Data.ti_lData = (rect.ra_MaxY + comp->SubYOf() + 1 - 1) / comp->SubYOf() - 1;
-    m_BitmapTags[21].ti_Data.ti_lData = 0;
-    m_BitmapTags[22].ti_Data.ti_lData = 0;
-    
-    m_pHook->CallLong(m_BitmapTags);
-  }
+  Release(m_pHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,false);
+}
+///
+
+/// BitMapHook::RequestClientAlpha
+// Pass an empty tag list over to the user,
+// let the user fill out this tag list and
+// fill out the image bitmap from this stuff.
+void BitMapHook::RequestClientAlpha(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
+                                   const class Component *comp)
+{
+  Request(m_pAlphaHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,true);
+}
+///
+
+/// BitMapHook::ReleaseClientAlpha
+// Tell the client that we are done with the data
+// and release it. The user may use this
+// call here to release temporary memory, etc, etc.
+void BitMapHook::ReleaseClientAlpha(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
+                                    const class Component *comp)
+{
+  Release(m_pAlphaHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,true);
+}
+///
+
+
+
+/// BitMapHook::RequestLDRData
+// Retrieve the LDR tone mapped version of the user. This requires that an
+// LDR hook function is available, i.e. should only be called if the 
+// providesLDRImage() method above returns true.
+void BitMapHook::RequestLDRData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
+                                const class Component *comp)
+{
+  Request(m_pLDRHook,m_LDRTags,CTYP_UBYTE,rect,ibm,comp,false);
+}
+///
+
+/// BitMapHook::ReleaseLDRData
+// Release the requested LDR data. Requires that an LDR hook is available, i.e.
+// providesLDRImage() must have been checked before and must have returned
+// true for this to make sense.
+void BitMapHook::ReleaseLDRData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
+                                const class Component *comp)
+{
+  Release(m_pLDRHook,m_LDRTags,CTYP_UBYTE,rect,ibm,comp,false);
 }
 ///

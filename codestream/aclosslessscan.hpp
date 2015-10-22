@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** Represents the lossless scan - lines are coded directly with predictive
 ** coding, though here residuals are encoded with the arithmetic encoder.
 **
-** $Id: aclosslessscan.hpp,v 1.19 2012-09-22 20:51:40 thor Exp $
+** $Id: aclosslessscan.hpp,v 1.28 2014/11/16 15:49:58 thor Exp $
 **
 */
 
@@ -77,6 +57,7 @@ class Scan;
 // coding, though here residuals are encoded with the arithmetic encoder.
 class ACLosslessScan : public PredictiveScan {
   //
+#if ACCUSOFT_CODE
   // The class used for pulling and pushing data.
   class LineBuffer          *m_pLineCtrl;
   //
@@ -106,10 +87,10 @@ class ACLosslessScan : public PredictiveScan {
       //
       void Init(void)
       {
-	S0.Init();
-	SS.Init();
-	SP.Init();
-	SN.Init();
+        S0.Init();
+        SS.Init();
+        SP.Init();
+        SN.Init();
       }
     } SignZeroCoding[5][5];
     //
@@ -120,19 +101,19 @@ class ACLosslessScan : public PredictiveScan {
       //
       void Init(void)
       {
-	for(int i = 0;i < 15;i++) {
-	  X[i].Init();
-	  M[i].Init();
-	}
+        for(int i = 0;i < 15;i++) {
+          X[i].Init();
+          M[i].Init();
+        }
       }
     } MagnitudeLow,MagnitudeHigh;
     //
     void Init(void)
     {
       for(int i = 0;i <5;i++) {
-	for(int j = 0;j < 5;j++) {
-	  SignZeroCoding[i][j].Init();
-	}
+        for(int j = 0;j < 5;j++) {
+          SignZeroCoding[i][j].Init();
+        }
       }
       MagnitudeLow.Init();
       MagnitudeHigh.Init();
@@ -149,9 +130,9 @@ class ACLosslessScan : public PredictiveScan {
     struct MagnitudeSet &ClassifyMagnitude(LONG Db,UBYTE u)
     {
       if (Db > (1 << u) || -Db > (1 << u)) {
-	return MagnitudeHigh;
+        return MagnitudeHigh;
       } else {
-	return MagnitudeLow;
+        return MagnitudeLow;
       }
     }
     //
@@ -161,20 +142,20 @@ class ACLosslessScan : public PredictiveScan {
       LONG abs = (diff > 0)?(diff):(-diff);
   
       if (abs <= ((1 << l) >> 1)) {
-	// the zero cathegory.
-	return 0;
+        // the zero cathegory.
+        return 0;
       }
       if (abs <= (1 << u)) {
-	if (diff < 0) {
-	  return -1;
-	} else {
-	  return 1;
-	}
+        if (diff < 0) {
+          return -1;
+        } else {
+          return 1;
+        }
       }
       if (diff < 0) {
-	return -2;
+        return -2;
       } else {
-	return 2;
+        return 2;
       }
     }
     //
@@ -183,13 +164,14 @@ class ACLosslessScan : public PredictiveScan {
   // Common setup for encoding and decoding.
   void FindComponentDimensions(void);
   //
+#endif
   // This is actually the true MCU-parser, not the interface that reads
   // a full line.
-  void ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift);
+  void ParseMCU(struct Line **prev,struct Line **top);
   //
   // The actual MCU-writer, write a single group of pixels to the stream,
   // or measure their statistics.
-  void WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift);
+  void WriteMCU(struct Line **prev,struct Line **top);
   //
   // Flush the remaining bits out to the stream on writing.
   virtual void Flush(bool final); 
@@ -200,7 +182,7 @@ class ACLosslessScan : public PredictiveScan {
   //
 public:
   ACLosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lobit,
-		 bool differential = false);
+                 bool differential = false);
   //
   virtual ~ACLosslessScan(void);
   //
@@ -208,10 +190,10 @@ public:
   virtual void WriteFrameType(class ByteStream *io);
   //
   // Fill in the tables for decoding and decoding parameters in general.
-  virtual void StartParseScan(class ByteStream *io,class BufferCtrl *ctrl);
+  virtual void StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl);
   //
   // Write the default tables for encoding
-  virtual void StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl);
+  virtual void StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl);
   //
   // Start the measurement run - not required here.
   virtual void StartMeasureScan(class BufferCtrl *ctrl);

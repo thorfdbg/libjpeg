@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** This file defines a class that implements the component upsampling
 ** procedure.
 **
-** $Id: upsampler.cpp,v 1.7 2012-07-18 19:35:45 thor Exp $
+** $Id: upsampler.cpp,v 1.13 2014/09/30 08:33:18 thor Exp $
 **
 */
 
@@ -85,7 +65,7 @@ Upsampler<sx,sy>::~Upsampler(void)
 /// Upsampler::UpsampleRegion
 // The actual upsampling process.
 template<int sx,int sy>
-void Upsampler<sx,sy>::UpsampleRegion(const RectAngle<LONG> &r,LONG *buffer)
+void Upsampler<sx,sy>::UpsampleRegion(const RectAngle<LONG> &r,LONG *buffer) const
 {
   LONG y = (r.ra_MinY / sy);     // The line offset of the current line.
   LONG x = (r.ra_MinX / sx) + 1; // the data offset such that data + offset + 0 is the pixel at the point
@@ -121,7 +101,7 @@ void Upsampler<sx,sy>::UpsampleRegion(const RectAngle<LONG> &r,LONG *buffer)
 // The actual implementations: Filter vertically from the line into the 8x8 buffer
 template<>
 void UpsamplerBase::VerticalFilterCore<1>(int,struct Line *,struct Line *cur,struct Line *,
-					  LONG offset,LONG *target)
+                                          LONG offset,LONG *target)
 {
   int lines = 8;
   
@@ -139,7 +119,7 @@ void UpsamplerBase::VerticalFilterCore<1>(int,struct Line *,struct Line *cur,str
 // The actual implementations: Filter vertically from the line into the 8x8 buffer
 template<>
 void UpsamplerBase::VerticalFilterCore<2>(int ymod,struct Line *top,struct Line *cur,struct Line *bot,
-					  LONG offset,LONG *target)
+                                          LONG offset,LONG *target)
 {
   int lines = 8;
   
@@ -152,15 +132,15 @@ void UpsamplerBase::VerticalFilterCore<2>(int ymod,struct Line *top,struct Line 
     switch(ymod) {
     case 0: // even lines
       do {
-	*out++ = (*t++ + 3 * *c++ + 2) >> 2;
-	*out++ = (*t++ + 3 * *c++ + 1) >> 2;
+        *out++ = (*t++ + 3 * *c++ + 2) >> 2;
+        *out++ = (*t++ + 3 * *c++ + 1) >> 2;
       } while(out < end);
       ymod++;
       break;
     case 1: // odd lines
       do {
-	*out++ = (*b++ + 3 * *c++ + 1) >> 2;
-	*out++ = (*b++ + 3 * *c++ + 2) >> 2;
+        *out++ = (*b++ + 3 * *c++ + 1) >> 2;
+        *out++ = (*b++ + 3 * *c++ + 2) >> 2;
       } while(out < end);
       ymod = 0;
       top  = cur;
@@ -177,7 +157,7 @@ void UpsamplerBase::VerticalFilterCore<2>(int ymod,struct Line *top,struct Line 
 // The actual implementations: Filter vertically from the line into the 8x8 buffer
 template<>
 void UpsamplerBase::VerticalFilterCore<3>(int ymod,struct Line *top,struct Line *cur,struct Line *bot,
-					  LONG offset,LONG *target)
+                                          LONG offset,LONG *target)
 {
   int lines = 8;
   
@@ -194,8 +174,8 @@ void UpsamplerBase::VerticalFilterCore<3>(int ymod,struct Line *top,struct Line 
     switch(ymod) {
     case 0: 
       do {
-	*out++ = (*t++ + 3 * *c++ + 2) >> 2;
-	*out++ = (*t++ + 3 * *c++ + 1) >> 2;
+        *out++ = (*t++ + 3 * *c++ + 2) >> 2;
+        *out++ = (*t++ + 3 * *c++ + 1) >> 2;
       } while(out < end);
       ymod++;
       break;
@@ -205,8 +185,8 @@ void UpsamplerBase::VerticalFilterCore<3>(int ymod,struct Line *top,struct Line 
       break;
     case 2: 
       do {
-	*out++ = (*b++ + 3 * *c++ + 1) >> 2;
-	*out++ = (*b++ + 3 * *c++ + 2) >> 2;
+        *out++ = (*b++ + 3 * *c++ + 1) >> 2;
+        *out++ = (*b++ + 3 * *c++ + 2) >> 2;
       } while(out < end);
       ymod = 0; 
       top  = cur;
@@ -224,7 +204,7 @@ void UpsamplerBase::VerticalFilterCore<3>(int ymod,struct Line *top,struct Line 
 // The actual implementations: Filter vertically from the line into the 8x8 buffer
 template<>
 void UpsamplerBase::VerticalFilterCore<4>(int ymod,struct Line *top,struct Line *cur,struct Line *bot,
-			   LONG offset,LONG *target)
+                           LONG offset,LONG *target)
 {
   int lines = 8;
   
@@ -238,29 +218,29 @@ void UpsamplerBase::VerticalFilterCore<4>(int ymod,struct Line *top,struct Line 
     switch(ymod) {
     case 0: 
       do {
-	*out++ = (3 * *t++ + 5 * *c++ + 4) >> 3;
-	*out++ = (3 * *t++ + 5 * *c++ + 3) >> 3;
+        *out++ = (3 * *t++ + 5 * *c++ + 4) >> 3;
+        *out++ = (3 * *t++ + 5 * *c++ + 3) >> 3;
       } while(out < end);
       ymod++;
       break;
     case 1:
       do {
-	*out++ = (1 * *t++ + 7 * *c++ + 3) >> 3;
-	*out++ = (1 * *t++ + 7 * *c++ + 4) >> 3;
+        *out++ = (1 * *t++ + 7 * *c++ + 3) >> 3;
+        *out++ = (1 * *t++ + 7 * *c++ + 4) >> 3;
       } while(out < end);
       ymod++;
       break; 
     case 2:
       do {
-	*out++ = (1 * *b++ + 7 * *c++ + 4) >> 3;
-	*out++ = (1 * *b++ + 7 * *c++ + 3) >> 3;
+        *out++ = (1 * *b++ + 7 * *c++ + 4) >> 3;
+        *out++ = (1 * *b++ + 7 * *c++ + 3) >> 3;
       } while(out < end);
       ymod++;
       break;
     case 3: 
       do {
-	*out++ = (3 * *b++ + 5 * *c++ + 4) >> 3;
-	*out++ = (3 * *b++ + 5 * *c++ + 3) >> 3;
+        *out++ = (3 * *b++ + 5 * *c++ + 4) >> 3;
+        *out++ = (3 * *b++ + 5 * *c++ + 3) >> 3;
       } while(out < end);
       ymod = 0;
       top  = cur;

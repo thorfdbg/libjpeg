@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +29,7 @@ the committee itself.
 ** the back-end class to perform the real job getting bytes in and
 ** out of the library.
 **
-** $Id: iostream.hpp,v 1.3 2012-09-09 15:53:51 thor Exp $
+** $Id: iostream.hpp,v 1.8 2014/09/30 08:33:17 thor Exp $
 **
 */
 
@@ -63,10 +43,10 @@ the committee itself.
 /// Design
 /** Design
 ******************************************************************
-** class IOStream						**
-** Super Class:	RandomAccessStream				**
-** Sub Classes: none						**
-** Friends:	none						**
+** class IOStream                                               **
+** Super Class: RandomAccessStream                              **
+** Sub Classes: none                                            **
+** Friends:     none                                            **
 ******************************************************************
 
 A direct descendant from the ByteStream, this class implements
@@ -126,8 +106,8 @@ public:
   // An optional user-provided buffer can be passed in which is used
   // instead of the system buffer if non-NULL for custom buffering.
   IOStream(class Environ *env,
-	   struct JPG_Hook *in,APTR stream,ULONG bufsize = 2048,
-	   ULONG userdata = 0,UBYTE *buffer = NULL);
+           struct JPG_Hook *in,APTR stream,ULONG bufsize = 2048,
+           ULONG userdata = 0,UBYTE *buffer = NULL);
   //
   // Does the same from a taglist.
   IOStream(class Environ *env,const struct JPG_TagItem *tags);

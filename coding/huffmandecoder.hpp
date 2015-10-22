@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 ** This class implements a decoder for a single group of bits in a huffman
 ** decoder.
 **
-** $Id: huffmandecoder.hpp,v 1.6 2012-07-15 11:59:44 thor Exp $
+** $Id: huffmandecoder.hpp,v 1.13 2014/11/12 21:24:45 thor Exp $
 **
 */
 
@@ -56,70 +36,76 @@ the committee itself.
 
 /// Includes
 #include "tools/environment.hpp"
-#include "io/bitstream.hpp"
+#include "io/bytestream.hpp"
 #include "std/string.hpp"
 ///
 
 /// class HuffmanDecoder
 // This class decodes a group of bits from the IO stream, generating a symbol. This
 // is the base class.
-class HuffmanDecoder : public JObject {
+class HuffmanDecoder : public JKeeper {
   //
-  // The number of symbols on this level.
-  const ULONG           m_ulEntries;
+  // Decoder table: Delivers for each 8-bit value the symbol.
+  UBYTE  m_ucSymbol[256];
   //
-  // The symbols in this stage.
-  const UBYTE          *m_pucValues;
+  // Decoder length: Delivers for each 8-bit value the length of the symbol in bits.
+  UBYTE  m_ucLength[256];
   //
-  // Number of bits on this level.
-  const UBYTE           m_ucBits;
+  // If 8 bits are not sufficient, here are pointers that each point to a 256 byte
+  // array indexed by the LSBs.
+  UBYTE *m_pucSymbol[256];
   //
-  // The Huffman decoder for the next larger number of bits.
-  class HuffmanDecoder *m_pNext;
-  //
-  // Return a code on the next level. The first code on this stage is
-  // provided as second argument.
-  static UBYTE Get(const class HuffmanDecoder *that,BitStream<false> *io,ULONG top)
-  { 
-    do {
-      ULONG dt = io->Get(that->m_ucBits) | (top << that->m_ucBits);
-      //
-      // If enough entries at this stage, simply decode.
-      if (dt < that->m_ulEntries) {
-	return that->m_pucValues[dt];
-      } else if (that->m_pNext) {
-	// Forward to the next stage
-	top  = dt  - that->m_ulEntries;
-	that = that->m_pNext;
-      } else {
-	class Environ *m_pEnviron = io->EnvironOf();
-	JPG_WARN(MALFORMED_STREAM,"HuffmanDecoder::Get","found invalid huffman code");
-	return 0;
-      }
-    } while(true);
-  }
+  // And ditto for the length.
+  UBYTE *m_pucLength[256];
   //
 public:
-  HuffmanDecoder(const UBYTE *values,UBYTE bits,ULONG entries)
-    : m_ulEntries(entries), m_pucValues(values), m_ucBits(bits), m_pNext(NULL)
+  HuffmanDecoder(class Environ *env,
+                 UBYTE *&symbols,UBYTE *&sizes,UBYTE **&lsbsymb,UBYTE **&lsbsize)
+    : JKeeper(env)
   {
+    symbols = m_ucSymbol;
+    sizes   = m_ucLength;
+    lsbsymb = m_pucSymbol;
+    lsbsize = m_pucLength;
+
+    // Fill the unused area with invalid sizes.
+    memset(m_ucLength ,0xff,sizeof(m_ucLength));
+    memset(m_pucSymbol,0   ,sizeof(m_pucSymbol));
+    memset(m_pucLength,0   ,sizeof(m_pucLength));
   }
   //
   ~HuffmanDecoder(void)
-  {
-    delete m_pNext; // recursively delete the next entry.
+  { 
+    int i;
+
+    for(i = 0;i < 256;i++) {
+      if (m_pucSymbol[i]) m_pEnviron->FreeMem(m_pucSymbol[i],256 * sizeof(UBYTE));      
+      if (m_pucLength[i]) m_pEnviron->FreeMem(m_pucLength[i],256 * sizeof(UBYTE));
+    }
   }
   //
-  // Extend the code by tagging on a huffman decoder for the next bits.
-  void ExtendBy(class HuffmanDecoder *next)
+  // Decode the next symbol.
+  UBYTE Get(BitStream<false> *io)
   {
-    m_pNext = next;
-  }
-  //
-  // Return the next symbol.
-  UBYTE Get(BitStream<false> *io) const
-  {
-    return Get(this,io,0);
+    UWORD data;
+    UBYTE symbol;
+    UBYTE size;
+    UBYTE lsb,msb;
+
+    data   = io->PeekWord();
+    msb    = data >> 8;
+    if (likely(m_ucLength[msb])) {
+      symbol = m_ucSymbol[msb];
+      size   = m_ucLength[msb];
+    } else {
+      lsb    = data;
+      symbol = m_pucSymbol[msb][lsb];
+      size   = m_pucLength[msb][lsb];
+    }
+    
+    io->SkipBits(size);
+
+    return symbol;
   }
 };
 ///

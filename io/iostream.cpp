@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +29,7 @@ the committee itself.
 ** the back-end class to perform the real job getting bytes in and
 ** out of the library.
 **
-** $Id: iostream.cpp,v 1.3 2012-09-09 15:53:51 thor Exp $
+** $Id: iostream.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
 **
 */
 
@@ -83,7 +63,7 @@ IOStream::IOStream(class Environ *env,const struct JPG_TagItem *tags)
     switch(tags->ti_Tag) {
     case JPGTAG_HOOK_IOHOOK:
       if (tags->ti_Data.ti_pPtr) 
-	m_Hook = *(struct JPG_Hook *)(tags->ti_Data.ti_pPtr);
+        m_Hook = *(struct JPG_Hook *)(tags->ti_Data.ti_pPtr);
       break;
     case JPGTAG_HOOK_IOSTREAM:
       m_pHandle     = tags->ti_Data.ti_pPtr;
@@ -144,13 +124,13 @@ LONG IOStream::Fill(void)
   if (m_bSeekable) {
     if (m_ulCachedSeek) {
       if (AdvanceFilePointer(m_ulCachedSeek)) {
-	// Did work, reset the pointer.
-	m_ulCachedSeek = 0;
+        // Did work, reset the pointer.
+        m_ulCachedSeek = 0;
       } else {
-	// Do not try to seek again here... Fix
-	// the missing seek otherwise by reading
-	// data from the buffer.
-	m_bSeekable    = false;
+        // Do not try to seek again here... Fix
+        // the missing seek otherwise by reading
+        // data from the buffer.
+        m_bSeekable    = false;
       }
     }
   }
@@ -188,8 +168,8 @@ LONG IOStream::Fill(void)
     do {
       // Now initiate a new read
       if ((bytes = m_Hook.CallLong(tags)) < 0) {
-	JPG_THROW_INT(Query(), "IOStream::Fill", 
-		      "Client signalled an error on reading from the file hook");
+        JPG_THROW_INT(Query(), "IOStream::Fill", 
+                      "Client signalled an error on reading from the file hook");
       }
       m_pucBuffer  = (UBYTE *)tags[0].ti_Data.ti_pPtr;  // re-fetch the buffer
       m_pucBufPtr  = m_pucBuffer;              // re-initiate the buffer pointer
@@ -199,23 +179,23 @@ LONG IOStream::Fill(void)
       // If we have an EOF or no cached seeks, abort here there's nothing
       // more we could do.
       if (bytes == 0 || m_ulCachedSeek == 0)
-	return bytes;
+        return bytes;
       //
       // Check whether we have some pending seeks to be taken care of. The
       // virtual file pointer has been incremented already, so we just must
       // read data back.
       // Try to advance the buffer pointer by the largest possible amount.
       if (ULONG(bytes) > m_ulCachedSeek) {
-	// Ok, there's not that much overload here,
-	// remove the bytes from the buffer and
-	// let it go. Furthermore ensure that the invariance
-	// file position = position of the start of the buffer
-	// remains valid.
-	bytes         -= m_ulCachedSeek;
-	m_pucBufPtr   += m_ulCachedSeek;
-	m_uqCounter   -= m_ulCachedSeek;
-	m_ulCachedSeek = 0;
-	return bytes;
+        // Ok, there's not that much overload here,
+        // remove the bytes from the buffer and
+        // let it go. Furthermore ensure that the invariance
+        // file position = position of the start of the buffer
+        // remains valid.
+        bytes         -= m_ulCachedSeek;
+        m_pucBufPtr   += m_ulCachedSeek;
+        m_uqCounter   -= m_ulCachedSeek;
+        m_ulCachedSeek = 0;
+        return bytes;
       }
       // No, just too many bytes to seek over. Remove
       // all of them from the buffer and read more.
@@ -262,8 +242,8 @@ void IOStream::Flush(void)
       tags[0].ti_Data.ti_pPtr  = bufstart;
       tags[1].ti_Data.ti_lData = bytestowrite;
       if ((bytes = m_Hook.CallLong(tags)) < 0) {
-	JPG_THROW_INT(Query(), "IOStream::Flush", 
-		  "Client signalled error on flushing the IO buffer");
+        JPG_THROW_INT(Query(), "IOStream::Flush", 
+                  "Client signalled error on flushing the IO buffer");
       }
       bytestowrite -= bytes;
       bufstart     += bytes;
@@ -342,32 +322,32 @@ void IOStream::SkipBytes(ULONG skip)
     // or refill the buffer.
     if (avail == 0) {
       if (m_bSeekable) {
-	ULONG nextseek = m_ulCachedSeek + remains;
-	// Try to cache the seek. First check
-	// whether the caching would overflow.
-	// If so, seek completely.
-	if (nextseek < m_ulCachedSeek || nextseek >= MAX_LONG) {
-	  if (m_ulCachedSeek == 0) {
-	    m_uqCounter    += remains;
-	    m_ulCachedSeek += remains;
-	    remains         = 0;
-	  }
-	  if (AdvanceFilePointer(m_ulCachedSeek)) {
-	    m_ulCachedSeek = 0;
-	  } else {
-	    // Could not seek, bummer. Retry from loop.
-	    m_bSeekable = false;
-	    continue;
-	  }
-	}
-	// Now advance the virtual file pointer and
-	// buffer the seek.
-	//AdvanceFilePointer(remains);
-	m_uqCounter    += remains;
-	m_ulCachedSeek += remains;
-	//
-	// That's all for now.
-	return;
+        ULONG nextseek = m_ulCachedSeek + remains;
+        // Try to cache the seek. First check
+        // whether the caching would overflow.
+        // If so, seek completely.
+        if (nextseek < m_ulCachedSeek || nextseek >= MAX_LONG) {
+          if (m_ulCachedSeek == 0) {
+            m_uqCounter    += remains;
+            m_ulCachedSeek += remains;
+            remains         = 0;
+          }
+          if (AdvanceFilePointer(m_ulCachedSeek)) {
+            m_ulCachedSeek = 0;
+          } else {
+            // Could not seek, bummer. Retry from loop.
+            m_bSeekable = false;
+            continue;
+          }
+        }
+        // Now advance the virtual file pointer and
+        // buffer the seek.
+        //AdvanceFilePointer(remains);
+        m_uqCounter    += remains;
+        m_ulCachedSeek += remains;
+        //
+        // That's all for now.
+        return;
       }
       //
       // We cannot seek, fetch data instead. Don't
@@ -375,8 +355,8 @@ void IOStream::SkipBytes(ULONG skip)
       // the case of still outstanding cached seeks we might
       // have here in case the stream wasn't seekable.
       if (Fill() == 0) {
-	JPG_THROW(UNEXPECTED_EOF, "IOStream::SkipBytes", 
-	      "unexpected EOF while skipping bytes");
+        JPG_THROW(UNEXPECTED_EOF, "IOStream::SkipBytes", 
+              "unexpected EOF while skipping bytes");
       }
     }
     //
@@ -439,7 +419,7 @@ void IOStream::SetFilePointer(UQUAD newpos)
       // target.
       skip = newpos - current;
       if (skip > MAX_LONG)
-	skip = MAX_LONG;
+        skip = MAX_LONG;
       //
       // Now do the skip here.
       SkipBytes(ULONG(skip));
@@ -456,35 +436,35 @@ void IOStream::SetFilePointer(UQUAD newpos)
       // We will loop until the desired position is reached.
       target = newpos;
       if (target > MAX_LONG)
-	target = MAX_LONG;
+        target = MAX_LONG;
       //
       // NOTE: We do not support writing here, dirty buffers aren't
       // pushed intentionally.
       //
       {
-	LONG result;
-	//
-	JPG_TagItem tags[] = {
-	  JPG_ValueTag(JPGTAG_FIO_OFFSET,target),
-	  JPG_PointerTag(JPGTAG_FIO_HANDLE,m_pHandle),
-	  JPG_ValueTag(JPGTAG_FIO_SEEKMODE,JPGFLAG_OFFSET_BEGINNING),
-	  JPG_ValueTag(JPGTAG_FIO_ACTION,JPGFLAG_ACTION_SEEK),      
-	  JPG_ValueTag(JPGTAG_FIO_USERDATA,m_lUserData),
-	  JPG_EndTag
-	};
-	// Move the buffer, return the new file pointer
-	result = m_Hook.CallLong(tags);
-	if (result != -1) { // worked fine
-	  m_lUserData    = tags[4].ti_Data.ti_lData;   
-	  // Set the file counter to the target position
-	  m_uqCounter    = target; 
-	  m_pucBufPtr    = m_pucBuffer; // ensure that FilePosition works
-	  m_pucBufEnd    = m_pucBuffer; // declare buffer as empty.
-	  m_ulCachedSeek = 0; // clearly, as we are right where we want to be.
-	} else {
-	  JPG_THROW_INT(Query(), "IOStream::SetFilePointer", 
-			"Server signalled an error on seeking in the file hook");
-	}
+        LONG result;
+        //
+        JPG_TagItem tags[] = {
+          JPG_ValueTag(JPGTAG_FIO_OFFSET,target),
+          JPG_PointerTag(JPGTAG_FIO_HANDLE,m_pHandle),
+          JPG_ValueTag(JPGTAG_FIO_SEEKMODE,JPGFLAG_OFFSET_BEGINNING),
+          JPG_ValueTag(JPGTAG_FIO_ACTION,JPGFLAG_ACTION_SEEK),      
+          JPG_ValueTag(JPGTAG_FIO_USERDATA,m_lUserData),
+          JPG_EndTag
+        };
+        // Move the buffer, return the new file pointer
+        result = m_Hook.CallLong(tags);
+        if (result != -1) { // worked fine
+          m_lUserData    = tags[4].ti_Data.ti_lData;   
+          // Set the file counter to the target position
+          m_uqCounter    = target; 
+          m_pucBufPtr    = m_pucBuffer; // ensure that FilePosition works
+          m_pucBufEnd    = m_pucBuffer; // declare buffer as empty.
+          m_ulCachedSeek = 0; // clearly, as we are right where we want to be.
+        } else {
+          JPG_THROW_INT(Query(), "IOStream::SetFilePointer", 
+                        "Server signalled an error on seeking in the file hook");
+        }
       }
     }
   } while(true);
@@ -555,43 +535,43 @@ LONG IOStream::PeekWord(void)
       LastUnDo();
       // Ok, now check whether we can undo the first get as well.
       if (m_pucBufPtr>m_pucBuffer) {
-	// Yes, we can.
-	LastUnDo();
+        // Yes, we can.
+        LastUnDo();
       } else {
-	// Otherwise, we're in a mess. If the buffer is the system buffer,
-	// then we can move the bytes around because there is one additional
-	// byte in the system buffer for just that. 
-	if (m_pucBuffer == (UBYTE *)m_pSystemBuffer) {
-	  // *Yuck*
-	  memmove(m_pucBuffer + 1,m_pucBuffer,m_pucBufEnd - m_pucBuffer);
-	  m_pucBuffer[0] = (UBYTE) byte1;
-	  m_pucBufEnd++;
-	} else {
-	  ULONG bytes = m_pucBufEnd - m_pucBuffer;
-	  UBYTE *buf;
-	  // Check for the amount of data in the current buffer. If there
-	  // is not enough room, allocate or enlarge the system buffer.
-	  if (m_pSystemBuffer && bytes > m_ulBufSize) {
-	    m_pEnviron->FreeMem(m_pSystemBuffer,m_ulBufSize + 1);
-	    m_pSystemBuffer = NULL;
-	  }
-	  // If no buffer is available, create one now.
-	  if (m_pSystemBuffer == NULL) {
-	    m_ulBufSize     = bytes;
-	    m_pSystemBuffer = m_pEnviron->AllocMem(m_ulBufSize + 1);
-	  }
-	  //
-	  // Otherwise (or now), we know that there is enough room in the
-	  // system buffer, so copy the user data over.
-	  buf    = (UBYTE *)m_pSystemBuffer;
-	  buf[0] = (UBYTE) byte1;
-	  memcpy(buf + 1,m_pucBuffer,bytes);
-	  m_pucBuffer = buf;
-	  m_pucBufPtr = buf;
-	  m_pucBufEnd = buf + bytes + 1;
-	}
-	// Fixup the position in the stream.
-	m_uqCounter--;
+        // Otherwise, we're in a mess. If the buffer is the system buffer,
+        // then we can move the bytes around because there is one additional
+        // byte in the system buffer for just that. 
+        if (m_pucBuffer == (UBYTE *)m_pSystemBuffer) {
+          // *Yuck*
+          memmove(m_pucBuffer + 1,m_pucBuffer,m_pucBufEnd - m_pucBuffer);
+          m_pucBuffer[0] = (UBYTE) byte1;
+          m_pucBufEnd++;
+        } else {
+          ULONG bytes = m_pucBufEnd - m_pucBuffer;
+          UBYTE *buf;
+          // Check for the amount of data in the current buffer. If there
+          // is not enough room, allocate or enlarge the system buffer.
+          if (m_pSystemBuffer && bytes > m_ulBufSize) {
+            m_pEnviron->FreeMem(m_pSystemBuffer,m_ulBufSize + 1);
+            m_pSystemBuffer = NULL;
+          }
+          // If no buffer is available, create one now.
+          if (m_pSystemBuffer == NULL) {
+            m_ulBufSize     = bytes;
+            m_pSystemBuffer = m_pEnviron->AllocMem(m_ulBufSize + 1);
+          }
+          //
+          // Otherwise (or now), we know that there is enough room in the
+          // system buffer, so copy the user data over.
+          buf    = (UBYTE *)m_pSystemBuffer;
+          buf[0] = (UBYTE) byte1;
+          memcpy(buf + 1,m_pucBuffer,bytes);
+          m_pucBuffer = buf;
+          m_pucBufPtr = buf;
+          m_pucBufEnd = buf + bytes + 1;
+        }
+        // Fixup the position in the stream.
+        m_uqCounter--;
       }
       // Deliver the result.
       return ((byte1<<8) | byte2);
@@ -601,10 +581,10 @@ LONG IOStream::PeekWord(void)
     if (m_pucBuffer != (UBYTE *)m_pSystemBuffer) {
       // We really need a system buffer here. *Sigh*.
       if (m_pSystemBuffer == NULL) {
-	// This is already at least one byte large,
-	// and thus large enough to contain the
-	// single character we need to keep.
-	m_pSystemBuffer = m_pEnviron->AllocMem(m_ulBufSize + 1);
+        // This is already at least one byte large,
+        // and thus large enough to contain the
+        // single character we need to keep.
+        m_pSystemBuffer = m_pEnviron->AllocMem(m_ulBufSize + 1);
       }
       m_pucBuffer = (UBYTE *)m_pSystemBuffer;
     }

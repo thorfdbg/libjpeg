@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: linebuffer.cpp,v 1.7 2012-07-16 20:37:51 thor Exp $
+** $Id: linebuffer.cpp,v 1.13 2015/06/03 15:37:24 thor Exp $
 **
 */
 
@@ -98,10 +78,10 @@ LineBuffer::~LineBuffer(void)
   if (m_ppTop) {
     for(i = 0;i < m_ucCount;i++) {
       while((row = m_ppTop[i])) {
-	m_ppTop[i] = row->m_pNext;
-	if (row->m_pData)
-	  m_pEnviron->FreeMem(row->m_pData,m_pulWidth[i] * sizeof(LONG));
-	delete row;
+        m_ppTop[i] = row->m_pNext;
+        if (row->m_pData)
+          m_pEnviron->FreeMem(row->m_pData,m_pulWidth[i] * sizeof(LONG));
+        delete row;
       }
     }
     m_pEnviron->FreeMem(m_ppTop,m_ucCount * sizeof(struct Line *));
@@ -159,15 +139,16 @@ void LineBuffer::BuildCommon(void)
     memset(m_ppTop,0,sizeof(struct Line *) * m_ucCount);
   }
 
-  if (m_pppCurrent == NULL)
+  if (m_pppCurrent == NULL) {
     m_pppCurrent  = (struct Line ***)m_pEnviron->AllocMem(sizeof(struct Line **) * m_ucCount);
+    for(i = 0;i < m_ucCount;i++) {
+      m_pppCurrent[i]       = m_ppTop + i;
+    }
+  }
 
-  if (m_ppPrev == NULL) 
+  if (m_ppPrev == NULL) {
     m_ppPrev      = (struct Line **) m_pEnviron->AllocMem(sizeof(struct Line *) * m_ucCount);
-
-  for(i = 0;i < m_ucCount;i++) {
-    m_pppCurrent[i]       = m_ppTop + i;
-    m_ppPrev[i]           = NULL;
+    memset(m_ppPrev,0,m_ucCount * sizeof(struct Line *));
   }
 }
 ///
@@ -218,20 +199,20 @@ bool LineBuffer::StartMCUQuantizerRow(class Scan *scan)
       //
       // Advance to the end of the current block row.
       while (*last && m_pulCurrentY[idx] < m_pulY[idx]) {
-	m_ppPrev[idx]   = *last;       // last line buffered is previous line of next block.
-	last = &((*last)->m_pNext);
-	m_pulCurrentY[idx]++;
+        m_ppPrev[idx]   = *last;       // last line buffered is previous line of next block.
+        last = &((*last)->m_pNext);
+        m_pulCurrentY[idx]++;
       }
 
       for(y = ymin;y < ymax;y++) {
-	if (*last == NULL) {
-	  *last = new(m_pEnviron) struct Line;
-	}
-	if ((*last)->m_pData == NULL)
-	  (*last)->m_pData = (LONG *)m_pEnviron->AllocMem(m_pulWidth[idx] * sizeof(LONG));
-	if (y == ymin)
-	  m_pppCurrent[idx] = last;
-	last = &((*last)->m_pNext);
+        if (*last == NULL) {
+          *last = new(m_pEnviron) struct Line;
+        }
+        if ((*last)->m_pData == NULL)
+          (*last)->m_pData = (LONG *)m_pEnviron->AllocMem(m_pulWidth[idx] * sizeof(LONG));
+        if (y == ymin)
+          m_pppCurrent[idx] = last;
+        last = &((*last)->m_pNext);
       }
     } else {
       more = false;
@@ -248,7 +229,7 @@ bool LineBuffer::StartMCUQuantizerRow(class Scan *scan)
 bool LineBuffer::StartMCUResidualRow(void)
 {
   JPG_THROW(NOT_IMPLEMENTED,"LineBuffer::StartMCUResidualRow",
-	    "residual coding not implemented (and not necessary) for line based processes");
+            "residual coding not implemented (and not necessary) for line based processes");
 
   return false; // code never goes here.
 }
@@ -301,7 +282,7 @@ void LineBuffer::DefineRegion(LONG x,struct Line *line,const LONG *buffer,UBYTE 
       // Duplicate pixel over the edge.
       dst = lst + 1;
       while(dst < end) {
-	*dst++ = *lst;
+        *dst++ = *lst;
       }
       buffer += 8;
       line  = line->m_pNext;

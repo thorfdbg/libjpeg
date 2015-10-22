@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** A random access IO stream that allows forwards and backwards
 ** seeking. This is an abstraction of the known "IOHook".
 **
-** $Id: randomaccessstream.cpp,v 1.3 2012-09-09 15:53:51 thor Exp $
+** $Id: randomaccessstream.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
 **
 */
 
@@ -75,17 +55,17 @@ LONG RandomAccessStream::PeekWord(void)
       LastUnDo();
       // Ok, now check whether we can undo the first get as well.
       if (m_pucBufPtr>m_pucBuffer) {
-	// Yes, we can.
-	LastUnDo();
+        // Yes, we can.
+        LastUnDo();
       } else {
-	// Otherwise, we're in a mess. We allocated the buffer one
-	// byte larger than necessary, so we can move the buffer
-	// contents up by one byte and place the first byte at the
-	// beginning of the buffer. *Yuck*
-	memmove(m_pucBuffer+1,m_pucBuffer,m_pucBufEnd - m_pucBuffer);
-	m_pucBuffer[0] = (UBYTE) byte1;
-	m_pucBufEnd++;
-	m_uqCounter--;
+        // Otherwise, we're in a mess. We allocated the buffer one
+        // byte larger than necessary, so we can move the buffer
+        // contents up by one byte and place the first byte at the
+        // beginning of the buffer. *Yuck*
+        memmove(m_pucBuffer+1,m_pucBuffer,m_pucBufEnd - m_pucBuffer);
+        m_pucBuffer[0] = (UBYTE) byte1;
+        m_pucBufEnd++;
+        m_uqCounter--;
       }
       // Deliver the result.
       return ((byte1<<8) | byte2);

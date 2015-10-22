@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** This class contains and maintains the huffman code parsers.
 **
-** $Id: huffmantable.cpp,v 1.10 2012-10-07 15:58:08 thor Exp $
+** $Id: huffmantable.cpp,v 1.19 2015/09/17 11:20:35 thor Exp $
 **
 */
 
@@ -77,6 +57,24 @@ HuffmanTable::~HuffmanTable(void)
 }
 ///
 
+
+/// HuffmanTable::isEmpty
+// Check whether the tables are empty or not
+// In such a case, do not write the tables.
+bool HuffmanTable::isEmpty(void) const
+{ 
+  int i = 0;
+
+  for(i = 0;i < 8;i++) {
+    if (m_pCoder[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+///
+
 /// HuffmanTable::WriteMarker
 // Write the currently defined huffman tables back to a stream.
 void HuffmanTable::WriteMarker(class ByteStream *io)
@@ -100,7 +98,7 @@ void HuffmanTable::WriteMarker(class ByteStream *io)
     if (m_pCoder[i]) {
       UBYTE type = 0;
       if (i >= 4)
-	type |= 0x10;    // is an AC table then.
+        type |= 0x10;    // is an AC table then.
       type |= i & 0x03;  // the huffman table identifier.
       io->Put(type);
       m_pCoder[i]->WriteMarker(io);
@@ -116,7 +114,7 @@ void HuffmanTable::ParseMarker(class ByteStream *io)
   LONG len = io->GetWord();
 
   if (len < 2)
-    JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker","huffman table length must be at least two bytes long");
+    JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker","Huffman table length must be at least two bytes long");
 
   len -= 2; // remove the marker length.
 
@@ -126,12 +124,16 @@ void HuffmanTable::ParseMarker(class ByteStream *io)
     UQUAD q;
     
     if (t == ByteStream::EOF)
-      JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker","huffman table marker run out of data");
+      JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker","Huffman table marker run out of data");
     len--;
     
     if ((t >> 4) > 1) {
-      JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker","undefined huffman table type");
+      JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker","undefined Huffman table type");
       return;
+    }
+    if ((t & 0x0f) > 3) {
+      JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker",
+                "invalid Huffman table destination, must be between 0 and 3");
     }
     t = (t & 0x03) | ((t & 0xf0) >> 2);
     delete m_pCoder[t];m_pCoder[t] = NULL;
@@ -166,7 +168,7 @@ void HuffmanTable::AdjustToStatistics(void)
 
 /// HuffmanTable::DCTemplateOf
 // Get the template for the indicated DC table or NULL if it doesn't exist.
-class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual)
+class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden)
 {
   assert(m_pCoder && idx < 4);
   
@@ -175,9 +177,9 @@ class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE 
     // Provide a default that seems sensible. Everything else requires
     // measurement.
     if (idx == 0) {
-      m_pCoder[idx]->InitDCLuminanceDefault(type,depth,hidden,residual);
+      m_pCoder[idx]->InitDCLuminanceDefault(type,depth,hidden);
     } else {
-      m_pCoder[idx]->InitDCChrominanceDefault(type,depth,hidden,residual);
+      m_pCoder[idx]->InitDCChrominanceDefault(type,depth,hidden);
     }
   }
   
@@ -187,7 +189,7 @@ class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE 
 
 /// HuffmanTable::ACTemplateOf
 // Get the template for the indicated AC table or NULL if it doesn't exist.
-class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden,bool residual)
+class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden)
 {
   assert(m_pCoder && idx < 4);
 
@@ -197,10 +199,10 @@ class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx,ScanType type,UBYTE 
     m_pCoder[idx] = new(m_pEnviron) class HuffmanTemplate(m_pEnviron);
     // Provide a default that seems sensible. Everything else requires
     // measurement.
-    if (idx == 0) {
-      m_pCoder[idx]->InitACLuminanceDefault(type,depth,hidden,residual);
+    if (idx == 4) {
+      m_pCoder[idx]->InitACLuminanceDefault(type,depth,hidden);
     } else {
-      m_pCoder[idx]->InitACChrominanceDefault(type,depth,hidden,residual);
+      m_pCoder[idx]->InitACChrominanceDefault(type,depth,hidden);
     }
   }
   

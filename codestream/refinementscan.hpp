@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.hpp,v 1.15 2012-09-23 14:10:12 thor Exp $
+** $Id: refinementscan.hpp,v 1.24 2014/09/30 08:33:15 thor Exp $
 **
 */
 
@@ -73,6 +53,7 @@ class Frame;
 struct RectangleRequest;
 class BlockBitmapRequester;
 class BlockBuffer;
+class BlockCtrl;
 ///
 
 /// class RefinementScan
@@ -110,24 +91,26 @@ protected:
   //
   // The block control helper that maintains all the request/release
   // logic and the interface to the user.
-  class BlockBuffer          *m_pBlockCtrl; 
+  class BlockCtrl         *m_pBlockCtrl; 
   //
   // Scan parameters.
-  UBYTE                       m_ucScanStart;
-  UBYTE                       m_ucScanStop;
-  UBYTE                       m_ucLowBit; // First bit (from LSB) to code in this scan
-  UBYTE                       m_ucHighBit; // First bit *NOT* to code anymore.
+  UBYTE                    m_ucScanStart;
+  UBYTE                    m_ucScanStop;
+  UBYTE                    m_ucLowBit; // First bit (from LSB) to code in this scan
+  UBYTE                    m_ucHighBit; // First bit *NOT* to code anymore.
   //
+  // Encode a residual scan?
+  bool                     m_bResidual;
   //
   // Encode a single huffman block
   void EncodeBlock(const LONG *block,
-		   class HuffmanCoder *ac,
-		   UWORD &skip);
+                   class HuffmanCoder *ac,
+                   UWORD &skip);
   //
   // Decode a single huffman block.
   void DecodeBlock(LONG *block,
-		   class HuffmanDecoder *ac,
-		   UWORD &skip);
+                   class HuffmanDecoder *ac,
+                   UWORD &skip);
   //
   // Flush the remaining bits out to the stream on writing.
   virtual void Flush(bool final);
@@ -139,8 +122,8 @@ private:
   //
   // Make a block statistics measurement on the source data.
   void MeasureBlock(const LONG *block,
-		    class HuffmanStatistics *ac,
-		    UWORD &skip);
+                    class HuffmanStatistics *ac,
+                    UWORD &skip);
   //
   // Write the marker that indicates the frame type fitting to this scan.
   virtual void WriteFrameType(class ByteStream *io);
@@ -153,16 +136,16 @@ public:
   // Create a refinement scan. The differential flag is always ignored, so
   // is the residual flag.
   RefinementScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
-		 UBYTE lowbit,UBYTE highbit,
-		 bool differential = false,bool residual = false);
+                 UBYTE lowbit,UBYTE highbit,
+                 bool differential = false,bool residual = false);
   //
   ~RefinementScan(void);
   // 
   // Fill in the tables for decoding and decoding parameters in general.
-  virtual void StartParseScan(class ByteStream *io,class BufferCtrl *ctrl);
+  virtual void StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl);
   //
   // Write the default tables for encoding 
-  virtual void StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl);
+  virtual void StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl);
   //
   // Measure scan statistics.
   virtual void StartMeasureScan(class BufferCtrl *ctrl);

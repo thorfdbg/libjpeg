@@ -1,5 +1,11 @@
 This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-plus a library that can be used to encode and decode JPEG streams.
+plus a library that can be used to encode and decode JPEG streams. 
+It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+towards intermediate, high-dynamic-range lossy and lossless coding
+of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8/-9 
+encoding.
+
+--------------------------------------------------------------------------
 
 Unlike many other implementations, libjpeg also implements:
 
@@ -13,142 +19,253 @@ Unlike many other implementations, libjpeg also implements:
 Standard features are of course also supported, such as
 sequential and progressive mode in 8bpp.
 
+--------------------------------------------------------------------------
 
-In addition, this codec provides methods to encode images *without loss*
-using the DCT process in a backwards compatible way. That is, this codec
-can create images such that
+In addition, this codec provides methods to encode images
 
-- all existing JPEG implementations can decode them, and in addition,
-- this implementation can decode them without loss.
+- with a bit depth between 8 and 16 bits per sample, fully backwards
+  compatible to ISO/IEC 10918 baseline coding.
 
-The new feature in release 0.3 is the optional lossy coding of the base layer
-which is controlled by the -Q parameter. The code also includes an
-optional tone mapping curve which can either be specified by the gamma parameter,
-or can be determined by an automatic process implementing a version of the
-exrpptm tone mapper.
+- consisting of floating point samples, specifically images with 
+  high dynamic range.
 
-*) To compress a HDR image with this version of jpeg:
+- to encode images without loss, regardless of their bit-depth and their
+  sample data type.
 
-Use the command line options -q quality -r
+--------------------------------------------------------------------------
 
-*) To specify a separate quality for the extensions layer:
+Example usage:
 
-Use the command line options -Q extensionslayerquality -q quality -r
+Standard JPEG compression, with 444 (aka "no") subsampling:
 
-*) To specify an optional tone mapping function to map the HDR input
-to a more useful LDR base layer
+$ jpeg -q <quality> infile.ppm outfile.jpg
 
-Use the command line option -g gamma_value
+Standard JPEG compression, with 422 subsampling:
 
-where the gamma value is the nonlinearity of the LDR signal,
-assuming a linear HDR signal.
+$ jpeg -q <quality> -s 1x1,2x2,2x2 infile.ppm outfile.jpg
 
-*) To use an automatic tone mapping algorithm, set the -g parameter
-to zero.
+Intermediate dynamic range compression, i.e. compression of images
+of a bit-depth between 8 and 16 bits:
 
-The following options exist for lossless coding:
+$ jpeg -r -q <base-quality> -Q <extension-quality> -h -r12 infile.ppm outfile.jpg
 
-*) predictive 10918-1 coding. Note, however, that not many implementations
+This type of encoding uses a technology known as "residual scans" which 
+increase the bit-depths in the spatial domain which is enabled by the -r
+command line switch. The -Q parameter sets the quality of the residual image. 
+To improve the precision in the frequency domain, "refinement scans" can be used. 
+The following encodes a 12-bit image with  four additional refinement scans,
+enabled by the "-R 4" parameter.
+
+$ jpeg -q <quality> -R 4 -h infile.ppm outfile.jpg
+
+Both technologies can be combined, and the precision of the residual scan
+can also be enlarged by using residual refinement scans with the -rR option.
+The following command line with use a 12-bit residual scan with four refinement
+scans:
+
+$ jpeg -r -q <base-quality> -Q <extension-quality> -h -rR 4 infile.ppm outfile.jpg
+
+High-dynamic range compression allows three different profiles of varying
+complexity and performance. The profiles are denoted by "-profile <X>" where
+<X> is a,b or c. The following encodes an HDR image in profile C:
+
+$ jpeg -r -q <base-quality> -Q <extension-quality> -h -profile c -rR 4 infile.pfm outfile.jpg
+
+HDR images here have to be fed into the command line in "pfm" format. 
+exr or hdr is not supported as input format and requires conversion to 
+pfm first. pfm is the floating-point equivalent of ppm and encodes each
+pixel by three 32-bit floating point numbers.
+
+Encoding in profiles a and b works likewise, though it is generally advisable to
+use "open loop" rather than "closed loop" coding for these two profiles by
+additionally providing the "-ol" parameter. This also works for profile C:
+
+$ jpeg -ol -r -profile a -q <base-quality> -Q <extension-quality> -h infile.pfm out.jpg
+
+similar for profile B.
+
+What is common to profiles A and C is that you may optionally also specify 
+the LDR image, i.e. the image that a legacy JPEG decoder will show. By default, 
+a simple tone mapping algorithm ("global Reinhard") will be used to derive a
+suitable LDR image from the input image:
+
+$ jpeg -ldr infile.ppm -q <base-quality> -Q <extension-quality> -h -rR 4 infile.pfm out.jpg
+
+The profile is by default profile c, but it also works for profile a:
+
+$ jpeg -ol profile a -ldr infile.ppm -q <base-quality> -Q <extension-quality> infile.pfm out.jpg
+
+It is in general advisable for profile c encoding to enable residual refinement scans,
+profiles a or b do not require them.
+
+
+The following options exist for lossless coding integer:
+
+predictive 10918-1 coding. Note, however, that not many implementations
 are capable of decoding such stream, thus this is probably not a good option
 for all-day purposes.
 
-Use the command line options -p -c
+$ jpeg -p -c infile.ppm out.jpg
+
+While the result is a valid 10918-1 stream, most other implementations will
+hick up and break, thus it is not advisable to use it.
+
+A second option for lossless coding is residual coding within profile c:
+
+$ jpeg -q <quality> -Q 100 -h -r infile.ppm out.jpg
+
+This also works for floating point coding. Note that lossless coding is enabled
+by setting the extension quality to 100.
+
+$ jpeg -q <quality> -Q 100 -h -r infile.pfm out.jpg
+
+However, this is only lossless for 16 bit input samples, i.e. there is a precision
+loss due to down-converting the 32-bit input to 16 bit. If samples are out of the
+601 gamut, the problem also exists that clamping will happen. To avoid that,
+encode in the XYZ color space (profile C only, currently):
+
+$ jpeg -xyz -q <quality> -Q 100 -h -r infile.pfm out.jpg
+
+A second option for lossless integer coding is to use a lossless 1-1 DCT
+process. This is enabled with the -l command line option:
+
+$ jpeg -l -q 100 -c infile.ppm out.jpg
+
+Refinement scans can be used to increase the sample precision to up to 12
+bits. The "-c" command line option disables the lossy color transformation.
+
+Additionally, this implementation also supports JPEG LS, which is outside of
+10918 and 18477. For that, use the command line option -ls:
+
+$ jpeg -ls -c infile.ppm out.jpg
+
+The "-c" command line switch is necessary to disable the color transformation
+as JPEG LS typically encodes in RGB and not YCbCr space.
+
+Optionally, you may specify the JPEG LS "near" parameter (maximum error) with
+the -m command line switch:
+
+$ jpeg -ls -m 2 -c infile.ppm out.jpg
+
+JPEG LS also specifies a lossless color transformation that is enabled with
+-cls:
+
+$ jpeg -ls -cls infile.ppm out.jpg
 
 
-*) Residual coding. This embedds a residual error image into the JPEG stream
-that allows this specific codec to reconstruct images without loss. This
-option provides the best coding performance for lossless coding that is still
-backwards compatible to 10918.
+To encode images with an alpha channel, specify the source image that 
+contains the alpha channel with -al. The alpha channel is a one-component
+grey-scale image, either integer or floating point. The quality of the
+alpha channel is specified with -aq, that of the regular image with -q:
 
-Use the command line options -h -q 75 -Q 100 -r 
+$ jpeg -al alpha.pgm -aq 80 -q 85 input.ppm output.jpg
 
-[Note that this changed in release 0.3]
+Alpha channels can be larger than 8bpp or can be floating point. In both
+cases, residual coding is required. To enable residual coding in the alpha
+channel, use the -ar command line option. Similar to the regular image,
+where residual coding requires two parameters, -q for the base quality and
+-Q for the extension quality, an alpha channel that uses residual coding
+also requires a base and extension quality, the former is given by -aq,
+the latter with -aQ:
 
-*) Lossless DCT process coding. This provides progressive/embedded coding from
-lossy to lossless. Its preformance isn't quite as good as that of the residual
-coding, though it creates an embedded bitstream.
+$ jpeg -ar -al alphahigh.pgm -q 85 -Q 90 -aq 80 -aQ 90 input.ppm out.jpg
 
-Use the command line options -l -q 100 -c
+The alpha channel can be encoded without loss if desired. For that, enable
+residual coding with -ar and specify an extension quality of 100:
 
-*) Lossless coding with JPEG LS (NOT A 10918 PROCESS, THIS IS A SEPARATE STANDARD)
+$ jpeg -ar -al alphahigh.pgm -q 85 -Q 90 -aq 80 -aQ 100 input.ppm out.jpg
 
-Use the command line option -ls
+The alpha channel can use the same technology extensions as the image,
+namely refinement scans in the base or extension image, or 12-bit residual
+images. The number of refinement scans is selected with -aR and -arR for
+the base and residual image, a 12-bit residual image is selected with -ar12.
 
-Optinally, you may specify the JPEG LS "near" parameter (maximum error) with
-the -m command line switch.
+--------------------------------------------------------------------------
 
-*) Lossless coding with an additional color transformation following JPEG LS
-part-2 (NOT 10918, NOT JPEG LS PART 1):
+Decoding is much simpler:
 
-Use the command line option -ls -cls
+$ jpeg infile.jpg out.ppm
+
+or, for floating point images:
+
+$ jpeg infile.jpg out.pfm
 
 
+If you want to decode a JPEG LS image, then you may want to tell the
+decoder explicitly to disable the color transformation even though the
+corresponding marker signalling coding in RGB space is typically missing
+for JPEG LS:
 
-This project is released under the terms of the GPLv3 license, see README.license
-for details. The source code may be obtained under other license conditions, for
-requests and inquiries, please contact me at thor@math.tu-berlin.de.
+$ jpeg -c infile.jpg out.ppm
+
+
+If an alpha channel is included in the image, the decoder does not
+reconstruct this automatically, nor does it attempt to merge the alpha
+image into the file. Instead, it may optionally be instructed to write the
+alpha channel into a separate 1-component (grey-scale) file:
+
+$ jpeg -al alpha.pgm infile.jpg outfile.ppm
+
+The -al option for the decoder provides the target file for the alpha
+channel.
+
+--------------------------------------------------------------------------
+
+Starting with release 1.30, libjpeg will include a couple of optimization
+parameters to improve the performance of JPEG and JPEG XT. In this
+release, the following additional command line switches are available:
+
+-qt <n> : Selects a different quantization table. The default table, also
+enabled by -qt 0, is the one in the legacy JPEG standard (ITU T.81 | ISO/IEC
+10918-1). -qt 1 is the "flat" table for PSNR-optimal performance. It is not
+recommended for real-life usage as its visual performance is non-ideal, it
+just generates "nice numbers". -qt 2 is MS-SSIM ideal, but similarly, not
+necessarily a good recommendation for all-day use. -qt 3 is a good 
+compromize and usually works better than -qt 0.
+
+-dz : This option enables a deadzone quantizer that shifts the buckets
+by 1/8th of their size to the outside. This is (almost) the ideal choice
+for Laplacian sources which would require a shift of 1/12th. Nevertheless,
+this option improves the rate-distortion performance by about 0.3dB on
+average and works pretty consistent over many images.
+
+Additional options are planned for future releases.
+-------------------------------------------------------------------------------------
+
+Release 1.40:
+
+In this release, we included additional support for "full profile" encoding, i.e.
+encoding parameters that do not fit any of the four profiles specified in 18477-7.
+Using such encoding parameters will generate a warning on the command line, but
+encoding will proceed anyhow, generating a bitstream that conforms to 18477-7, but
+not to any of the profiles in this standard.
+
+With "-profile a -g 0" or "-profile b -g 0" the encoder will generate a file that
+uses an inverse TMO lookup similar to profile C with other encoding parameters
+identical to those defined by profiles A and B.
+
+The command line option "-lr" will use a logarithmic encoding instead of the gamma
+encoding for profile B. Again, this will leave the profile, but will be within the
+bounds of 18477-7.
+
+Other than that, a couple of bug fixes have been made. Profile A and B setup could
+not reset the toe value for the inverse gamma map, due to a typo of one of the
+parameters. Profile B accepted a different gamma value than the default, but never
+communicated it to the core code, i.e. it was simply ignored. Profile B setup ignored
+the epsilon values for numerator and denomiator, and they were communicated wrongly
+into the core code. This was corrected, and epsilons can now be specified on the
+command line.
+
+--------------------------------------------------------------------------
+
+This project is released under the terms of a BSD type or under a GPL license, 
+depending on the distribution channel. The source code may be obtained under 
+other license conditions, for requests and inquiries, please contact me at 
+thor@math.tu-berlin.de.
 
 Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart for sponsoring this project.
 
-Thomas Richter, May 2012
+Thomas Richter, September 2015
 
 -------------------------------------------------------------------------------------
-
-Release 0.5:
-
-The new features in this version are a refined residual coding algorithm that
-includes a runlength scan to improve coding efficiency for low-quality extensions
-layers. This release also features a new HDR compression in the DCT domain that
-uses the known JPEG refinement scans of progressive coding to improve the resolution
-from 8 bit to 12 bit in a completely backwards compatible way. Additionally, the
-software was unit-tested with the 10918-2 (JPEG part 2) test streams and various
-bugs of the lossless predictive arithmetic coding and lossless predictive coding
-were removed. New command line switches allow the encoding of pfm images (floating
-point, for high-dynamic range) and the number of extension refinement scans.
-
-In detail:
-
-*) For encoding, no additional switch is needed to enforce encoding of floating
-point. The codec just recognizes pfm images and chooses an apropriate encoding
-algorithm. It is necessary to specify a tone mapping with -g to map the coefficients
-into the 8-bit domain.
-
-*) Since the codestream carries currently no metadata to identify such data, on decoding 
-switch "-pfm" is necessary to write the output as pfm.
-
-*) To define the number of extension (hidden) DCT bits on encoding, specify them with
-"-R n" where n is a number between zero (no extension bits) and four (4 extension bits,
-i.e. 12 bits resolution).
-
-*) A new switch "-quality" was added that sets both the quality of the base layer and
-the extension layer. For numbers smaller than 100, no extension layer is present, and
-for numbers larger than 90, the base layer has quality 90 and the extension layer quality
-q - 90, where q is the given quality.
-
--------------------------------------------------------------------------------------
-
-Release 0.6:
-
-Only minor modifications were made in this release. The Huffman coder now fills
-undefined bits at the end of the entropy coded segment by ones, and potentially
-inserts a stuffed zero byte. Note that the standard defines this only in an
-informative note, so it is likely not required. The insertion of a stuffed zero
-byte at this position might also be unnecessary as a parser should identify the
-first 0xff byte ahead of the marker as "fill byte".
-
-Residual coding has been reworked and uses now a simple progressive scan with the
-special DC case removed. The performance does not differ significantly, and it
-makes integration into legacy software or hardware easier. 
-
-Default Huffman tables are now also provided for progressive and lossless scans,
-thus optimizing the Huffman tables just for these scan types is no longer 
-necessary. Residual or refinement scans still require this argument, though.
-
-Usage of the codec does not differ from previous releases, though codestreams
-using the residual coding mode are not compatible to those generated by 0.5.
-Note that this is still experimental software and the codestream might still
-change until the ISO committee decides on the technology.
-
-Finally, a couple of workarounds for earlier releases of the g++ compiler have
-been added.

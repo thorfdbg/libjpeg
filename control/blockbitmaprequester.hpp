@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.hpp,v 1.15 2012-07-14 12:07:35 thor Exp $
+** $Id: blockbitmaprequester.hpp,v 1.28 2015/03/11 16:02:42 thor Exp $
 **
 */
 
@@ -86,19 +66,43 @@ class BlockBitmapRequester : public BlockBuffer, public BitmapCtrl {
   //
   // Number of lines already in the input buffer on encoding.
   ULONG                     *m_pulReadyLines;
+  //
+  // Temporary for decoding how many MCUs are ready on the next
+  // iteration.can be pulled next.
+  ULONG                      m_ulMaxMCU;
   // 
   // Downsampling operator.
   class DownsamplerBase    **m_ppDownsampler;
   //
+  // The downsampler for the residual image.
+  class DownsamplerBase    **m_ppResidualDownsampler;
+  //
   // And the inverse, if required.
   class UpsamplerBase      **m_ppUpsampler;
+  //
+  // The upsampler for the residual image.
+  class UpsamplerBase      **m_ppResidualUpsampler;
+  //
+  // The original image buffered in a dummy 1,1 downsampler
+  class DownsamplerBase    **m_ppOriginalImage;
   //
   // Temporary bitmaps
   struct ImageBitMap       **m_ppTempIBM;
   //
+  struct ImageBitMap       **m_ppOriginalIBM;
+  //
   // Temporary data pointers for the residual computation.
   LONG                     **m_ppQTemp;
   LONG                     **m_ppRTemp;
+  //
+  // Temporary output buffer for the residual
+  LONG                     **m_ppDTemp;
+  //
+  // The output color buffer.
+  LONG                      *m_plResidualColorBuffer;
+  //
+  // The buffer for the original data.
+  LONG                      *m_plOriginalColorBuffer;
   //
   // Current position in reconstruction or encoding,
   // going through the color transformation.
@@ -115,18 +119,55 @@ class BlockBitmapRequester : public BlockBuffer, public BitmapCtrl {
   // True if subsampling is required.
   bool                       m_bSubsampling;
   //
+  // True if this is an openloop encoder, i.e. we do not
+  // use the reconstructed DCT samples.
+  bool                       m_bOpenLoop;
+  //
   // Build common structures for encoding and decoding
   void BuildCommon(void);
   //
   // Create the next row of the image such that m_pppImage[i] is valid.
-  class QuantizedRow *BuildImageRow(class QuantizedRow **qrow,int i);
+  class QuantizedRow *BuildImageRow(class QuantizedRow **qrow,class Frame *frame,int i);
   //
+  // Forward the state machine for the quantized rows by one image-8-block line
+  void AdvanceQRows(void);
+  //
+  // Compute the residual data and move that into the R-output buffers.
+  void AdvanceRRows(const RectAngle<LONG> &region,class ColorTrafo *ctrafo);
+  //
+  // Get the source data from the source image(s)
+  // and place them into the downsampler and the original
+  // image buffer.
+  void PullSourceData(const RectAngle<LONG> &region,class ColorTrafo *ctrafo);
+  //
+  // The encoding procedure without subsampling, which is the much simpler case.
+  void EncodeUnsampled(const RectAngle<LONG> &region,class ColorTrafo *ctrafo);
+  //
+  // Reconstruct a region not using any subsampling.
+  void ReconstructUnsampled(const struct RectangleRequest *rr,const RectAngle<LONG> &region,
+                            ULONG maxmcu,class ColorTrafo *ctrafo);
+  //
+  // Pull the quantized data into the upsampler if there is one.
+  void PullQData(const struct RectangleRequest *rr,const RectAngle<LONG> &region);
+  //
+  // Get the residual data and potentially move it into the
+  // residual upsampler
+  void PullRData(const struct RectangleRequest *rr,const RectAngle<LONG> &region);
+  //
+  // Generate the final output of the reconstructed data.
+  void PushReconstructedData(const struct RectangleRequest *rr,const RectAngle<LONG> &region,
+                             ULONG maxmcu,class ColorTrafo *ctrafo);
   //
 public:
   //
   BlockBitmapRequester(class Frame *frame);
   //
   virtual ~BlockBitmapRequester(void); 
+  //
+  class Environ *EnvironOf(void) const
+  {
+    return m_pEnviron;
+  }
   //
   // First time usage: Collect all the information for encoding.
   // May throw on out of memory situations
@@ -138,13 +179,26 @@ public:
   //
   // Return the color transformer responsible for this scan.
   class ColorTrafo *ColorTrafoOf(bool encoding);
-  // 
+  //
+  // First step of a region encoder: Find the region that can be pulled in the next step,
+  // from a rectangle request. This potentially shrinks the rectangle, which should be
+  // initialized to the full image.
+  virtual void CropEncodingRegion(RectAngle<LONG> &region,const struct RectangleRequest *rr);
+  //
+  // Request user data for encoding for the given region, potentially clip the region to the
+  // data available from the user.
+  virtual void RequestUserDataForEncoding(class BitMapHook *bmh,RectAngle<LONG> &region,bool alpha);
+  //
+  // Pull data buffers from the user data bitmap hook
+  virtual void RequestUserDataForDecoding(class BitMapHook *bmh,RectAngle<LONG> &region,
+                                          const struct RectangleRequest *rr,bool alpha); 
+  //
   // Encode a region, push it into the internal buffers and
   // prepare everything for coding.
-  virtual void EncodeRegion(class BitMapHook *bmh,const struct RectangleRequest *rr);
+  virtual void EncodeRegion(const RectAngle<LONG> &region);
   //
   // Reconstruct a block, or part of a block
-  virtual void ReconstructRegion(class BitMapHook *bmh,const struct RectangleRequest *rr);
+  virtual void ReconstructRegion(const RectAngle<LONG> &region,const struct RectangleRequest *rr);
   //
   // Return true if the next MCU line is buffered and can be pushed
   // to the encoder.
@@ -173,10 +227,7 @@ public:
   }
   //
   // Install a block helper.
-  void SetBlockHelper(class ResidualBlockHelper *helper)
-  {
-    m_pResidualHelper = helper;
-  }
+  void SetBlockHelper(class ResidualBlockHelper *helper);
   //
   // Post the height of the frame in lines. This happens
   // when the DNL marker is processed.

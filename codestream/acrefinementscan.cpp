@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** Encode a refinement scan with the arithmetic coding procedure from
 ** Annex G.
 **
-** $Id: acrefinementscan.cpp,v 1.13 2012-09-23 14:10:12 thor Exp $
+** $Id: acrefinementscan.cpp,v 1.31 2015/10/13 16:56:50 thor Exp $
 **
 */
 
@@ -60,8 +40,7 @@ the committee itself.
 #include "marker/component.hpp"
 #include "coding/quantizedrow.hpp"
 #include "codestream/rectanglerequest.hpp"
-#include "dct/idct.hpp"
-#include "dct/sermsdct.hpp"
+#include "dct/dct.hpp"
 #include "std/assert.hpp"
 #include "interface/bitmaphook.hpp"
 #include "interface/imagebitmap.hpp"
@@ -76,12 +55,24 @@ the committee itself.
 
 /// ACRefinementScan::ACRefinementScan
 ACRefinementScan::ACRefinementScan(class Frame *frame,class Scan *scan,
-				   UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE highbit,
-				   bool,bool)
-  : EntropyParser(frame,scan), m_pBlockCtrl(NULL),
-    m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit), m_ucHighBit(highbit)
+                                   UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE highbit,
+                                   bool,bool residual)
+  : EntropyParser(frame,scan)
+#if ACCUSOFT_CODE
+  , m_pBlockCtrl(NULL),
+    m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit), m_ucHighBit(highbit),
+    m_bResidual(residual)
+#endif
 {
+#if ACCUSOFT_CODE
   m_ucCount = scan->ComponentsInScan();
+#else
+  NOREF(start);
+  NOREF(stop);
+  NOREF(lowbit);
+  NOREF(highbit);
+  NOREF(residual);
+#endif
 }
 ///
 
@@ -92,8 +83,9 @@ ACRefinementScan::~ACRefinementScan(void)
 ///
 
 /// ACRefinementScan::StartParseScan
-void ACRefinementScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
+void ACRefinementScan::StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 { 
+#if ACCUSOFT_CODE
   int i;
 
   for(i = 0;i < m_ucCount;i++) {
@@ -102,15 +94,23 @@ void ACRefinementScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctr
   m_Context.Init();
   
   assert(!ctrl->isLineBased());
-  m_pBlockCtrl = dynamic_cast<BlockBuffer *>(ctrl);
+  m_pBlockCtrl = dynamic_cast<BlockCtrl *>(ctrl);
   m_pBlockCtrl->ResetToStartOfScan(m_pScan);
-  m_Coder.OpenForRead(io);
+  m_Coder.OpenForRead(io,chk);
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"ACRefinementScan::StartParseScan",
+            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
 /// ACRefinementScan::StartWriteScan
-void ACRefinementScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
+void ACRefinementScan::StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 { 
+#if ACCUSOFT_CODE
   int i;
 
   for(i = 0;i < m_ucCount;i++) {
@@ -119,15 +119,23 @@ void ACRefinementScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctr
   m_Context.Init();
 
   assert(!ctrl->isLineBased());
-  m_pBlockCtrl = dynamic_cast<BlockBuffer *>(ctrl);
+  m_pBlockCtrl = dynamic_cast<BlockCtrl *>(ctrl);
   m_pBlockCtrl->ResetToStartOfScan(m_pScan); 
   //
   // Actually, always:
   m_bMeasure = false;
 
+  EntropyParser::StartWriteScan(io,chk,ctrl);
 
   m_pScan->WriteMarker(io);
-  m_Coder.OpenForWrite(io);
+  m_Coder.OpenForWrite(io,chk);
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"ACRefinementScan::StartWriteScan",
+            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
@@ -138,8 +146,8 @@ void ACRefinementScan::StartMeasureScan(class BufferCtrl *)
   //
   // This is not required.
   JPG_THROW(NOT_IMPLEMENTED,"ACRefinementScan::StartMeasureScan",
-	    "arithmetic coding is always adaptive and does not require "
-	    "to measure the statistics");
+            "arithmetic coding is always adaptive and does not require "
+            "to measure the statistics");
 }
 ///
 
@@ -147,6 +155,7 @@ void ACRefinementScan::StartMeasureScan(class BufferCtrl *)
 // Start a MCU scan. Returns true if there are more rows.
 bool ACRefinementScan::StartMCURow(void)
 {
+#if ACCUSOFT_CODE
   bool more = m_pBlockCtrl->StartMCUQuantizerRow(m_pScan);
 
   for(int i = 0;i < m_ucCount;i++) {
@@ -154,6 +163,9 @@ bool ACRefinementScan::StartMCURow(void)
   }
 
   return more;
+#else
+  return false;
+#endif
 }
 ///
 
@@ -161,6 +173,7 @@ bool ACRefinementScan::StartMCURow(void)
 // Write a single MCU in this scan. Return true if there are more blocks in this row.
 bool ACRefinementScan::WriteMCU(void)
 { 
+#if ACCUSOFT_CODE
   bool more = true;
   int c;
 
@@ -181,14 +194,14 @@ bool ACRefinementScan::WriteMCU(void)
     }
     for(y = 0;y < mcuy;y++) {
       for(x = xmin;x < xmax;x++) {
-	LONG *block,dummy[64];
-	if (q && x < q->WidthOf()) {
-	  block  = q->BlockAt(x)->m_Data;
-	} else {
-	  block  = dummy;
-	  memset(dummy ,0,sizeof(dummy) );
-	}
-	EncodeBlock(block);
+        LONG *block,dummy[64];
+        if (q && x < q->WidthOf()) {
+          block  = q->BlockAt(x)->m_Data;
+        } else {
+          block  = dummy;
+          memset(dummy ,0,sizeof(dummy) );
+        }
+        EncodeBlock(block);
       }
       if (q) q = q->NextOf();
     }
@@ -197,6 +210,9 @@ bool ACRefinementScan::WriteMCU(void)
   }
 
   return more;
+#else
+  return false;
+#endif
 }
 ///
 
@@ -204,8 +220,10 @@ bool ACRefinementScan::WriteMCU(void)
 // Restart the parser at the next restart interval
 void ACRefinementScan::Restart(void)
 {
+#if ACCUSOFT_CODE
   m_Context.Init();
-  m_Coder.OpenForRead(m_Coder.ByteStreamOf());
+  m_Coder.OpenForRead(m_Coder.ByteStreamOf(),m_Coder.ChecksumOf());
+#endif
 }
 ///
 
@@ -213,6 +231,7 @@ void ACRefinementScan::Restart(void)
 // Parse a single MCU in this scan. Return true if there are more blocks in this row.
 bool ACRefinementScan::ParseMCU(void)
 {
+#if ACCUSOFT_CODE
   bool more = true;
   int c;
 
@@ -233,15 +252,15 @@ bool ACRefinementScan::ParseMCU(void)
     }
     for(y = 0;y < mcuy;y++) {
       for(x = xmin;x < xmax;x++) {
-	LONG *block,dummy[64];
-	if (q && x < q->WidthOf()) {
-	  block  = q->BlockAt(x)->m_Data;
-	} else {
-	  block  = dummy;
-	}
-	if (valid) {
-	  DecodeBlock(block);
-	} 
+        LONG *block,dummy[64];
+        if (q && x < q->WidthOf()) {
+          block  = q->BlockAt(x)->m_Data;
+        } else {
+          block  = dummy;
+        }
+        if (valid) {
+          DecodeBlock(block);
+        } 
       }
       if (q) q = q->NextOf();
     }
@@ -250,27 +269,31 @@ bool ACRefinementScan::ParseMCU(void)
   }
 
   return more;
+#else
+  return false;
+#endif
 }
 ///
 
 /// ACRefinementScan::EncodeBlock
 // Encode a single huffman block
+#if ACCUSOFT_CODE
 void ACRefinementScan::EncodeBlock(const LONG *block)
 {
   //
   // DC coding. This only encodes the LSB of the current bit in
   // the uniform context.
-  if (m_ucScanStart == 0) {
+  if (m_ucScanStart == 0 && m_bResidual == false) {
     m_Coder.Put(m_Context.Uniform,(block[0] >> m_ucLowBit) & 0x01);
   }
 
-  if (m_ucScanStop) {
+  if (m_ucScanStop || m_bResidual) {
     LONG data;
     int eob,eobx,k;
     // AC coding. Part one. Find the end of block in this
     // scan, and in the previous scan. As AC coding has
     // to go into a separate scan, StartScan must be at least one.
-    assert(m_ucScanStart);
+    assert(m_ucScanStart || m_bResidual);
     // eob is the index of the first zero coefficient from
     // which point on this, and all following coefficients
     // up to coefficient with index 63 are zero.
@@ -280,7 +303,7 @@ void ACRefinementScan::EncodeBlock(const LONG *block)
     while(eob >= k) {
       data = block[DCT::ScanOrder[eob]];
       if ((data >= 0)?(data >> m_ucLowBit):((-data) >> m_ucLowBit))
-	break;
+        break;
       eob--;
     }
     // The coefficient at eob is now nonzero, but eob+1 is
@@ -292,7 +315,7 @@ void ACRefinementScan::EncodeBlock(const LONG *block)
     while(eobx >= k) {
       data = block[DCT::ScanOrder[eobx]];
       if ((data >= 0)?(data >> m_ucHighBit):((-data) >> m_ucHighBit))
-	break;
+        break;
       eobx--;
     }
     eobx++;
@@ -303,52 +326,54 @@ void ACRefinementScan::EncodeBlock(const LONG *block)
       // The EOB decision is only coded if not known from the last
       // pass.
       if (k >= eobx) {
-	if (k == eob) {
-	  m_Coder.Put(m_Context.ACZero[k-1].SE,true); // Code EOB.
-	  break;
-	}
-	// Not EOB.
-	m_Coder.Put(m_Context.ACZero[k-1].SE,false);
+        if (k == eob) {
+          m_Coder.Put(m_Context.ACZero[k].SE,true); // Code EOB.
+          break;
+        }
+        // Not EOB.
+        m_Coder.Put(m_Context.ACZero[k].SE,false);
       }
       //
       // Run coding in S0. Since k is not the eob, at least
       // one non-zero coefficient must follow, so we cannot
       // run over the end of the block.
       do {
-	data = block[DCT::ScanOrder[k]];
-	data = (data >= 0)?(data >> m_ucLowBit):(-((-data) >> m_ucLowBit));
-	if (data == 0) {
-	  m_Coder.Put(m_Context.ACZero[k-1].S0,false);
-	  k++;
-	}
+        data = block[DCT::ScanOrder[k]];
+        data = (data >= 0)?(data >> m_ucLowBit):(-((-data) >> m_ucLowBit));
+        if (data == 0) {
+          m_Coder.Put(m_Context.ACZero[k].S0,false);
+          k++;
+        }
       } while(data == 0);
       //
       // The coefficient at k is now nonzero. 
       if (data > 1 || data < -1) {
-	// The coefficient was nonzero before, i.e. this is
-	// refinement coding. S0 coding is skipped since
-	// the decoder can detect this condition as well.
-	m_Coder.Put(m_Context.ACZero[k-1].SC,data & 0x01);
+        // The coefficient was nonzero before, i.e. this is
+        // refinement coding. S0 coding is skipped since
+        // the decoder can detect this condition as well.
+        m_Coder.Put(m_Context.ACZero[k].SC,data & 0x01);
       } else {
-	// Zero before, becomes significant.
-	m_Coder.Put(m_Context.ACZero[k-1].S0,true);
-	// Can now be only positive or negative. 
-	// The sign is encoded in the uniform context.
-	m_Coder.Put(m_Context.Uniform,(data < 0)?true:false);
+        // Zero before, becomes significant.
+        m_Coder.Put(m_Context.ACZero[k].S0,true);
+        // Can now be only positive or negative. 
+        // The sign is encoded in the uniform context.
+        m_Coder.Put(m_Context.Uniform,(data < 0)?true:false);
       }
       // Encode the next coefficient. Note that this bails out early without an
       // S0 encoding if the end is reached.
     } while(++k <= m_ucScanStop);
   }
 }
+#endif
 ///
 
 /// ACRefinementScan::DecodeBlock
 // Decode a single huffman block.
+#if ACCUSOFT_CODE
 void ACRefinementScan::DecodeBlock(LONG *block)
 {
   // DC coding
-  if (m_ucScanStart == 0) {
+  if (m_ucScanStart == 0 && m_bResidual == false) {
     // This is only coded in the uniform context, no further modelling
     // done.
     if (m_Coder.Get(m_Context.Uniform))
@@ -356,9 +381,9 @@ void ACRefinementScan::DecodeBlock(LONG *block)
   }
 
   // AC coding. No block skipping used here.
-  if (m_ucScanStop) {
+  if (m_ucScanStop || m_bResidual) {
     int eobx,k;
-    assert(m_ucScanStart);
+    assert(m_ucScanStart || m_bResidual);
     //
     // Determine the eobx, i.e. the eob from the previous scan.
     eobx = m_ucScanStop;
@@ -367,13 +392,13 @@ void ACRefinementScan::DecodeBlock(LONG *block)
     while(eobx >= k) {
       LONG data = block[DCT::ScanOrder[eobx]];
       if ((data >= 0)?(data >> m_ucHighBit):((-data) >> m_ucHighBit))
-	break;
+        break;
       eobx--;
     }
     eobx++;
     //
     // EOB decoding. Only necessary for k >= eobx
-    while(k < eobx || (k <= m_ucScanStop && !m_Coder.Get(m_Context.ACZero[k-1].SE))) {
+    while(k < eobx || (k <= m_ucScanStop && !m_Coder.Get(m_Context.ACZero[k].SE))) {
       LONG data;
       //
       // Not yet EOB. Run coding in S0: Skip over zeros. Note that
@@ -381,34 +406,34 @@ void ACRefinementScan::DecodeBlock(LONG *block)
       // zero, refinement coding is required and this decision
       // can be detected here without requiring to fetch a bit.
       while((data = block[DCT::ScanOrder[k]]) == 0 && 
-	    !m_Coder.Get(m_Context.ACZero[k-1].S0)) {
-	k++;
-	if (k > m_ucScanStop)
-	  JPG_THROW(MALFORMED_STREAM,"ACRefinementScan::DecodeBlock",
-		    "QMDecoder is out of sync");
+            !m_Coder.Get(m_Context.ACZero[k].S0)) {
+        k++;
+        if (k > m_ucScanStop)
+          JPG_THROW(MALFORMED_STREAM,"ACRefinementScan::DecodeBlock",
+                    "QMDecoder is out of sync");
       }
       //
       // The loop could be aborted for two reasons: Data became nonzero,
       // requiring refinement, or the AC coder returned a one-bit, indicating
       // that we hit an insignificant coefficient that became significant.
       if (data) {
-	// Refinement coding.
-	if (m_Coder.Get(m_Context.ACZero[k-1].SC)) {
-	  // Requires refinement.
-	  if (data > 0) {
-	    block[DCT::ScanOrder[k]] += 1L << m_ucLowBit;
-	  } else {
-	    block[DCT::ScanOrder[k]] -= 1L << m_ucLowBit;
-	  }
-	}
+        // Refinement coding.
+        if (m_Coder.Get(m_Context.ACZero[k].SC)) {
+          // Requires refinement.
+          if (data > 0) {
+            block[DCT::ScanOrder[k]] += 1L << m_ucLowBit;
+          } else {
+            block[DCT::ScanOrder[k]] -= 1L << m_ucLowBit;
+          }
+        }
       } else {
-	// Became significant. Sign coding happens in the uniform
-	// context.
-	if (m_Coder.Get(m_Context.Uniform)) {
-	  block[DCT::ScanOrder[k]] = -1L << m_ucLowBit;
-	} else {
-	  block[DCT::ScanOrder[k]] = +1L << m_ucLowBit;
-	}
+        // Became significant. Sign coding happens in the uniform
+        // context.
+        if (m_Coder.Get(m_Context.Uniform)) {
+          block[DCT::ScanOrder[k]] = -1L << m_ucLowBit;
+        } else {
+          block[DCT::ScanOrder[k]] = +1L << m_ucLowBit;
+        }
       }
       //
       // Proceed to the next block.
@@ -416,14 +441,23 @@ void ACRefinementScan::DecodeBlock(LONG *block)
     }
   }
 }
+#endif
 ///
 
 /// ACRefinementScan::WriteFrameType
 // Write the marker that indicates the frame type fitting to this scan.
 void ACRefinementScan::WriteFrameType(class ByteStream *io)
 {
+#if ACCUSOFT_CODE
   // is progressive.
-  io->PutWord(0xffca);
+  if (m_bResidual) {
+    io->PutWord(0xffba); // AC residual refinement
+  } else {
+    io->PutWord(0xffca);
+  }
+#else
+  NOREF(io);
+#endif
 }
 ///
 
@@ -431,8 +465,10 @@ void ACRefinementScan::WriteFrameType(class ByteStream *io)
 // Flush the remaining bits out to the stream on writing.
 void ACRefinementScan::Flush(bool)
 {
+#if ACCUSOFT_CODE
   m_Coder.Flush();
   m_Context.Init();
-  m_Coder.OpenForWrite(m_Coder.ByteStreamOf());
+  m_Coder.OpenForWrite(m_Coder.ByteStreamOf(),m_Coder.ChecksumOf());
+#endif
 }
 ///

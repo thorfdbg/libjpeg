@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +29,7 @@ the committee itself.
 ** them from the codestream. Only the lossless scheme uses this buffer
 ** organization.
 **
-** $Id: linebitmaprequester.hpp,v 1.14 2012-07-14 12:07:35 thor Exp $
+** $Id: linebitmaprequester.hpp,v 1.22 2015/03/11 16:02:42 thor Exp $
 **
 */
 
@@ -104,6 +84,10 @@ class LineBitmapRequester : public LineBuffer, public BitmapCtrl {
   // in m_ulReadyLines.
   struct Line             ***m_pppImage;
   //
+  // Temporary for decoding how many MCUs are ready on the next
+  // iteration.can be pulled next.
+  ULONG                      m_ulMaxMCU;
+  //
   // True if subsampling is required.
   bool                       m_bSubsampling;
   //
@@ -133,13 +117,26 @@ public:
   //
   // Return the color transformer responsible for this scan.
   class ColorTrafo *ColorTrafoOf(bool encoding);
-  // 
+  //
+  // First step of a region encoder: Find the region that can be pulled in the next step,
+  // from a rectangle request. This potentially shrinks the rectangle, which should be
+  // initialized to the full image.
+  virtual void CropEncodingRegion(RectAngle<LONG> &region,const struct RectangleRequest *rr);
+  //
+  // Request user data for encoding for the given region, potentially clip the region to the
+  // data available from the user.
+  virtual void RequestUserDataForEncoding(class BitMapHook *bmh,RectAngle<LONG> &region,bool alpha);
+  //
+  // Pull data buffers from the user data bitmap hook
+  virtual void RequestUserDataForDecoding(class BitMapHook *bmh,RectAngle<LONG> &region,
+                                          const struct RectangleRequest *rr,bool alpha);
+  //
   // Encode a region, push it into the internal buffers and
   // prepare everything for coding.
-  virtual void EncodeRegion(class BitMapHook *bmh,const struct RectangleRequest *rr);
+  virtual void EncodeRegion(const RectAngle<LONG> &region);
   //
   // Reconstruct a block, or part of a block
-  virtual void ReconstructRegion(class BitMapHook *bmh,const struct RectangleRequest *rr);
+  virtual void ReconstructRegion(const RectAngle<LONG> &region,const struct RectangleRequest *rr);
   //
   // Return true if the next MCU line is buffered and can be pushed
   // to the encoder.

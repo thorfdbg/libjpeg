@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
  * Tag item definitions
  * 
- * $Id: tagitem.hpp,v 1.3 2012-06-02 10:27:14 thor Exp $
+ * $Id: tagitem.hpp,v 1.9 2014/09/30 08:33:17 thor Exp $
  *
  * Tag items provide a convenient mechanism to build functions with are
  * easely extendable. A tag item consists of:
@@ -111,10 +91,10 @@ typedef JPG_ULONG JPG_Tag;
 /// Design
 /** Design
 ******************************************************************
-** struct JPG_TagItem						**
-** Super Class:	none						**
-** Sub Classes: none						**
-** Friends:							**
+** struct JPG_TagItem                                           **
+** Super Class: none                                            **
+** Sub Classes: none                                            **
+** Friends:                                                     **
 ******************************************************************
 
 TagItems define flexible and extensible methods to pass variable
@@ -155,6 +135,7 @@ to worry about them.
 #ifdef __cplusplus
 #define JPG_PointerTag(id,ptr)  JPG_TagItem(id,(JPG_APTR)(ptr))
 #define JPG_ValueTag(id,v)      JPG_TagItem(id,(JPG_LONG)(v))
+#define JPG_FloatTag(id,f)      JPG_TagItem(id,(JPG_FLOAT)(f))
 #define JPG_Continue(tag)       JPG_TagItem(JPGTAG_TAG_MORE,const_cast<struct JPG_TagItem *>(tag))
 #define JPG_EndTag              JPG_TagItem(JPGTAG_TAG_DONE)
 #endif
@@ -168,6 +149,7 @@ struct JPG_EXPORT JPG_TagItem {
   //
   union JPG_EXPORT TagContents {
     JPG_LONG       ti_lData;
+    JPG_FLOAT      ti_fData;
     JPG_APTR       ti_pPtr;
     //
 #ifdef __cplusplus
@@ -180,6 +162,16 @@ struct JPG_EXPORT JPG_TagItem {
       ti_pPtr  = 0;
 #endif
       ti_lData = data;
+    }
+    //
+    TagContents(JPG_FLOAT data)
+    {
+#if CHECK_LEVEL > 0
+      ti_pPtr  = (void *)(0xdeadbef);
+#else
+      ti_pPtr  = 0;
+#endif
+      ti_fData = data;
     }
     //
     TagContents(JPG_APTR data)
@@ -195,6 +187,10 @@ struct JPG_EXPORT JPG_TagItem {
   // and now for the member functions:
   // Constructors
   JPG_TagItem(JPG_Tag tag, JPG_LONG data) 
+    : ti_Tag(tag), ti_Data(data)
+  { }
+  //
+  JPG_TagItem(JPG_Tag tag, JPG_FLOAT data) 
     : ti_Tag(tag), ti_Data(data)
   { }
   //
@@ -238,22 +234,28 @@ struct JPG_EXPORT JPG_TagItem {
   // Searches the tag list for a specific entry. Returns ti_Data if
   // found. Returns the default otherwise.
   JPG_LONG GetTagData(JPG_Tag id, JPG_LONG defdata = 0) const;
-
+  //
+  // Return a float data from the tag list.
+  JPG_FLOAT GetTagFloat(JPG_Tag id, JPG_FLOAT defdata = 0.0) const;
+  //
   // Scans the tag list for a specific entry. Returns ti_Ptr if 
   // found. Returns the default otherwise.
   JPG_APTR GetTagPtr(JPG_Tag id, JPG_APTR defptr = 0) const;
-  
+  //
   // If the given tag item is contained in the tag list, set its
   // value to the given value
   void SetTagData(JPG_Tag id, JPG_LONG data);
-
+  //
+  // Install a floating point value into the tag list.
+  void SetTagFloat(JPG_Tag id, JPG_FLOAT data);
+  //
   // Scans the tag list and fills the pointer in if the given
   // tag is found. Does nothing otherwise.
   void SetTagPtr(JPG_Tag id, JPG_APTR ptr);  
-  
+  //
   // Set the internal "tag set" flag.
   void SetTagSet(void);
-
+  //
   // Clear the internal "tag set" flags recursively,
   // set unset tags to "IGNORE". This is used to 
   // filter out unused tags, and to make set tags valid.
@@ -269,7 +271,7 @@ struct JPG_EXPORT JPG_TagItem {
   // contains tags that are to be removed from the defaults
   // before they get attached to the target.
   static JPG_LONG FilterTags(struct JPG_TagItem *target,const struct JPG_TagItem *source,
-			     const struct JPG_TagItem *defaults,const struct JPG_TagItem *drop);
+                             const struct JPG_TagItem *defaults,const struct JPG_TagItem *drop);
   //
 #endif
 };

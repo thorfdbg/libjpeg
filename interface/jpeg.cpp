@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +31,7 @@ the committee itself.
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.cpp,v 1.6 2012-09-16 17:28:40 thor Exp $
+** $Id: jpeg.cpp,v 1.24 2015/03/16 08:55:34 thor Exp $
 **
 */
 
@@ -65,8 +45,12 @@ the committee itself.
 #include "codestream/encoder.hpp"
 #include "codestream/decoder.hpp"
 #include "codestream/image.hpp"
+#include "codestream/tables.hpp"
 #include "marker/frame.hpp"
 #include "marker/scan.hpp"
+#include "boxes/mergingspecbox.hpp"
+#include "boxes/checksumbox.hpp"
+#include "tools/checksum.hpp"
 #include "io/iostream.hpp"
 #include "std/assert.hpp"
 ///
@@ -215,6 +199,29 @@ JPG_LONG JPEG::Read(struct JPG_TagItem *tags)
 }
 ///
 
+/// JPEG::StopDecoding
+// Complete the decoding, test for the checksum,
+// then exit.
+void JPEG::StopDecoding(void)
+{ 
+  if (m_pImage) {
+    class ChecksumBox *box;
+    class Checksum    *sum;
+    // Make sure we don't get the residual, but the legacy image.
+    m_pImage->ResetToFirstFrame();
+    box = m_pImage->TablesOf()->ChecksumOf();
+    sum = m_pImage->ChecksumOf();
+    if (box && sum) {
+      if (sum->ValueOf() != box->ValueOf()) {
+        JPG_WARN(PHASE_ERROR,"Frame::StopDecoding",
+                 "Found a mismatching checksum of the legacy stream, HDR reconstructed image may be wrong");
+      }
+    }
+  }
+  m_bDecoding = false;
+}
+///
+
 /// JPEG::ReadInternal
 // Read a file. This takes all of the tags, class Decode takes.
 void JPEG::ReadInternal(struct JPG_TagItem *tags)
@@ -258,58 +265,59 @@ void JPEG::ReadInternal(struct JPG_TagItem *tags)
     if (m_pFrame == NULL) {
       m_pFrame = m_pImage->StartParseFrame(m_pIOStream);
       if (m_pFrame) {
-	m_pDecoder->ParseTags(tags);
-	if (stopflags & JPGFLAG_DECODER_STOP_FRAME)
-	  return;
+        m_pDecoder->ParseTags(tags);
+        if (stopflags & JPGFLAG_DECODER_STOP_FRAME)
+          return;
       }
     }
 
     if (m_pFrame) {
       if (m_pScan == NULL) {
-	m_pScan = m_pFrame->StartParseScan(m_pIOStream);
-	if (m_pScan && (stopflags & JPGFLAG_DECODER_STOP_SCAN))
-	  return;
-	if (m_pScan == NULL) {
-	  if (!m_pFrame->ParseTrailer(m_pIOStream)) {
-	    // Frame done, advance to the next frame.
-	    m_pFrame = NULL;
-	    if (!m_pImage->ParseTrailer(m_pIOStream)) {
-	      // Image done, stop decoding, image is now loaded.
-	      m_bDecoding = false;
-	      return;
-	    }
-	  }
-	}
+        m_pScan = m_pFrame->StartParseScan(m_pImage->InputStreamOf(m_pIOStream),m_pImage->ChecksumOf());
+        if (m_pScan && (stopflags & JPGFLAG_DECODER_STOP_SCAN))
+          return;
+        if (m_pScan == NULL) {
+          if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
+            // Frame done, advance to the next frame.
+            m_pFrame = NULL;
+            if (!m_pImage->ParseTrailer(m_pIOStream)) {
+              // Image done, stop decoding, image is now loaded.
+              StopDecoding();
+              return;
+            }
+          }
+        }
       }
 
       if (m_pScan) {
-	if (m_bRow == false) {
-	  m_bRow = m_pScan->StartMCURow();
-	  if (m_bRow) {
-	    if (stopflags & JPGFLAG_DECODER_STOP_ROW)
-	      return;
-	  } else {
-	    // Scan done, advance to the next scan.
-	    m_pScan = NULL;
-	    if (!m_pFrame->ParseTrailer(m_pIOStream)) {
-	      // Frame done, advance to the next frame.
-	      m_pFrame = NULL;
-	      if (!m_pImage->ParseTrailer(m_pIOStream)) {
-		// Image done, stop decoding, image is now loaded.
-		m_bDecoding = false;
-		return;
-	      }
-	    }
-	  }
-	}
-	
-	if (m_bRow) {
-	  while (m_pScan->ParseMCU()) {
-	    if (stopflags & JPGFLAG_DECODER_STOP_MCU)
-	      return;
-	  } 
-	  m_bRow = false;
-	}
+        if (m_bRow == false) {
+          m_bRow = m_pScan->StartMCURow();
+          if (m_bRow) {
+            if (stopflags & JPGFLAG_DECODER_STOP_ROW)
+              return;
+          } else {
+            // Scan done, advance to the next scan.
+            m_pFrame->EndParseScan();
+            m_pScan = NULL;
+            if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
+              // Frame done, advance to the next frame.
+              m_pFrame = NULL;
+              if (!m_pImage->ParseTrailer(m_pIOStream)) {
+                // Image done, stop decoding, image is now loaded.
+                StopDecoding();
+                return;
+              }
+            }
+          }
+        }
+        
+        if (m_bRow) {
+          while (m_pScan->ParseMCU()) {
+            if (stopflags & JPGFLAG_DECODER_STOP_MCU)
+              return;
+          } 
+          m_bRow = false;
+        }
       }
     }
   }
@@ -345,7 +353,6 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
     JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::WriteInternal","no image data loaded, use ProvideImage first");
   
   if (m_pEncoder == NULL) {
-    m_pEncoder       = new(m_pEnviron) class Encoder(m_pEnviron);
     m_bEncoding      = true; 
     m_pFrame         = NULL;
     m_pScan          = NULL;
@@ -354,6 +361,10 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
     m_bHeaderWritten = false;
     m_bOptimized     = false;
   }
+
+  //
+  // Actually, we do not need the encoder class here.
+  m_bOptimizeHuffman = RequiresTwoPassEncoding(tags);
 
   if (!m_bEncoding)
     return;
@@ -379,18 +390,18 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
 
 
   if (!m_bOptimized) {
-    if (m_bOptimizeHuffman || (tags->GetTagData(JPGTAG_IMAGE_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)) {
+    if (m_bOptimizeHuffman) {
       do {
-	class Frame *frame = m_pImage->StartMeasureFrame();
-	do {
-	  class Scan *scan = frame->StartMeasureScan();
-	  while(scan->StartMCURow()) { 
-	    while(scan->WriteMCU()) {
-	      ;
-	    }
-	  }
-	  scan->Flush();
-	} while(frame->NextScan());
+        class Frame *frame = m_pImage->StartMeasureFrame();
+        do {
+          class Scan *scan = frame->StartMeasureScan();
+          while(scan->StartMCURow()) { 
+            while(scan->WriteMCU()) {
+              ;
+            }
+          }
+          scan->Flush();
+        } while(frame->NextScan());
       } while(m_pImage->NextFrame());
     }
     m_bOptimized = true;
@@ -401,43 +412,46 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
     if (m_pFrame == NULL) {
       m_pFrame = m_pImage->StartWriteFrame(m_pIOStream);
       if (stopflags & JPGFLAG_ENCODER_STOP_FRAME)
-	return;
+        return;
     }
     assert(m_pFrame);
 
     if (m_pScan == NULL) {
-      m_pScan = m_pFrame->StartWriteScan(m_pIOStream);
+      m_pScan = m_pFrame->StartWriteScan(m_pImage->OutputStreamOf(m_pIOStream),m_pImage->ChecksumOf());
       if (stopflags & JPGFLAG_ENCODER_STOP_SCAN)
-	return;
+        return;
     }
     assert(m_pScan);
 
     if (!m_bRow) {
       if (m_pScan->StartMCURow()) {
-	m_bRow = true;
-	if (stopflags & JPGFLAG_ENCODER_STOP_ROW)
-	  return;
+        m_bRow = true;
+        if (stopflags & JPGFLAG_ENCODER_STOP_ROW)
+          return;
       } else {
-	// Scan done, flush it out.
-	m_pScan->Flush();
-	m_pScan = NULL;
-	m_pFrame->WriteTrailer(m_pIOStream);
-	if (!m_pFrame->NextScan()) {
-	  m_pFrame = NULL;
-	  if (!m_pImage->NextFrame()) {
-	    m_pImage->WriteTrailer(m_pIOStream);
-	    m_pIOStream->Flush();
-	    m_bEncoding = false;
-	    return;
-	  }
-	}
+        // Scan done, flush it out.
+        m_pFrame->EndWriteScan();
+        //m_pScan->Flush(); included in the above.
+        // This will write the DNL marker.
+        m_pFrame->CompleteRefimentScan(m_pIOStream);
+        m_pFrame->WriteTrailer(m_pImage->OutputStreamOf(m_pIOStream));
+        m_pScan = NULL;
+        if (!m_pFrame->NextScan()) {
+          m_pFrame = NULL;
+          if (!m_pImage->NextFrame()) {
+            m_pImage->WriteTrailer(m_pIOStream);
+            m_pIOStream->Flush();
+            m_bEncoding = false;
+            return;
+          }
+        }
       }
     }
 
     if (m_bRow) {
       while (m_pScan->WriteMCU()) {
-	if (stopflags & JPGFLAG_ENCODER_STOP_MCU)
-	  return;
+        if (stopflags & JPGFLAG_ENCODER_STOP_MCU)
+          return;
       }
       m_bRow = false;
     }
@@ -494,6 +508,36 @@ JPG_LONG JPEG::ProvideImage(struct JPG_TagItem *tags)
 }
 ///
 
+/// JPEG::RequiresTwoPassEncoding
+// Check whether any of the scans is optimized Huffman and thus requires a two-pass
+// go over the data.
+bool JPEG::RequiresTwoPassEncoding(const struct JPG_TagItem *tags) const
+{
+  if (m_bOptimizeHuffman)
+    return true;
+
+  if (tags) {
+    const struct JPG_TagItem *alphatags = (const struct JPG_TagItem *)tags->GetTagPtr(JPGTAG_ALPHA_TAGLIST);
+    
+    if (tags->GetTagData(JPGTAG_IMAGE_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)
+      return true;
+
+    if (tags->GetTagData(JPGTAG_RESIDUAL_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)
+      return true;
+
+    if (alphatags) {
+      if (alphatags->GetTagData(JPGTAG_IMAGE_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)
+        return true;
+
+      if (alphatags->GetTagData(JPGTAG_RESIDUAL_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)
+        return true;
+    }
+  }
+
+  return false;
+}
+///
+
 /// JPEG::InternalProvideImage
 // Forward transform an image, push it into the encoder - this is the internal
 // version that generates exceptions.
@@ -501,7 +545,7 @@ void JPEG::InternalProvideImage(struct JPG_TagItem *tags)
 {
   class BitMapHook bmh(tags);
   struct RectangleRequest rr;
-  bool loop = tags->GetTagData(JPGTAG_ENCODER_LOOP_ON_INCOMPLETE);
+  bool loop = tags->GetTagData(JPGTAG_ENCODER_LOOP_ON_INCOMPLETE)?true:false;
 
   if (m_bDecoding)
     JPG_THROW(OBJECT_EXISTS,"JPEG::InternalProvideImage","Decoding is active, cannot provide image data");
@@ -528,10 +572,9 @@ void JPEG::InternalProvideImage(struct JPG_TagItem *tags)
       m_pEncoder  = new(m_pEnviron) class Encoder(m_pEnviron);
       m_bEncoding = true;
     }
-    if (tags->GetTagData(JPGTAG_IMAGE_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)
-      m_bOptimizeHuffman = true;
 
-    m_pImage = m_pEncoder->CreateImage(tags);
+    m_bOptimizeHuffman = RequiresTwoPassEncoding(tags);
+    m_pImage           = m_pEncoder->CreateImage(tags);
   }
 
   do {
@@ -559,10 +602,43 @@ JPG_LONG JPEG::GetInformation(struct JPG_TagItem *tags)
 }
 ///
 
+/// JPEG::GetOutputInformation
+// Return layout information about floating point and conversion from the specs
+// and insert it into the given tag list.
+void JPEG::GetOutputInformation(class MergingSpecBox *specs,struct JPG_TagItem *tags) const
+{
+  bool isfloat = false;
+  bool usesoc  = false;
+  
+  if (specs) {
+    if (specs->usesOutputConversion()) {
+      isfloat = true;
+      usesoc  = true;
+    } else if (specs->usesClipping()) {
+      isfloat = false;
+      usesoc  = false;
+    } else if (specs->isLossless()) {
+      isfloat = false;
+      usesoc  = false;
+    } else {
+      isfloat = true;
+      usesoc  = false;
+    }
+  }
+
+  tags->SetTagData(JPGTAG_IMAGE_IS_FLOAT,isfloat);
+  tags->SetTagData(JPGTAG_IMAGE_OUTPUT_CONVERSION,usesoc);
+}
+///
+
 /// JPEG::InternalGetInformation
 // Request information from the JPEG object - the internal version that creates exceptions.
 void JPEG::InternalGetInformation(struct JPG_TagItem *tags)
 { 
+  class Tables *tables;
+  struct JPG_TagItem *alphatag  = tags->FindTagItem(JPGTAG_ALPHA_MODE);
+  struct JPG_TagItem *alphalist = tags->FindTagItem(JPGTAG_ALPHA_TAGLIST);
+
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::InternalGetInformation","no image loaded to request information from");
 
@@ -574,6 +650,45 @@ void JPEG::InternalGetInformation(struct JPG_TagItem *tags)
   tags->SetTagData(JPGTAG_IMAGE_HEIGHT,m_pImage->HeightOf());
   tags->SetTagData(JPGTAG_IMAGE_DEPTH ,m_pImage->DepthOf());
   tags->SetTagData(JPGTAG_IMAGE_PRECISION,m_pImage->PrecisionOf());
+  tables = m_pImage->TablesOf();
+  if (tables) {
+    class MergingSpecBox *specs = tables->ResidualSpecsOf();
+    class MergingSpecBox *alpha = tables->AlphaSpecsOf();
+    class Image *alphachannel   = m_pImage->AlphaChannelOf();
+
+    GetOutputInformation(specs,tags);
+    
+    if (alpha && alphachannel) {
+      ULONG r,g,b;
+      BYTE mode = alpha->AlphaModeOf(r,g,b);
+      
+      if (mode >= 0) {
+        if (alphatag)
+          alphatag->ti_Data.ti_lData = mode;
+        tags->SetTagData(JPGTAG_ALPHA_MATTE(0),r);
+        tags->SetTagData(JPGTAG_ALPHA_MATTE(1),g);
+        tags->SetTagData(JPGTAG_ALPHA_MATTE(2),b);
+        
+        if (alphalist) {
+          alphalist = (struct JPG_TagItem *)(alphalist->ti_Data.ti_pPtr);
+          alphalist->SetTagData(JPGTAG_IMAGE_PRECISION,alphachannel->PrecisionOf());
+          GetOutputInformation(alpha,alphalist);
+        }
+      } else {
+        if (alphatag) 
+          alphatag->ti_Tag  = JPGTAG_TAG_IGNORE;
+        if (alphalist)
+          alphalist->ti_Tag = JPGTAG_TAG_IGNORE;
+      }
+    } else {
+      if (alphatag)
+        alphatag->ti_Tag  = JPGTAG_TAG_IGNORE;
+      if (alphalist)
+        alphalist->ti_Tag = JPGTAG_TAG_IGNORE;
+    }
+  } else {
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::InternalGetInformation","no image created or loaded");
+  }
 }
 ///
 

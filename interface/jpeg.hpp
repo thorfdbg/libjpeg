@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +31,7 @@ the committee itself.
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.hpp,v 1.4 2012-06-02 10:27:14 thor Exp $
+** $Id: jpeg.hpp,v 1.13 2015/03/11 16:02:42 thor Exp $
 **
 */
 
@@ -59,6 +39,7 @@ the committee itself.
 #define JPEG_HPP
 
 /// Includes
+#include "interface/jpgtypes.hpp"
 ///
 
 /// Forwards
@@ -75,6 +56,7 @@ class Scan;
 // This is the main entry class for the JPEG encoder and decoder.
 // It is basically a pimpl for the actual codec.
 class JPEG {
+  friend struct JPEG_Helper;
   //
   // Constructors and destructors are not publically accessible, use
   // the construction and destruction calls below. 
@@ -148,6 +130,17 @@ class JPEG {
   //
   // Request information from the JPEG object - the internal version that creates exceptions.
   void InternalGetInformation(struct JPG_TagItem *tags);
+  //
+  // Stop decoding, then return. Also tests the checksum if there is one.
+  void StopDecoding(void);
+  //
+  // Check whether any of the scans is optimized Huffman and thus requires a two-pass
+  // go over the data.
+  bool RequiresTwoPassEncoding(const struct JPG_TagItem *tags) const;
+  //
+  // Return layout information about floating point and conversion from the specs
+  // and insert it into the given tag list.
+  void GetOutputInformation(class MergingSpecBox *specs,struct JPG_TagItem *tags) const;
   //
 public:
   //

@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 **
 ** Basic control helper for requesting and releasing bitmap data.
 **
-** $Id: bitmapctrl.cpp,v 1.8 2012-06-11 10:19:15 thor Exp $
+** $Id: bitmapctrl.cpp,v 1.17 2015/03/12 15:58:31 thor Exp $
 **
 */
 
@@ -58,13 +38,14 @@ the committee itself.
 #include "marker/component.hpp"
 #include "control/bitmapctrl.hpp"
 #include "interface/bitmaphook.hpp"
+#include "codestream/rectanglerequest.hpp"
 #include "std/string.hpp"
 ///
 
 /// BitmapCtrl::BitmapCtrl
 BitmapCtrl::BitmapCtrl(class Frame *frame)
   : BufferCtrl(frame->EnvironOf()), m_pFrame(frame), 
-    m_ppBitmap(NULL)
+    m_ppBitmap(NULL), m_ppLDRBitmap(NULL), m_ppCTemp(NULL), m_pColorBuffer(NULL)
 {
 }
 ///
@@ -76,7 +57,12 @@ void BitmapCtrl::BuildCommon(void)
   m_ulPixelHeight = m_pFrame->HeightOf();
   m_ucPixelType   = 0;
   m_ucCount       = m_pFrame->DepthOf();
-  m_ucPointShift  = m_pFrame->PointPreShiftOf();
+
+  if (m_ppCTemp == NULL)
+    m_ppCTemp     = (LONG **)m_pEnviron->AllocMem(m_ucCount * sizeof(LONG *));
+
+  if (m_pColorBuffer == NULL)
+    m_pColorBuffer = (LONG *)m_pEnviron->AllocMem(m_ucCount * 64 * sizeof(LONG));
 
   if (m_ppBitmap == NULL) {
     m_ppBitmap      = (struct ImageBitMap **)m_pEnviron->AllocMem(sizeof(struct ImageBitMap *) * m_ucCount);
@@ -84,6 +70,7 @@ void BitmapCtrl::BuildCommon(void)
     
     for(UBYTE i = 0;i < m_ucCount;i++) {
       m_ppBitmap[i] = new(m_pEnviron) struct ImageBitMap();
+      m_ppCTemp[i]  = m_pColorBuffer + i * 64;
     }
   }
 }
@@ -94,11 +81,24 @@ BitmapCtrl::~BitmapCtrl(void)
 {
   UBYTE i;
 
+  if (m_ppCTemp)
+    m_pEnviron->FreeMem(m_ppCTemp,m_ucCount * sizeof(LONG *));
+  
+  if (m_pColorBuffer)
+    m_pEnviron->FreeMem(m_pColorBuffer,m_ucCount * 64 * sizeof(LONG));
+  
   if (m_ppBitmap) {
     for(i = 0;i < m_ucCount;i++) {
       delete m_ppBitmap[i];
     }
     m_pEnviron->FreeMem(m_ppBitmap,sizeof(struct ImageBitMap *) * m_ucCount);
+  }
+
+  if (m_ppLDRBitmap) {
+    for(i = 0;i < m_ucCount;i++) {
+      delete m_ppLDRBitmap[i];
+    }
+    m_pEnviron->FreeMem(m_ppLDRBitmap,sizeof(struct ImageBitMap *) * m_ucCount);
   }
 }
 ///
@@ -124,11 +124,15 @@ void BitmapCtrl::ClipToImage(RectAngle<LONG> &rect) const
 // range (as appropriate, if the height is already known) and
 // then the desired n'th component of the scan (not the component
 // index) is requested.
-void BitmapCtrl::RequestUserData(class BitMapHook *bmh,const RectAngle<LONG> &r,UBYTE comp)
+void BitmapCtrl::RequestUserData(class BitMapHook *bmh,const RectAngle<LONG> &r,UBYTE comp,bool alpha)
 {
   assert(comp < m_ucCount && bmh);
 
-  bmh->RequestClientData(r,m_ppBitmap[comp],m_pFrame->ComponentOf(comp));
+  if (alpha) {
+    bmh->RequestClientAlpha(r,m_ppBitmap[comp],m_pFrame->ComponentOf(comp));
+  } else {
+    bmh->RequestClientData(r,m_ppBitmap[comp],m_pFrame->ComponentOf(comp));
+  }
 
   if (m_ucPixelType == 0) { // Not yet defined
     m_ucPixelType = m_ppBitmap[comp]->ibm_ucPixelType;
@@ -137,16 +141,42 @@ void BitmapCtrl::RequestUserData(class BitMapHook *bmh,const RectAngle<LONG> &r,
       JPG_THROW(INVALID_PARAMETER,"BitmapCtrl::RequestUserData","pixel types must be consistent accross components");
     }
   }
+
+  //
+  // Now check whether the user supplies a dedicated LDR part.
+  if (!alpha && bmh->providesLDRImage()) {
+    // Need to build the LDR image layout?
+    if (m_ppLDRBitmap == NULL) { 
+      m_ppLDRBitmap    = (struct ImageBitMap **)m_pEnviron->AllocMem(sizeof(struct ImageBitMap *) * m_ucCount);
+      memset(m_ppLDRBitmap,0,sizeof(struct ImageBitMap *) * m_ucCount);
+    
+      for(UBYTE i = 0;i < m_ucCount;i++) {
+        m_ppLDRBitmap[i] = new(m_pEnviron) struct ImageBitMap();
+      }
+    }
+    bmh->RequestLDRData(r,m_ppLDRBitmap[comp],m_pFrame->ComponentOf(comp));
+  }
 }
 ///
 
 /// BitmapCtrl::ReleaseUserData
 // Release the user data again through the bitmap hook.
-void BitmapCtrl::ReleaseUserData(class BitMapHook *bmh,const RectAngle<LONG> &r,UBYTE comp)
+void BitmapCtrl::ReleaseUserData(class BitMapHook *bmh,const RectAngle<LONG> &r,UBYTE comp,bool alpha)
 {
   assert(comp < 4 && bmh);
   
-  bmh->ReleaseClientData(r,m_ppBitmap[comp],m_pFrame->ComponentOf(comp));
+  // If we have LDR bitmaps, release this one first as it was requested last.
+  if (m_ppLDRBitmap && !alpha) {
+    bmh->ReleaseLDRData(r,m_ppLDRBitmap[comp],m_pFrame->ComponentOf(comp));
+  }
+
+  //
+  // Now for the HDR part, or the only part.
+  if (alpha) {
+    bmh->ReleaseClientAlpha(r,m_ppBitmap[comp],m_pFrame->ComponentOf(comp));
+  } else {
+    bmh->ReleaseClientData(r,m_ppBitmap[comp],m_pFrame->ComponentOf(comp));
+  }
 
   m_ucPixelType = 0;
 }
@@ -161,3 +191,50 @@ void BitmapCtrl::ExtractBitmap(struct ImageBitMap *ibm,const RectAngle<LONG> &re
   ibm->ExtractBitMap(m_ppBitmap[i],rect);
 }
 ///
+
+/// BitmapCtrl::ExtractLDRBitmap
+// Extract a region from the LDR data.
+void BitmapCtrl::ExtractLDRBitmap(struct ImageBitMap *ibm,const RectAngle<LONG> &rect,UBYTE i)
+{
+  assert(i < m_ucCount);
+  assert(m_ppLDRBitmap);
+
+  ibm->ExtractBitMap(m_ppLDRBitmap[i],rect);
+}
+///
+
+ 
+
+/// BitmapCtrl::ReleaseUserDataFromEncoding 
+// Release user data after encoding.
+void BitmapCtrl::ReleaseUserDataFromEncoding(class BitMapHook *bmh,const RectAngle<LONG> &region,bool alpha)
+{
+  int i;
+  
+  for(i = 0;i < m_ucCount;i++) {
+    ReleaseUserData(bmh,region,i,alpha);
+  }
+}
+///
+
+/// BitmapCtrl::ReleaseUserDataFromDecoding
+// Release user data after decoding.
+void BitmapCtrl::ReleaseUserDataFromDecoding(class BitMapHook *bmh,const struct RectangleRequest *rr,bool alpha)
+{
+  int i;
+  
+  for(i = rr->rr_usFirstComponent;i <=rr->rr_usLastComponent;i++) {
+    ReleaseUserData(bmh,rr->rr_Request,i,alpha);
+  }
+}
+///
+
+/// BitmapCtrl::CropDecodingRegion
+// First step of a region decoder: Find the region that can be provided in the next step.
+void BitmapCtrl::CropDecodingRegion(RectAngle<LONG> &region,const struct RectangleRequest *)
+{
+  ClipToImage(region);
+}
+///
+
+

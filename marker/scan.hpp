@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.hpp,v 1.49 2012-09-23 14:10:13 thor Exp $
+** $Id: scan.hpp,v 1.64 2014/09/30 08:33:17 thor Exp $
 **
 */
 
@@ -78,6 +58,7 @@ class BitmapCtrl;
 class BufferCtrl;
 class LineAdapter;
 class EntropyParser;
+class Checksum;
 ///
 
 /// class Scan
@@ -137,6 +118,10 @@ class Scan : public JKeeper {
   // Number of hidden bits not included in the low bit count.
   UBYTE                  m_ucHiddenBits;
   //
+  // Set if this scan is a hidden scan and goes into a 
+  // side channel.
+  bool                   m_bHidden;
+  //
   // Mapping table selector for JPEG_LS
   UBYTE                  m_ucMappingTable[4];
   //
@@ -179,9 +164,13 @@ public:
     return m_ucCount;
   }
   //
-  // All settings are now stored, prepare the parser
-  void CompleteSettings(void);
-  // 
+  // Check whether this scan is in a side channel and hidden
+  // in an extra box included in an APP11 marker.
+  bool isHidden(void) const
+  {
+    return m_bHidden;
+  }
+  //
   // Find the DC huffman table of the indicated index.
   class HuffmanTemplate *FindDCHuffmanTable(UBYTE idx) const;
   //
@@ -217,31 +206,24 @@ public:
   //
   // Install the defaults for a given scan type 
   // containing the given number of components.
-  void InstallDefaults(UBYTE depth,const struct JPG_TagItem *tags);
-  //
-  // Make this scan not a default scan, but a residual scan. This
-  // creates the AC part of the scan (actually, the scan for the remaining positions)
-  void MakeResidualScan(class Component *comp);
+  // The tag offset is added to the tag to offset them for the
+  // residual coding tags.
+  void InstallDefaults(UBYTE depth,ULONG tagoffset,const struct JPG_TagItem *tags);
   //
   // Make this scan a hidden refinement scan starting at the indicated
-  // bit position in the indicated component label.
-  void MakeHiddenRefinementACScan(UBYTE bitposition,class Component *comp);
-  //
-  // Make this scan a hidden refinement scan starting at the indicated
-  // bit position for the DC part. This is interleaved.
-  void MakeHiddenRefinementDCScan(UBYTE bitposition);
+  // bit position in the indicated component label. If start and stop are
+  // both zero to indicate a DC scan, all components are included and comp
+  // may be NULL.
+  void MakeHiddenRefinementScan(UBYTE bitposition,class Component *comp,UBYTE sstart,UBYTE sstop);
   //
   // Parse off a hidden refinement scan from the given position.
-  void StartParseHiddenRefinementScan(class BufferCtrl *ctrl);
-  //
- // Parse off a residual scan from the given position.
-  void StartParseResidualScan(class BufferCtrl *ctrl);
+  void StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl *ctrl);
   //
   // Fill in the decoding tables required.
-  void StartParseScan(class ByteStream *io,class BufferCtrl *ctrl); 
+  void StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl); 
   //
   // Fill in the encoding tables.
-  void StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl); 
+  void StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl); 
   //
   // Start making a measurement run to optimize the
   // huffman tables.

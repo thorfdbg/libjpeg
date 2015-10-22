@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 ** This class contains and maintains the AC conditioning
 ** parameters.
 **
-** $Id: actemplate.cpp,v 1.3 2012-06-02 10:27:13 thor Exp $
+** $Id: actemplate.cpp,v 1.9 2014/09/30 08:33:16 thor Exp $
 **
 */
 
@@ -55,6 +35,7 @@ the committee itself.
 #include "tools/environment.hpp"
 #include "io/bytestream.hpp"
 #include "coding/actemplate.hpp"
+#if ACCUSOFT_CODE
 ///
 
 /// ACTemplate::ACTemplate
@@ -79,14 +60,14 @@ void ACTemplate::ParseDCMarker(class ByteStream *io)
 
   if (dc == ByteStream::EOF)
     JPG_THROW(MALFORMED_STREAM,"ACTemplate::ParseDCMarker",
-	      "unexpected EOF while parsing off the AC conditioning parameters");
+              "unexpected EOF while parsing off the AC conditioning parameters");
 
   l = dc & 0x0f;
   u = dc >> 4;
 
   if (u < l)
     JPG_THROW(MALFORMED_STREAM,"ACTemplate::ParseDCMarker",
-	      "upper DC conditioning parameter must be larger or equal to the lower one");
+              "upper DC conditioning parameter must be larger or equal to the lower one");
 
   m_ucLower = l;
   m_ucUpper = u;
@@ -101,11 +82,11 @@ void ACTemplate::ParseACMarker(class ByteStream *io)
 
   if (ac == ByteStream::EOF)
     JPG_THROW(MALFORMED_STREAM,"ACTemplate::ParseACMarker",
-	      "unexpected EOF while parsing off the AC conditioning parameters");
+              "unexpected EOF while parsing off the AC conditioning parameters");
 
   if (ac < 1 || ac > 63)
     JPG_THROW(MALFORMED_STREAM,"ACTemplate::ParseACMarker",
-	      "AC conditoning parameter must be between 1 and 63");
+              "AC conditoning parameter must be between 1 and 63");
 
   m_ucBlockEnd = ac;
 }
@@ -120,3 +101,6 @@ void ACTemplate::InitDefaults(void)
   m_ucBlockEnd = 5;
 }
 ///
+
+///
+#endif

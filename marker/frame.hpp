@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.hpp,v 1.46 2012-09-23 12:58:39 thor Exp $
+** $Id: frame.hpp,v 1.64 2015/03/11 16:02:42 thor Exp $
 **
 */
 
@@ -58,6 +38,7 @@ the committee itself.
 /// Includes
 #include "tools/environment.hpp"
 #include "marker/scantypes.hpp"
+#include "boxes/databox.hpp"
 ///
 
 /// Forwards
@@ -69,71 +50,80 @@ class BitmapCtrl;
 class LineAdapter;
 class BufferCtrl;
 class ResidualBlockHelper;
+class Checksum;
+class ChecksumAdapter;
 ///
 
 /// class Frame
 // This class represents a single frame and the frame dimensions.
 class Frame : public JKeeper {
   // 
+  // The image of this frame
+  class Image           *m_pParent;
+  //
   // In case this frame is part of a sequence of
   // hierarchical frames, this is the next larger
   // frame required to compose the full image.
-  class Frame         *m_pNext;
+  class Frame           *m_pNext;
   //
   // The tables of this frame, i.e. huffman and quantization tables.
-  class Tables        *m_pTables;
+  class Tables          *m_pTables;
   //
   // The scan pattern.
-  class Scan          *m_pScan;
+  class Scan            *m_pScan;
   //
   // The last scan.
-  class Scan          *m_pLast;
+  class Scan            *m_pLast;
   //
   // The currently active scan.
-  class Scan          *m_pCurrent;
+  class Scan            *m_pCurrent;
   //
   // The buffer this frame.
-  class BufferCtrl    *m_pImage;
+  class BufferCtrl      *m_pImage;
   //
   // Computes the residual data.
   class ResidualBlockHelper *m_pBlockHelper;
   //
   // The type of the frame encoding.
-  ScanType             m_Type;
+  ScanType               m_Type;
   //
   // width of the image in pixels.
-  ULONG                m_ulWidth; 
+  ULONG                  m_ulWidth; 
   //
   // height of the image in pixels.
-  ULONG                m_ulHeight;
+  ULONG                  m_ulHeight;
   //
   // Sample precision in bits.
-  UBYTE                m_ucPrecision;
+  UBYTE                  m_ucPrecision;
   //
   // Number of components.
-  UBYTE                m_ucDepth;
+  UBYTE                  m_ucDepth;
   //
   // Maximum MCU width and height. This data is required to compute
   // the subsampling factors.
-  UBYTE                m_ucMaxMCUWidth;
-  UBYTE                m_ucMaxMCUHeight;
+  UBYTE                  m_ucMaxMCUWidth;
+  UBYTE                  m_ucMaxMCUHeight;
   //
   // The definition of the components, the component array.
-  class Component    **m_ppComponent;
+  class Component      **m_ppComponent;
+  //
+  // Currently active refinement data box.
+  class DataBox         *m_pCurrentRefinement;
+  //
+  // The current adapter for updating the checksum over the
+  // encoded data.
+  class ChecksumAdapter *m_pAdapter;
   //
   // Indicate the height by the DNL marker?
-  bool                 m_bWriteDNL;
+  bool                   m_bWriteDNL;
   //
-  // State flags for parsing. Make the next scan a residual
+  // State flags for parsing. Make the next scan a refinement
   // scan even though there is no more data in the IO stream?
-  bool                 m_bBuildResidual;
+  bool                   m_bBuildRefinement;
+  bool                   m_bCreatedRefinement;
   //
-  // Has the residual scan already been created? 
-  bool                 m_bCreatedResidual;
-  //
-  // The same logic for hidden DCT refinement scans.
-  bool                 m_bBuildRefinement;
-  bool                 m_bCreatedRefinement;
+  // Counts the refinement scans.
+  UWORD                  m_usRefinementCount;
   //
   // Compute the largest common denominator of a and b.
   static int gcd(int a,int b)
@@ -159,11 +149,29 @@ class Frame : public JKeeper {
   // scan. Returns false otherwise.
   bool ScanForScanHeader(class ByteStream *stream);
   //
+  // Helper function to create a regular scan from the tags.
+  // There are no scan tags here, instead all components are included.
+  // If breakup is set, then each component gets its own scan, otherwise
+  // groups of four components get into one scan.
+  void CreateSequentialScanParameters(bool breakup,ULONG tagoffset,const struct JPG_TagItem *tags);
+  //
+  // Helper function to create progressive scans. These need to be broken
+  // up over several components. A progressive scan cannot contain more
+  // than one component if it includes AC parameters.
+  void CreateProgressiveScanParameters(bool breakup,ULONG tagoffset,const struct JPG_TagItem *tags,
+                                       const struct JPG_TagItem *scantags);
+  //
 public:
   // This requires a type identifier.
-  Frame(class Tables *tables,ScanType t);
+  Frame(class Image *parent,class Tables *tables,ScanType t);
   //
   ~Frame(void);
+  //
+  // Return the image this frame is part of.
+  class Image *ImageOf(void) const
+  {
+    return m_pParent;
+  }
   //
   // Next frame in a sequence of hierarchical frames.
   class Frame *NextOf(void) const
@@ -180,10 +188,14 @@ public:
   //
   // Set the image the frame data goes into. Required before the
   // user can call StartParse|Write|MeasureScan.
-  void SetImage(class BufferCtrl *img)
+  void SetImageBuffer(class BufferCtrl *img)
   {
     m_pImage = img;
   }
+  //
+  // Extend the image by a merging process, and install it
+  // here.
+  void ExtendImageBuffer(class BufferCtrl *img,class Frame *residual);
   //
   // Parse off a frame header
   void ParseMarker(class ByteStream *io);
@@ -223,24 +235,33 @@ public:
   //
   // Return the point preshift, the adjustment of the
   // input samples by a shift that moves them into the
-  // limits of JPEG.
+  // limits of JPEG. This is the R_b value from the specs.
   UBYTE PointPreShiftOf(void) const;
   //
   // Define default scan parameters. Returns the scan for further refinement if required.
+  // tagoffset is an offset added to the tags - used to read from the residual scan types
+  // rather the regular ones if this is a residual frame.
   class Scan *InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,UBYTE precision,
-				       bool writednl,
-				       const UBYTE *subx,const UBYTE *suby,
-				       const struct JPG_TagItem *tags);
+                                       bool writednl,
+                                       const UBYTE *subx,const UBYTE *suby,
+                                       ULONG tagoffset,
+                                       const struct JPG_TagItem *tags);
   //
   // Start parsing a single scan.
-  class Scan *StartParseScan(class ByteStream *io);
+  class Scan *StartParseScan(class ByteStream *io,class Checksum *chk);
   //
   // Start writing a single scan. Scan parameters must have been installed before.
-  class Scan *StartWriteScan(class ByteStream *io);
+  class Scan *StartWriteScan(class ByteStream *io,class Checksum *chk);
   //
   // Start a measurement scan that can be added upfront to optimize the huffman
   // coder
   class Scan *StartMeasureScan(void);
+  //
+  // End parsing the current scan.
+  void EndParseScan(void);
+  //
+  // End writing the current scan
+  void EndWriteScan(void);
   //
   // Return the scan.
   class Scan *FirstScanOf(void) const
@@ -298,11 +319,14 @@ public:
   class LineAdapter *BuildLineAdapter(void);
   //
   // Build the image buffer type fitting to the frame type.
-  class BitmapCtrl *BuildImage(void);
+  class BitmapCtrl *BuildImageBuffer(void);
   //
   // Write the scan trailer of this frame. This is only the
   // DNL marker if it is enabled.
   void WriteTrailer(class ByteStream *io);
+  //
+  // Complete the current refinement scan if there is one.
+  void CompleteRefimentScan(class ByteStream *io);
   //
   // Define the image size if it is not yet known here. This is
   // called whenever the DNL marker is parsed in.

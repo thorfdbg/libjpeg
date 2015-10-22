@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: ycbcrtrafo.hpp,v 1.12 2012-07-14 12:07:35 thor Exp $
+** $Id: ycbcrtrafo.hpp,v 1.34 2014/09/30 08:33:16 thor Exp $
 **
 */
 
@@ -59,41 +39,59 @@ the committee itself.
 #include "tools/traits.hpp"
 #include "interface/imagebitmap.hpp"
 #include "colortrafo/colortrafo.hpp"
+#include "colortrafo/integertrafo.hpp"
 ///
 
 /// Class YCbCrTrafo
 // This class provides the tranformation from RGB to YCbCr following
-// the JFIF guidelines.
-template<typename external,int count>
-class YCbCrTrafo : public ColorTrafo {
+// the JFIF guidelines, plus all other reasonable combinations of the
+// L and R transformations without S.
+template<typename external,int count,UBYTE oc,int regulartrafo,int residualtrafo>
+class YCbCrTrafo : public IntegerTrafo {
+  // 
+  // A private helper to implement the identity transformation.
+  TrivialTrafo<LONG,external,count> m_TrivialHelper;
   //
 public:
-  YCbCrTrafo(class Environ *env);
+  YCbCrTrafo(class Environ *env,LONG dcshift,LONG max,LONG rdcshift,LONG rmax,LONG outshift,LONG outmax);
   //
   virtual ~YCbCrTrafo(void);
   //
   // Transform a block from RGB to YCbCr. Input are the three image bitmaps
   // already clipped to the rectangle to transform, the coordinate rectangle to use
   // and the level shift.
-  virtual void RGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
-			 LONG dcshift,LONG max);
+  virtual void RGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,Buffer target);
+  // 
+  // In case the user already provided a tone-mapped version of the image, this call already
+  // takes the LDR version of the image, performs no tone-mapping but only a color
+  // decorrelation transformation and injects it as LDR image.
+  virtual void LDRRGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
+                            Buffer target);
+  //
+  // Buffer the original data unaltered. Required for residual coding, for some modes of
+  // it at least.
+  virtual void RGB2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
+                       Buffer target)
+  {
+    m_TrivialHelper.RGB2RGB(r,source,target);
+  } 
+  //
+  // Compute the residual from the original image and the decoded LDR image, place result in
+  // the output buffer. This depends rather on the coding model.
+  virtual void RGB2Residual(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
+                            Buffer reconstructed,Buffer residuals);
   //
   // Inverse transform a block from YCbCr to RGB, incuding a clipping operation and a dc level
   // shift.
   virtual void YCbCr2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *dest,
-			 LONG dcshift,LONG max);
-  //
-  // Return the number of fractional bits this color transformation requires.
-  virtual UBYTE FractionalBitsOf(void) const
-  {
-    return COLOR_BITS;
-  }
+                         Buffer source,Buffer residuals);
   //
   // Return the pixel type of this transformer.
   virtual UBYTE PixelTypeOf(void) const
   {
     return TypeTrait<external>::TypeID;
   }
+  //
 };
 ///
 

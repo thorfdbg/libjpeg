@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.2 2012-05-20 16:17:27 thor Exp $
+## $Id: Makefile,v 1.5 2015/03/11 16:02:41 thor Exp $
 ##
 ## Makefile for the jpeg transcoder project,
 ## THOR Software, May 20, 2012, Thomas Richter
@@ -8,7 +8,8 @@
 ## directory.
 ##
 
-XFILES	=	main
+XFILES	=	main bitmaphook filehook iohelpers tmo defaulttmoc \
+		encodea encodeb encodec reconstruct
 
 XDIST	=	
 

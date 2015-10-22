@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,7 +30,7 @@ the committee itself.
 ** do here. Again, this adapts to the upsampling process of the
 ** hierarchical mode.
 **
-** $Id: linelineadapter.cpp,v 1.4 2012-07-20 22:55:54 thor Exp $
+** $Id: linelineadapter.cpp,v 1.11 2015/06/03 15:37:25 thor Exp $
 **
 */
 
@@ -104,18 +84,18 @@ void LineLineAdapter::BuildCommon(void)
 
   if (m_pppImage == NULL) {
     m_pppImage = (struct Line ***)m_pEnviron->AllocMem(m_ucCount * sizeof(struct Line **));
-    memset(m_pppImage,0,m_ucCount * sizeof(struct Line **));
+    for(i = 0;i < m_ucCount;i++) {
+      m_pppImage[i]              = m_ppTop  + i;
+    }
   }
 
   if (m_pulLinesPerComponent == NULL) {
     m_pulLinesPerComponent = (ULONG *)m_pEnviron->AllocMem(m_ucCount * sizeof(ULONG));
-  }
-
-  for(i = 0;i < m_ucCount;i++) {
-    class Component *comp      = m_pFrame->ComponentOf(i);
-    UBYTE suby                 = comp->SubYOf();
-    m_pulLinesPerComponent[i]  = (m_ulPixelHeight + suby - 1) / suby;
-    m_pppImage[i]              = m_ppTop  + i;
+    for(i = 0;i < m_ucCount;i++) {
+      class Component *comp      = m_pFrame->ComponentOf(i);
+      UBYTE suby                 = comp->SubYOf();
+      m_pulLinesPerComponent[i]  = (m_ulPixelHeight + suby - 1) / suby;
+    }
   }
 }
 ///
@@ -160,7 +140,7 @@ struct Line *LineLineAdapter::AllocateLine(UBYTE comp)
   // Get the next line from the image, possibly extend the image
   if (*m_pppImage[comp] == NULL) { 
     // Line is not yet there, create it.
-    line = new(m_pEnviron) class Line;
+    line = new(m_pEnviron) struct Line;
     *m_pppImage[comp] = line;
     line->m_pData     = (LONG *)m_pEnviron->AllocMem((m_pulWidth[comp] * sizeof(LONG)));
   }
@@ -214,7 +194,7 @@ bool LineLineAdapter::isNextMCULineReady(void) const
       // codedlines + comp->SubYOf() << 3 * comp->MCUHeightOf() is the number of
       // lines that must be buffered to encode the next MCU
       if (m_pulReadyLines[i] < codedlines + 8 * comp->MCUHeightOf())
-	return false;
+        return false;
     }
   }
   

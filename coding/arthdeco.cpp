@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
  * The Art-Deco (MQ) decoder and encoder as specified by the jpeg2000 
  * standard, FDIS, Annex C
  *
- * $Id: arthdeco.cpp,v 1.3 2012-06-02 10:27:13 thor Exp $
+ * $Id: arthdeco.cpp,v 1.11 2014/09/30 08:33:16 thor Exp $
  *
  */
 
@@ -55,7 +35,10 @@ the committee itself.
 #include "io/bytestream.hpp"
 #include "interface/types.hpp"
 #include "coding/arthdeco.hpp"
+#include "tools/checksum.hpp"
 ///
+
+#if ACCUSOFT_CODE
 
 /// MQCoder::Qe_Value
 const UWORD MQCoder::Qe_Value[] = {
@@ -117,7 +100,7 @@ void MQCoder::InitContexts(void)
 /// MQCoder::OpenForWrite
 // Initialize the MQ Coder for writing to the
 // indicated bytestream.
-void MQCoder::OpenForWrite(class ByteStream *io)
+void MQCoder::OpenForWrite(class ByteStream *io,class Checksum *chk)
 {
   m_ulA   = 0x8000;
   m_ulC   = 0x0000;
@@ -125,6 +108,7 @@ void MQCoder::OpenForWrite(class ByteStream *io)
   m_ucB   = 0x00;
   m_bF    = false;
   m_pIO   = io;
+  m_pChk  = chk;
   InitContexts();
 }
 ///
@@ -132,16 +116,21 @@ void MQCoder::OpenForWrite(class ByteStream *io)
 /// MQCoder::OpenForRead
 // Initialize the MQ Coder for reading the indicated
 // bytestream.
-void MQCoder::OpenForRead(class ByteStream *io)
+void MQCoder::OpenForRead(class ByteStream *io,class Checksum *chk)
 {
   UBYTE t;
   
   m_pIO   = io;
+  m_pChk  = chk;
   InitContexts();
   
   m_ucB   = io->Get();
+  if (m_pChk)
+    m_pChk->Update(m_ucB);
   m_ulC   = m_ucB << 16;
   t       = io->Get();
+  if (m_pChk)
+    m_pChk->Update(t);
   m_ucCT  = 8;
   
   if (m_ucB == 0xff) {
@@ -177,7 +166,7 @@ bool MQCoder::Get(UBYTE ctxtidx)
     m_ulC -= q << 16;
     if (m_ulA & 0x8000) {
       // short MPS case.
-      return ctxt.m_bMPS;
+      return ctxt.m_bMPS?true:false;
     }
     // MPS exchange case
     d = m_ulA < q; // true on LPS
@@ -204,6 +193,8 @@ bool MQCoder::Get(UBYTE ctxtidx)
   do {
     if (m_ucCT == 0) {
       t = m_pIO->Get();
+      if (m_pChk)
+        m_pChk->Update(t);
       m_ucCT = 8;
       if (m_ucB == 0xff) {
         if (t < 0x90) {
@@ -243,10 +234,10 @@ void MQCoder::Put(UBYTE ctxtidx,bool bit)
     } else {
       // Context change.
       if (m_ulA < q) {
-	// MPS/LPS exchange.
-	m_ulA  = q;
+        // MPS/LPS exchange.
+        m_ulA  = q;
       } else {
-	m_ulC += q;
+        m_ulC += q;
       }
       ctxt.m_ucIndex = Qe_NextMPS[ctxt.m_ucIndex];
     }
@@ -271,25 +262,30 @@ void MQCoder::Put(UBYTE ctxtidx,bool bit)
     if (--m_ucCT == 0) {
       if (m_ucB < 0xff) {
         if (m_ulC & 0x8000000) {
-	  // Overflow into the b register, remove carry.
-	  m_ucB++;
-	  m_ulC &= 0x7ffffff;
+          // Overflow into the b register, remove carry.
+          m_ucB++;
+          m_ulC &= 0x7ffffff;
         }
       }
       if (m_ucB == 0xff) {
         // We either have an 0xff here, or generated one due to carry.
         // in either case, must have buffered something or the overflow
         // could not have happened.
-	m_pIO->Put(0xff);
-	m_ucB  = m_ulC >> 20;
-	m_ulC &= 0xfffff;
-	m_ucCT = 7;
+        m_pIO->Put(0xff);
+        if (m_pChk)
+          m_pChk->Update(0xff);
+        m_ucB  = m_ulC >> 20;
+        m_ulC &= 0xfffff;
+        m_ucCT = 7;
       } else {
-	if (m_bF)
-	  m_pIO->Put(m_ucB);
-	m_ucB  = m_ulC >> 19;
-	m_ulC &= 0x7ffff;
-	m_ucCT = 8;
+        if (m_bF) {
+          m_pIO->Put(m_ucB);
+          if (m_pChk)
+            m_pChk->Update(m_ucB);
+        }
+        m_ucB  = m_ulC >> 19;
+        m_ulC &= 0x7ffff;
+        m_ucCT = 8;
       }
       m_bF = true;
     }
@@ -309,18 +305,23 @@ void MQCoder::Flush(void)
   for(k = 12 - m_ucCT;k > 0;k -= m_ucCT,m_ulC <<= m_ucCT) {
     if (m_ucB < 0xff) {
       if (m_ulC & 0x8000000) {
-	m_ucB++;
+        m_ucB++;
         m_ulC &= 0x7ffffff;
       }
     }
     if (m_ucB == 0xff) {
       m_pIO->Put(0xff);
+      if (m_pChk)
+        m_pChk->Update(0xff);
       m_ucB  = m_ulC >> 20;
       m_ulC &= 0xfffff;
       m_ucCT = 7;
     } else {
-      if (m_bF)
-	m_pIO->Put(m_ucB);
+      if (m_bF) {
+        m_pIO->Put(m_ucB);
+        if (m_pChk)
+          m_pChk->Update(m_ucB);
+      }
       m_ucB  = m_ulC >> 19;
       m_ulC &= 0x7ffff;
       m_ucCT = 8;
@@ -333,7 +334,13 @@ void MQCoder::Flush(void)
       m_ucB++;
     }
   }
-  if (m_ucB != 0xff && m_bF)
+  if (m_ucB != 0xff && m_bF) {
     m_pIO->Put(m_ucB);
+    if (m_pChk)
+      m_pChk->Update(m_ucB);
+  }
 }
 ///
+
+///
+#endif

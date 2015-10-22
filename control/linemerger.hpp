@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** This class merges the two sources of a differential frame together,
 ** expanding its non-differential source.
 **
-** $Id: linemerger.hpp,v 1.14 2012-06-02 10:27:13 thor Exp $
+** $Id: linemerger.hpp,v 1.23 2015/03/25 08:45:43 thor Exp $
 **
 */
 
@@ -66,6 +46,7 @@ the committee itself.
 // expanding its non-differential source.
 class LineMerger : public LineAdapter {
   //
+#if ACCUSOFT_CODE
   // Frame this is part of - where it takes the dimensions from.
   // This is always the larger (highpass) frame.
   class Frame       *m_pFrame;
@@ -110,12 +91,13 @@ class LineMerger : public LineAdapter {
   //
   // Fetch the next line from the low-pass and expand it horizontally if required.
   struct Line *GetNextLowpassLine(UBYTE comp);
+#endif
   //
 public:
   // The frame to create the line merger from is the highpass frame as
   // its line dimensions are identical to that of the required output.
   LineMerger(class Frame *frame,class LineAdapter *low,class LineAdapter *high,
-	     bool expandh,bool expandv);
+             bool expandh,bool expandv);
   //
   virtual ~LineMerger(void);
   //
@@ -126,43 +108,63 @@ public:
   // May throw on out of memory situations
   virtual void PrepareForEncoding(void)
   {
+#if ACCUSOFT_CODE
     BuildCommon();
     m_pHighPass->PrepareForEncoding();
     m_pLowPass->PrepareForEncoding();
+#endif
   }
   //
   // First time usage: Collect all the information for decoding.
   // May throw on out of memory situations.
   virtual void PrepareForDecoding(void)
   {
+#if ACCUSOFT_CODE
     BuildCommon();
     m_pHighPass->PrepareForDecoding();
     m_pLowPass->PrepareForDecoding();
+#endif
   }
   //
   // Return the next smaller scale adapter if there is any, or
   // NULL otherwise.
   virtual class LineAdapter *LowPassOf(void) const
   {
+#if ACCUSOFT_CODE
     return m_pLowPass;
+#else
+    return NULL;
+#endif
   }
   //
   // The high-pass end if there is one, or NULL.
   virtual class LineAdapter *HighPassOf(void) const
   {
+#if ACCUSOFT_CODE
     return m_pHighPass;
+#else
+    return NULL;
+#endif
   }
   //
   // Check whether a horizontal expansion is performed here.
   bool isHorizontallyExpanding(void) const
   {
+#if ACCUSOFT_CODE
     return m_bExpandH;
+#else
+    return false;
+#endif
   }
   //
   // Check whether a vertical expansion is performed here.
   bool isVerticallyExpanding(void) const
   {
+#if ACCUSOFT_CODE
     return m_bExpandV;
+#else
+    return false;
+#endif
   }
   //
   // Get the next available line from the output
@@ -209,25 +211,38 @@ public:
   // the image buffer.
   virtual bool isImageComplete(void) const
   {
+#if ACCUSOFT_CODE
     // If and only if the lowpass is complete. The highpass is then generated
     // when done.
     return m_pLowPass->isImageComplete();
+#else
+    return true;
+#endif
   } 
   //
   // Return true if the next MCU line is buffered and can be pushed
   // to the encoder.
   virtual bool isNextMCULineReady(void) const
   {
+#if ACCUSOFT_CODE
     // Only if the lowpass is ready. The high-pass is then written
     // when done, but the Low-pass must be written first.
     return m_pLowPass->isNextMCULineReady();
+#else
+    return false;
+#endif
   } 
   //
   // Return the number of lines available for reconstruction from this scan.
   virtual ULONG BufferedLines(UBYTE comp) const
   {
+#if ACCUSOFT_CODE
     // Since the high-pass is loaded last, it must be asked...
     return m_pHighPass->BufferedLines(comp);
+#else
+    NOREF(comp);
+    return 0;
+#endif
   }
   //
   // This does not really make any difference as this object is not used
@@ -245,6 +260,17 @@ public:
   virtual LONG DCOffsetOf(void) const
   {
     return 0; // none.
+  }
+  //
+  // In case the high-pass is supposed to be a lossless process such that
+  // we require exact differentials, return true.
+  virtual bool isLossless(void) const
+  {
+#if ACCUSOFT_CODE
+    return m_pHighPass->isLossless();
+#else
+    return false;
+#endif
   }
 };
 ///

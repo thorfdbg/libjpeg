@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
  * The Art-Deco (MQ) decoder and encoder as specified by the jpeg2000 
  * standard, FDIS, Annex C
  *
- * $Id: qmcoder.cpp,v 1.18 2012-09-09 21:36:13 thor Exp $
+ * $Id: qmcoder.cpp,v 1.30 2015/10/13 16:56:50 thor Exp $
  *
  */
 
@@ -55,7 +35,10 @@ the committee itself.
 #include "io/bytestream.hpp"
 #include "interface/types.hpp"
 #include "coding/qmcoder.hpp"
+#include "tools/checksum.hpp"
 ///
+
+#if ACCUSOFT_CODE
 
 /// Defines
 #ifdef DEBUG_QMCODER
@@ -146,91 +129,120 @@ const UBYTE QMCoder::Qe_NextLPS[] = {
 /// QMCoder::OpenForWrite
 // Initialize the MQ Coder for writing to the
 // indicated bytestream.
-void QMCoder::OpenForWrite(class ByteStream *io)
+void QMCoder::OpenForWrite(class ByteStream *io,class Checksum *chk)
 {
-  m_ucST  = 0;
-  m_ucSZ  = 0;
+  m_usST  = 0;
+  m_usSZ  = 0;
   m_ulC   = 0;
   m_ulA   = 0x10000;
   m_ucCT  = 11;
   m_ucB   = 0x00;
   m_bF    = false; // Point to before the segment.
   m_pIO   = io;
+  m_pChk  = chk;
 }
 ///
 
 /// QMCoder::ByteOut
 // Flush the byte output buffer.
+// The output buffer consists of the following registers:
+// 1) The upper 9 (! not eight !) bits of the C register. Specifically,
+// bits 19 to 28
+// 2) These bits are potentially stacked in the m_usST counter, stacked
+// 0xff bytes.
+// 3) From there, bits overflow into the B register. Non-0xFF go there directly,
+// 0xffs wait in m_usST until the carry decision can be made.
+// 4) From the B register, zeros are parked in the m_usSZ register.
+// 5) From m_usSZ or B, output goes to the stream. Zeros are stacked and delayed
+// until the first non-zero reaches stage 4 and pushes them out.
+// Reason is that trailing 0x00-bytes must be removed before completing the scan,
+// similar to J2K, where trailing 0xff 0x7f pairs *may* be removed.
 void QMCoder::ByteOut(void)
 {    
   ULONG t = m_ulC >> 19; // output bits in the C register.
   
-  if (t > 0xff) {
+  if (unlikely(t > 0xff)) {
     // Carry overflow.
-    if (m_bF) { 
+    if (likely(m_bF)) { 
       // Output any stacked zeros as we are writing a non-zero.
-      while(m_ucSZ) {
-	m_pIO->Put(0x00);
-	m_ucSZ--;
+      while(m_usSZ) {
+        m_pIO->Put(0x00);
+        if (m_pChk)
+          m_pChk->Update(0x00);
+        m_usSZ--;
       }
       // Output buffer non-empty, carry over into the output buffer.
       m_ucB++; // Overflow into the buffer.
       assert(m_ucB > 0);
       m_pIO->Put(m_ucB);
+      if (m_pChk)
+        m_pChk->Update(m_ucB);
       // Byte-stuffing procedure.
       if (m_ucB == 0xff) {
-	// Stuff 0 (byte-stuffing)
-	m_pIO->Put(0x00);
+        // Stuff 0 (byte-stuffing)
+        m_pIO->Put(0x00);
+        if (m_pChk)
+          m_pChk->Update(0x00);
       }
     }
     // Collect stacked zeros into which we now overflow, so
     // all stacked FF's now become a 0x00
     // These should be written out, but they are delayed since
     // the final flush must remove them anyhow.
-    m_ucSZ += m_ucST;
-    m_ucST  = 0;
+    m_usSZ += m_usST;
+    m_usST  = 0;
     // Finally buffer the output into which any further coding
     // overflow might run into.
     m_ucB   = t; // Intentionally clips off the lower eight bits.
     m_bF    = true;
-  } else if (t == 0xff) {
-    // Might overflow into t, count the carry-over's,
+  } else if (unlikely(t == 0xff)) {
+    // Might overflow into t, count the carry-overs,
     // just count the FF's as we might overflow into them,
     // Keep the byte before the 0xff group in the B register.
-    m_ucST++;
+    m_usST++;
   } else {
     // Regular case, no 0xff, overflow propagation is not
     // possible. Push out the buffered zeros, the byte buffer
     // and possibly the string of 0xff's we have here.
-    if (m_bF) { 
+    if (likely(m_bF)) { 
       // Buffered byte is valid.
-      if (m_ucB == 0) {
-	// If it is a zero byte, just count the number.
-	m_ucSZ++;
+      if (unlikely(m_ucB == 0)) {
+        // If it is a zero byte, just count the number.
+        m_usSZ++;
       } else {
-	// Not a zero, output all the zeros collected so far.
-	while(m_ucSZ) {
-	  m_pIO->Put(0x00);
-	  m_ucSZ--;
-	}
-	// And make room in the buffer.
-	m_pIO->Put(m_ucB);
+        // Not a zero, output all the zeros collected so far.
+        while(unlikely(m_usSZ)) {
+          m_pIO->Put(0x00);
+          if (m_pChk)
+            m_pChk->Update(0x00);
+          m_usSZ--;
+        }
+        // And make room in the buffer.
+        m_pIO->Put(m_ucB);
+        if (m_pChk)
+          m_pChk->Update(m_ucB);
       }
     }
     //
     // Buffer is now empty.
     // Write the buffered 0xff's now.
-    if (m_ucST) {
-      while(m_ucSZ) {
-	m_pIO->Put(0x00);
-	m_ucSZ--;
+    if (unlikely(m_usST)) {
+      while(m_usSZ) {
+        m_pIO->Put(0x00);
+        if (m_pChk)
+          m_pChk->Update(0x00);
+        m_usSZ--;
       }
       //
-      while(m_ucST) {
-	m_pIO->Put(0xff);
-	// Byte-stuffing.
-	m_pIO->Put(0x00);
-	m_ucST--;
+      while(m_usST) {
+        // Byte-stuffing.
+        m_pIO->Put(0xff);
+        m_pIO->Put(0x00);
+        if (m_pChk) {
+          m_pChk->Update(0xff);
+          m_pChk->Update(0x00);
+        }
+        m_usST--;
       }
     }
     m_ucB = t;
@@ -244,9 +256,10 @@ void QMCoder::ByteOut(void)
 /// QMCoder::OpenForRead
 // Initialize the MQ Coder for reading the indicated
 // bytestream.
-void QMCoder::OpenForRead(class ByteStream *io)
+void QMCoder::OpenForRead(class ByteStream *io,class Checksum *chk)
 {
   m_pIO   = io;
+  m_pChk  = chk;
   
   m_ulA   = 0x10000;
   m_ulC   = 0;
@@ -268,23 +281,29 @@ void QMCoder::ByteIn(void)
 {
   LONG b = m_pIO->Get();
 
-  if (b == ByteStream::EOF) {
+  if (unlikely(b == ByteStream::EOF)) {
     return; // Read 0x00 on EOF.
   }
 
-  if (b == 0xff) {
+  if (unlikely(b == 0xff)) {
     // Might be a marker - or not.
     m_pIO->LastUnDo();
     if (m_pIO->PeekWord() == 0xff00) {
       // What is expected, a byte-stuffed 0x00
       m_pIO->GetWord();
       m_ulC |= 0xff00; //+ would also work.
+      if (m_pChk) {
+        m_pChk->Update(0xff);
+        m_pChk->Update(0x00);
+      }
     } else {
       // Since the encoder drops 0x00 bytes, we need to fit
       // them in here. Though stay at the EOF.
     }
   } else {
     m_ulC += b << 8;
+    if (m_pChk)
+      m_pChk->Update(b);
   }
 }
 ///
@@ -298,6 +317,8 @@ bool QMCoder::Get(class QMContext &ctxt)
   ULONG q = Qe_Value[ctxt.m_ucIndex];
   bool d; // true on lps
 
+  assert(ctxt.m_ucIndex < sizeof(Qe_NextMPS));
+         
   m_ulA -= q;
   if ((m_ulC >> 16) < m_ulA) {
     // MPS case
@@ -334,7 +355,7 @@ bool QMCoder::Get(class QMContext &ctxt)
   // Renormalize.
   assert(m_ulA);
   do {
-    if (m_ucCT == 0) {
+    if (unlikely(m_ucCT == 0)) {
       ByteIn();
       m_ucCT = 8;
     }
@@ -360,6 +381,8 @@ void QMCoder::Put(class QMContext &ctxt,bool bit)
   printf("#%3d <%c%c%c%c:%d>",++counter,ctxt.m_ucID[0],ctxt.m_ucID[1],ctxt.m_ucID[2],ctxt.m_ucID[3],bit);
 #endif 
 
+  assert(ctxt.m_ucIndex < sizeof(Qe_NextMPS));
+
   m_ulA  -= q;
   // Check for MPS and LPS coding
   if (bit == ctxt.m_bMPS) {
@@ -374,9 +397,9 @@ void QMCoder::Put(class QMContext &ctxt,bool bit)
     } else {
       // Context change.
       if (m_ulA < q) {
-	// MPS/LPS exchange.
-	m_ulC += m_ulA;
-	m_ulA  = q;
+        // MPS/LPS exchange.
+        m_ulC += m_ulA;
+        m_ulA  = q;
       }
       ctxt.m_ucIndex = Qe_NextMPS[ctxt.m_ucIndex];
     }
@@ -403,7 +426,7 @@ void QMCoder::Put(class QMContext &ctxt,bool bit)
   do {
     m_ulA <<= 1;
     m_ulC <<= 1;
-    if (--m_ucCT == 0) {
+    if (unlikely(--m_ucCT == 0)) {
       ByteOut();
    
       m_ucCT = 8;
@@ -445,7 +468,9 @@ bool QMCoder::GetSlow(class QMContext &ctxt)
   ULONG q = Qe_Value[ctxt.m_ucIndex];
   bool d;
 
-  if (m_usC < m_usA) {
+  assert(ctxt.m_ucIndex < sizeof(Qe_NextMPS));
+
+  if (likely(m_usC < m_usA)) {
     // MPS case
     assert((m_usA & 0x8000) == 0);
     // MPS exchange case
@@ -458,7 +483,7 @@ bool QMCoder::GetSlow(class QMContext &ctxt)
     m_usA  = q;
   }
 
-  if (d) {
+  if (unlikely(d)) {
     // LPS decoding, check for MPS/LPS exhchange.
     d ^= ctxt.m_bMPS;
     if (Qe_Switch[ctxt.m_ucIndex])
@@ -498,16 +523,18 @@ void QMCoder::PutSlow(class QMContext &ctxt,bool bit)
 { 
   ULONG q = Qe_Value[ctxt.m_ucIndex];
 
+  assert(ctxt.m_ucIndex < sizeof(Qe_NextMPS));
+
 #ifdef DEBUG_QMCODER_CODE
   printf("#%3d <%c%c%c%c:%d>",++counter,ctxt.m_ucID[0],ctxt.m_ucID[1],ctxt.m_ucID[2],ctxt.m_ucID[3],bit);
 #endif 
 
   // Check for MPS and LPS coding
-  if (bit == ctxt.m_bMPS) {
+  if (likely(bit == ctxt.m_bMPS)) {
     // MPS coding
     assert((m_ulA & 0x8000) == 0);
     // Context change.
-    if (m_ulA < q) {
+    if (unlikely(m_ulA < q)) {
       // MPS/LPS exchange.
       m_ulC += m_ulA;
       m_ulA  = q;
@@ -515,7 +542,7 @@ void QMCoder::PutSlow(class QMContext &ctxt,bool bit)
     ctxt.m_ucIndex = Qe_NextMPS[ctxt.m_ucIndex];
   } else {
     // LPS coding here.
-    if (m_ulA >= q) {
+    if (unlikely(m_ulA >= q)) {
       m_ulC += m_ulA;
       m_ulA  = q;
     }
@@ -545,3 +572,6 @@ void QMCoder::PutSlow(class QMContext &ctxt,bool bit)
 }
 #endif
 ///
+
+///
+#endif

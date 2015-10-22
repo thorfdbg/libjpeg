@@ -1,17 +1,26 @@
+#! make
+#*************************************************************************
+#* Copyright (c) 2011-2013 Accusoft Corporation                         **
+#*                                                                      **
+#* Written by Thomas Richter (THOR Software - thor@math.tu-berlin.de)   **
+#* Sponsored by Accusoft Corporation, Tampa, FL and                     **
+#* the Computing Center of the University of Stuttgart                  **
+#*************************************************************************
+#
 #######################################################################
 ##
-## $Id: Makefile,v 1.3 2012-05-20 16:36:08 thor Exp $
+## $Id: Makefile,v 1.10 2015/03/26 07:30:25 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
-## THOR Software, May 20, 2012, Thomas Richter for Accusoft/Pegasus 
+## THOR Software, May 20, 2012, Thomas Richter for Accusoft 
 #######################################################################
 ##
 ## 
 .PHONY:		clean debug final valgrind valfinal coverage all install doc dox distrib \
-		verbose profile profgen profuse Distrib.zip view realclean \
-		uninstall link linkglobal linkprofuse linkprofgen linkprof \
-		lib libstatic libdebug tar help
+		verbose profile profgen profuse Distrib.zip ISODistrib.zip view realclean \
+		uninstall link linkglobal linkprofuse linkprofgen linkprof pubdistrib \
+		lib libstatic libdebug tar help cleandep
 
 all:		debug
 
@@ -39,6 +48,7 @@ help:
 		@ echo "libstatic : generate libjpeg.a"
 		@ echo "install   : install jpeg into ~/bin/wavelet"
 		@ echo "uninstall : remove jpeg from ~/bin/wavelet"
+		@ echo "cleandep  : remove dependency files"
 
 #####################################################################
 ## Varous Autoconf related settings                                ##
@@ -281,6 +291,9 @@ realclean	:	clean
 	@ rm -rf /tmp/*.dyn /tmp/*.dpi
 	@ rm -rf automakefile autoconfig.h configure
 
+cleandep:
+	@ find . -name "*.d" -exec rm {} \;
+
 distrib	:	Distrib.zip
 
 Distrib.zip	:	doc dox configure autoconfig.h.in
@@ -296,6 +309,46 @@ Distrib.zip	:	doc dox configure autoconfig.h.in
 	@ $(ZIP) -r Distrib.zip Makefile Makefile.template Makefile_Settings.*
 	@ $(ZIP) -r Distrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r Distrib.zip dox/html
+	@ $(ZIP) -r Distrib.zip vs10.0 --exclude '*CVS*' 
+	@ $(ZIP) -r Distrib.zip vs12.0 --exclude '*CVS*' 
+
+isodistrib:	ISODistrib.zip
+
+##
+## The public distribution, no accusoft-code, with the stripped headers.
+ISODistrib.zip	:	doc configure autoconfig.h.in
+	@ touch interface/jpeg.hpp
+	@ sleep 2
+	@ touch configure.in
+	@ sleep 2
+	@ touch autoconfig.h.in
+	@ sleep 2
+	@ touch configure
+	@ $(MAKE) --no-print-directory $(DIRLIBS) TARGET="isozip"
+	@ $(ZIPASCII) -r ISODistrib.zip README README.license README.history Compile.txt config.h
+	@ $(ZIP) -r ISODistrib.zip Makefile Makefile.template Makefile_Settings.*
+	@ $(ZIP) -r ISODistrib.zip configure configure.in automakefile.in autoconfig.h.in
+	@ $(ZIP) -r ISODistrib.zip vs10.0 --exclude '*CVS*'
+	@ $(ZIP) -r ISODistrib.zip vs12.0 --exclude '*CVS*'
+
+gpldistrib:	GPLDistrib.zip
+
+##
+## The public distribution, no patented code, with the stripped headers.
+GPLDistrib.zip	:	doc configure autoconfig.h.in
+	@ touch interface/jpeg.hpp
+	@ sleep 2
+	@ touch configure.in
+	@ sleep 2
+	@ touch autoconfig.h.in
+	@ sleep 2
+	@ touch configure
+	@ $(MAKE) --no-print-directory $(DIRLIBS) TARGET="gplzip"
+	@ $(ZIPASCII) -r GPLDistrib.zip README README.license.gpl README.history Compile.txt config.h
+	@ $(ZIP) -r GPLDistrib.zip Makefile Makefile.template Makefile_Settings.*
+	@ $(ZIP) -r GPLDistrib.zip configure configure.in automakefile.in autoconfig.h.in
+	@ $(ZIP) -r GPLDistrib.zip vs10.0 --exclude '*CVS*'
+	@ $(ZIP) -r GPLDistrib.zip vs12.0 --exclude '*CVS*'
 
 tar		:	distrib.tgz
 
@@ -308,7 +361,7 @@ distrib.tgz	:	doc configure autoconfig.h.in
 	@ sleep 2
 	@ touch configure
 	@ tar cf distrib.tar --exclude="CVS" --exclude=".*" --exclude="*~" --exclude="*.s" --exclude="*.d" --exclude="*.o" --exclude="*.list" --exclude="*.a" $(DIRS) 
-	@ tar rf distrib.tar README Compile.txt config.h
+	@ tar rf distrib.tar README README.history Compile.txt config.h
 	@ tar rf distrib.tar Makefile Makefile.template Makefile_Settings.*
 	@ tar rf distrib.tar configure configure.in automakefile.in autoconfig.h.in
 	@ gzip distrib.tar

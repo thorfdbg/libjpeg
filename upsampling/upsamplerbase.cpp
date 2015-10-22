@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** Base class for all upsamplers, common for all upsampling processes
 ** and independent of the upsampling factors.
 **
-** $Id: upsamplerbase.cpp,v 1.7 2012-06-02 10:27:14 thor Exp $
+** $Id: upsamplerbase.cpp,v 1.16 2014/09/30 08:33:18 thor Exp $
 **
 */
 
@@ -67,8 +47,13 @@ UpsamplerBase::UpsamplerBase(class Environ *env,int sx,int sy,ULONG pixelwidth,U
     m_pInputBuffer(NULL), m_pLastRow(NULL), m_pFree(NULL)
 {
   // Compute the width in input buffer (subsampled) pixels.
-  m_ulWidth     = (pixelwidth  + sx - 1) / sx;
-  m_lTotalLines = (pixelheight + sy - 1) / sy; 
+  m_ulWidth       = (pixelwidth  + sx - 1) / sx;
+  m_lTotalLines   = (pixelheight + sy - 1) / sy; 
+  //
+  // Also store the dimension in pixels.
+  m_ulPixelWidth  = pixelwidth;
+  m_ulPixelHeight = pixelheight;
+
 }
 ///
 
@@ -92,6 +77,66 @@ UpsamplerBase::~UpsamplerBase(void)
 }
 ///
 
+/// UpsamplerBase::GetCollectedBlocks
+// Return a rectangle of block coordinates in the image domain
+// that is ready for output.
+void UpsamplerBase::GetCollectedBlocks(RectAngle<LONG> &rect) const
+{
+  rect.ra_MinX = 0;
+  rect.ra_MaxX = (m_ulWidth * m_ucSubX - 1) >> 3;
+  //
+  // We need one line above the first line we can upsample
+  // except for the top of the image.
+  if (m_ucSubY > 1) {
+    if (m_lY) {
+      rect.ra_MinY = ((m_lY + 1) * m_ucSubY)  >> 3;
+    } else {
+      rect.ra_MinY = 0;
+    }
+  } else {
+    rect.ra_MinY = m_lY >> 3;
+  }
+  //
+  // All of the image?
+  if (m_lY + m_lHeight >= m_lTotalLines) {
+    // Yes, return all of it.
+    rect.ra_MaxY = (m_lTotalLines * m_ucSubY - 1) >> 3;
+  } else {
+    // m_lY + m_lHeight - 1 is the last line buffered, hence
+    // (m_lY + m_lHeight - 1) * m_ucSubY is the last line we can reconstruct
+    // since the next output line would require the following line.
+    // this plus one is the *first* line we cannot compute.
+    // Of this line, we compute the block, then subtract one
+    // to get the last block we surely have.
+    rect.ra_MaxY = (((m_lY + m_lHeight - 1) * m_ucSubY + 1) >> 3) - 1;
+  }
+}
+///
+
+/// UpsamplerBase::SetBufferedImageRegion
+// Set the buffered region given in image regions, not in
+// block regions. Returns the updated rectangle in blocks
+void UpsamplerBase::SetBufferedImageRegion(RectAngle<LONG> &region)
+{
+  LONG bwidth           = ((m_ulPixelWidth  + m_ucSubX - 1) / m_ucSubX + 7) >> 3;
+  LONG bheight          = ((m_ulPixelHeight + m_ucSubY - 1) / m_ucSubY + 7) >> 3;
+  LONG rx               = (m_ucSubX > 1)?(1):(0);
+  LONG ry               = (m_ucSubY > 1)?(1):(0);
+  // The +/-1 include additional lines required for subsampling expansion
+  region.ra_MinX        = ((region.ra_MinX / m_ucSubX - rx) >> 3);
+  region.ra_MaxX        = ((region.ra_MaxX / m_ucSubX + rx) >> 3);
+  region.ra_MinY        = ((region.ra_MinY / m_ucSubY - ry) >> 3);
+  region.ra_MaxY        = ((region.ra_MaxY / m_ucSubY + ry) >> 3);
+  // Clip.
+  if (region.ra_MinX < 0)        region.ra_MinX = 0;
+  if (region.ra_MaxX >= bwidth)  region.ra_MaxX = bwidth - 1;
+  if (region.ra_MinY < 0)        region.ra_MinY = 0;
+  if (region.ra_MaxY >= bheight) region.ra_MaxY = bheight - 1;
+  //
+  SetBufferedRegion(region); // also removes the rectangle of blocks already buffered.
+}
+///
+
 /// UpsamplerBase::SetBufferedRegion
 // Define the region to be buffered, clipping off what has been buffered
 // here before. Modifies the rectangle to contain only what is needed
@@ -99,8 +144,6 @@ UpsamplerBase::~UpsamplerBase(void)
 void UpsamplerBase::SetBufferedRegion(RectAngle<LONG> &region)
 {
   struct Line *row;
-  LONG maxy;
-
   // First check whether we can clip off anything at the top.
   // Drop off anything above the region.
   while(m_lY < (region.ra_MinY << 3)) {
@@ -110,10 +153,10 @@ void UpsamplerBase::SetBufferedRegion(RectAngle<LONG> &region)
     if (row) {
       m_pInputBuffer = row->m_pNext;
       if (m_pInputBuffer == NULL) {
-	assert(row == m_pLastRow); 
-	assert(m_lHeight == 1);
-	// it hopefully is as it has no following line
-	m_pLastRow = NULL;
+        assert(row == m_pLastRow); 
+        assert(m_lHeight == 1);
+        // it hopefully is as it has no following line
+        m_pLastRow = NULL;
       }
       row->m_pNext = m_pFree;
       m_pFree      = row;
@@ -146,6 +189,16 @@ void UpsamplerBase::SetBufferedRegion(RectAngle<LONG> &region)
   region.ra_MinY = (m_lY + m_lHeight + 7) >> 3;
   //
   // The region to request is now non-empty.
+  ExtendBufferedRegion(region);
+}
+///
+
+/// UpsamplerBase::ExtendBufferedRegion
+// Make the buffered region larger to include at least the given rectangle.
+// The rectangle is given in block indices, not canvas coordinates.
+void UpsamplerBase::ExtendBufferedRegion(const RectAngle<LONG> &region)
+{ 
+  LONG maxy;
   // All lines from minY to maxY now need to be allocated as the caller
   // need to fill them in. This includes that if
   // region.ra_MinY > region.ra_MaxY. This is because 
@@ -183,6 +236,41 @@ void UpsamplerBase::SetBufferedRegion(RectAngle<LONG> &region)
       alloc->m_pData = (LONG *)m_pEnviron->AllocMem((m_ulWidth + 2 + 8) * sizeof(LONG));
     }
     m_lHeight++;
+  }
+}
+///
+
+/// UpsamplerBase::RemoveBlocks
+// Remove the blocks of the given block line, given in image 
+// block coordinates.
+void UpsamplerBase::RemoveBlocks(ULONG by)
+{ 
+  LONG firstkeep = (by + 1) << 3; // The first line that has to be kept.
+  //
+
+  if (m_ucSubY > 1) {
+    // However, lines are here in subsampled coordinates, and one
+    // extra line is needed.
+    firstkeep = (firstkeep / m_ucSubY) - 1;
+  }
+
+  while(m_lY < firstkeep) {
+    struct Line *row;
+    // The current Y line is no longer required, drop it. If it is there.
+    row = m_pInputBuffer;
+    if (row) {
+      m_pInputBuffer = row->m_pNext;
+      if (m_pInputBuffer == NULL) {
+        assert(row == m_pLastRow); 
+        assert(m_lHeight == 1);
+        // it hopefully is as it has no following line
+        m_pLastRow = NULL;
+      }
+      row->m_pNext = m_pFree;
+      m_pFree      = row;
+      m_lHeight--;
+    }
+    m_lY++;
   }
 }
 ///

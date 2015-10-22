@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** The actual downsampling implementation.
 **
-** $Id: downsampler.cpp,v 1.3 2012-06-02 10:27:14 thor Exp $
+** $Id: downsampler.cpp,v 1.9 2014/09/30 08:33:18 thor Exp $
 **
 */
 
@@ -79,7 +59,7 @@ Downsampler<sx,sy>::~Downsampler(void)
 // block domain the block indices. Requires an output buffer that
 // will keep the downsampled data.
 template<int sx,int sy>
-void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer)
+void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
 {
   LONG ofs = (bx * sx) << 3; // first pixel in the buffer.
   LONG yfs = (by * sy) << 3; // first line.
@@ -111,18 +91,18 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer)
       int i = 8; // pixel in the line
 
       do {
-	switch(sx) { // actually this will be unrolled because it is a template
-	case 4:
-	  *bp += src[3];
-	case 3:
-	  *bp += src[2];
-	case 2:
-	  *bp += src[1];
-	case 1:
-	  *bp += src[0];
-	}
-	src += sx;
-	bp++;
+        switch(sx) { // actually this will be unrolled because it is a template
+        case 4:
+          *bp += src[3];
+        case 3:
+          *bp += src[2];
+        case 2:
+          *bp += src[1];
+        case 1:
+          *bp += src[0];
+        }
+        src += sx;
+        bp++;
       } while(--i);
       //
       // Now continue with the next line if there is one, count the number of lines summed up.
@@ -135,10 +115,12 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer)
     if (lines >= sy || line == NULL) {
       // Only if there is actually anything in the buffer, otherwise just leave it empty.
       if (lines) {
-	WORD norm = lines * sx;
-	// Normalize the summed pixels.
-	buffer[0] /= norm;buffer[1] /= norm;buffer[2] /= norm;buffer[3] /= norm;
-	buffer[4] /= norm;buffer[5] /= norm;buffer[6] /= norm;buffer[7] /= norm;
+        WORD norm = lines * sx;
+        if (norm > 1) {
+          // Normalize the summed pixels.
+          buffer[0] /= norm;buffer[1] /= norm;buffer[2] /= norm;buffer[3] /= norm;
+          buffer[4] /= norm;buffer[5] /= norm;buffer[6] /= norm;buffer[7] /= norm;
+        }
       }
       // Start the next buffer line.
       buffer    += 8;

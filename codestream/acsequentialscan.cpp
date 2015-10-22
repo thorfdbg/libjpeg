@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 **
 ** Represents the scan including the scan header.
 **
-** $Id: acsequentialscan.cpp,v 1.33 2012-09-23 14:10:12 thor Exp $
+** $Id: acsequentialscan.cpp,v 1.50 2015/03/25 08:45:43 thor Exp $
 **
 */
 
@@ -59,8 +39,7 @@ the committee itself.
 #include "marker/component.hpp"
 #include "coding/quantizedrow.hpp"
 #include "codestream/rectanglerequest.hpp"
-#include "dct/idct.hpp"
-#include "dct/sermsdct.hpp"
+#include "dct/dct.hpp"
 #include "std/assert.hpp"
 #include "interface/bitmaphook.hpp"
 #include "interface/imagebitmap.hpp"
@@ -75,12 +54,16 @@ the committee itself.
 
 /// ACSequentialScan::ACSequentialScan
 ACSequentialScan::ACSequentialScan(class Frame *frame,class Scan *scan,
-				   UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE,
-				   bool differential,bool residual)
-  : EntropyParser(frame,scan), m_pBlockCtrl(NULL),
+                                   UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE,
+                                   bool differential,bool residual,bool large)
+  : EntropyParser(frame,scan)
+#if ACCUSOFT_CODE
+  , m_pBlockCtrl(NULL),
     m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit),
-    m_bMeasure(false), m_bDifferential(differential), m_bResidual(residual)
+    m_bMeasure(false), m_bDifferential(differential), m_bResidual(residual), m_bLargeRange(large)
+#endif
 {
+#if ACCUSOFT_CODE
   m_ucCount = scan->ComponentsInScan();
   
   for(UBYTE i = 0;i < m_ucCount;i++) {
@@ -88,6 +71,14 @@ ACSequentialScan::ACSequentialScan(class Frame *frame,class Scan *scan,
     m_ucLarge[i]     = 1;
     m_ucBlockEnd[i]  = 5;
   }
+#else
+  NOREF(start);
+  NOREF(stop);
+  NOREF(lowbit);
+  NOREF(differential);
+  NOREF(residual);
+  NOREF(large);
+#endif
 }
 ///
 
@@ -98,8 +89,9 @@ ACSequentialScan::~ACSequentialScan(void)
 ///
 
 /// ACSequentialScan::StartParseScan
-void ACSequentialScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
+void ACSequentialScan::StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 { 
+#if ACCUSOFT_CODE
   class ACTemplate *ac,*dc;
   int i;
 
@@ -134,15 +126,23 @@ void ACSequentialScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctr
   }
   
   assert(!ctrl->isLineBased());
-  m_pBlockCtrl = dynamic_cast<BlockBuffer *>(ctrl);
+  m_pBlockCtrl = dynamic_cast<BlockCtrl *>(ctrl);
   m_pBlockCtrl->ResetToStartOfScan(m_pScan);
-  m_Coder.OpenForRead(io);
+  m_Coder.OpenForRead(io,chk);
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"ACSequentialScan::StartParseScan",
+            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
 /// ACSequentialScan::StartWriteScan
-void ACSequentialScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
+void ACSequentialScan::StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 { 
+#if ACCUSOFT_CODE
   class ACTemplate *ac,*dc;
   int i;
 
@@ -176,11 +176,20 @@ void ACSequentialScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctr
   }
 
   assert(!ctrl->isLineBased());
-  m_pBlockCtrl = dynamic_cast<BlockBuffer *>(ctrl);
+  m_pBlockCtrl = dynamic_cast<BlockCtrl *>(ctrl);
   m_pBlockCtrl->ResetToStartOfScan(m_pScan);
 
+  EntropyParser::StartWriteScan(io,chk,ctrl);
+
   m_pScan->WriteMarker(io);
-  m_Coder.OpenForWrite(io);
+  m_Coder.OpenForWrite(io,chk);
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"ACSequentialScan::StartWriteScan",
+            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
@@ -191,8 +200,8 @@ void ACSequentialScan::StartMeasureScan(class BufferCtrl *)
   //
   // This is not required.
   JPG_THROW(NOT_IMPLEMENTED,"ACSequentialScan::StartMeasureScan",
-	    "arithmetic coding is always adaptive and does not require "
-	    "to measure the statistics");
+            "arithmetic coding is always adaptive and does not require "
+            "to measure the statistics");
 }
 ///
 
@@ -200,13 +209,17 @@ void ACSequentialScan::StartMeasureScan(class BufferCtrl *)
 // Start a MCU scan. Returns true if there are more rows.
 bool ACSequentialScan::StartMCURow(void)
 {
-  bool more = StartRow();
+#if ACCUSOFT_CODE
+  bool more = m_pBlockCtrl->StartMCUQuantizerRow(m_pScan);
 
   for(int i = 0;i < m_ucCount;i++) {
     m_ulX[i]   = 0;
   }
 
   return more;
+#else
+  return false;
+#endif
 }
 ///
 
@@ -214,6 +227,7 @@ bool ACSequentialScan::StartMCURow(void)
 // Write a single MCU in this scan. Return true if there are more blocks in this row.
 bool ACSequentialScan::WriteMCU(void)
 { 
+#if ACCUSOFT_CODE
   bool more = true;
   int c;
 
@@ -223,7 +237,7 @@ bool ACSequentialScan::WriteMCU(void)
 
   for(c = 0;c < m_ucCount;c++) {
     class Component *comp    = m_pComponent[c];
-    class QuantizedRow *q    = GetRow(comp->IndexOf());
+    class QuantizedRow *q    = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
     LONG &prevdc             = m_lDC[c];
     LONG &prevdiff           = m_lDiff[c];
     UBYTE l                  = m_ucSmall[c];
@@ -239,15 +253,15 @@ bool ACSequentialScan::WriteMCU(void)
     }
     for(y = 0;y < mcuy;y++) {
       for(x = xmin;x < xmax;x++) {
-	LONG *block,dummy[64];
-	if (q && x < q->WidthOf()) {
-	  block  = q->BlockAt(x)->m_Data;
-	} else {
-	  block  = dummy;
-	  memset(dummy ,0,sizeof(dummy) );
-	  block[0] = prevdc;
-	}
-	EncodeBlock(block,prevdc,prevdiff,l,u,kx,m_ucDCContext[c],m_ucACContext[c]);
+        LONG *block,dummy[64];
+        if (q && x < q->WidthOf()) {
+          block  = q->BlockAt(x)->m_Data;
+        } else {
+          block  = dummy;
+          memset(dummy ,0,sizeof(dummy) );
+          block[0] = prevdc;
+        }
+        EncodeBlock(block,prevdc,prevdiff,l,u,kx,m_ucDCContext[c],m_ucACContext[c]);
       }
       if (q) q = q->NextOf();
     }
@@ -256,6 +270,9 @@ bool ACSequentialScan::WriteMCU(void)
   }
 
   return more;
+#else
+  return false;
+#endif
 }
 ///
 
@@ -263,6 +280,7 @@ bool ACSequentialScan::WriteMCU(void)
 // Restart the parser at the next restart interval
 void ACSequentialScan::Restart(void)
 {
+#if ACCUSOFT_CODE
   int i;
   
   for(i = 0;i < m_ucCount;i++) {
@@ -273,7 +291,8 @@ void ACSequentialScan::Restart(void)
     m_Context[i].Init();
   }
   
-  m_Coder.OpenForRead(m_Coder.ByteStreamOf());
+  m_Coder.OpenForRead(m_Coder.ByteStreamOf(),m_Coder.ChecksumOf());
+#endif
 }
 ///
 
@@ -281,6 +300,7 @@ void ACSequentialScan::Restart(void)
 // Parse a single MCU in this scan. Return true if there are more blocks in this row.
 bool ACSequentialScan::ParseMCU(void)
 {
+#if ACCUSOFT_CODE
   bool more = true;
   int c;
 
@@ -290,7 +310,7 @@ bool ACSequentialScan::ParseMCU(void)
   
   for(c = 0;c < m_ucCount;c++) {
     class Component *comp    = m_pComponent[c];
-    class QuantizedRow *q    = GetRow(comp->IndexOf());
+    class QuantizedRow *q    = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
     LONG &prevdc             = m_lDC[c];
     LONG &prevdiff           = m_lDiff[c];
     UBYTE l                  = m_ucSmall[c];
@@ -306,19 +326,19 @@ bool ACSequentialScan::ParseMCU(void)
     }
     for(y = 0;y < mcuy;y++) {
       for(x = xmin;x < xmax;x++) {
-	LONG *block,dummy[64];
-	if (q && x < q->WidthOf()) {
-	  block  = q->BlockAt(x)->m_Data;
-	} else {
-	  block  = dummy;
-	}
-	if (valid) {
-	  DecodeBlock(block,prevdc,prevdiff,l,u,kx,m_ucDCContext[c],m_ucACContext[c]);
-	} else {
-	  for(UBYTE i = m_ucScanStart;i <= m_ucScanStop;i++) {
-	    block[i] = 0;
-	  }
-	}
+        LONG *block,dummy[64];
+        if (q && x < q->WidthOf()) {
+          block  = q->BlockAt(x)->m_Data;
+        } else {
+          block  = dummy;
+        }
+        if (valid) {
+          DecodeBlock(block,prevdc,prevdiff,l,u,kx,m_ucDCContext[c],m_ucACContext[c]);
+        } else {
+          for(UBYTE i = m_ucScanStart;i <= m_ucScanStop;i++) {
+            block[i] = 0;
+          }
+        }
       }
       if (q) q = q->NextOf();
     }
@@ -327,12 +347,16 @@ bool ACSequentialScan::ParseMCU(void)
   }
 
   return more;
+#else
+  return false;
+#endif
 }
 ///
 
 /// ACSequentialScan::Classify
 // Find the DC context class depending on the previous DC and
 // the values of L and U given in the conditioner.
+#if ACCUSOFT_CODE
 struct ACSequentialScan::QMContextSet::DCContextZeroSet &ACSequentialScan::QMContextSet::Classify(LONG diff,UBYTE l,UBYTE u)
 {
   LONG abs = (diff > 0)?(diff):(-diff);
@@ -354,13 +378,15 @@ struct ACSequentialScan::QMContextSet::DCContextZeroSet &ACSequentialScan::QMCon
     return DCLargePositive;
   }
 }
+#endif
 ///
 
 /// ACSequentialScan::EncodeBlock
-// Encode a single huffman block
+// Encode a single block
+#if ACCUSOFT_CODE
 void ACSequentialScan::EncodeBlock(const LONG *block,
-				   LONG &prevdc,LONG &prevdiff,
-				   UBYTE small,UBYTE large,UBYTE kx,UBYTE dc,UBYTE ac)
+                                   LONG &prevdc,LONG &prevdiff,
+                                   UBYTE small,UBYTE large,UBYTE kx,UBYTE dc,UBYTE ac)
 {
   // DC coding
   if (m_ucScanStart == 0 && m_bResidual == false) {
@@ -384,36 +410,36 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
       // Sign coding. Encode a zero for positive and a 1 for
       // negative.
       if (diff < 0) {
-	m_Coder.Put(cz.SS,true);
-	sz = -diff - 1;
+        m_Coder.Put(cz.SS,true);
+        sz = -diff - 1;
       } else {
-	m_Coder.Put(cz.SS,false);
-	sz = diff - 1;
+        m_Coder.Put(cz.SS,false);
+        sz = diff - 1;
       }
       //
       // Code the magnitude.
       if (sz >= 1) {
-	int  i = 0;
-	LONG m = 2;
-	m_Coder.Put((diff > 0)?(cz.SP):(cz.SN),true);
-	//
-	// Magnitude category coding.
-	while(sz >= m) {
-	  m_Coder.Put(m_Context[dc].DCMagnitude.X[i],true);
-	  m <<= 1;
-	  i++;
-	} 
-	// Terminate magnitude cathegory coding.
-	m_Coder.Put(m_Context[dc].DCMagnitude.X[i],false);
-	//
-	// Get the MSB to code.
-	m >>= 1;
-	// Refinement bits: Depend on the magnitude category.
-	while((m >>= 1)) {
-	  m_Coder.Put(m_Context[dc].DCMagnitude.M[i],(m & sz)?(true):(false));
-	}
+        int  i = 0;
+        LONG m = 2;
+        m_Coder.Put((diff > 0)?(cz.SP):(cz.SN),true);
+        //
+        // Magnitude category coding.
+        while(sz >= m) {
+          m_Coder.Put(m_Context[dc].DCMagnitude.X[i],true);
+          m <<= 1;
+          i++;
+        } 
+        // Terminate magnitude cathegory coding.
+        m_Coder.Put(m_Context[dc].DCMagnitude.X[i],false);
+        //
+        // Get the MSB to code.
+        m >>= 1;
+        // Refinement bits: Depend on the magnitude category.
+        while((m >>= 1)) {
+          m_Coder.Put(m_Context[dc].DCMagnitude.M[i],(m & sz)?(true):(false));
+        }
       } else {
-	m_Coder.Put((diff > 0)?(cz.SP):(cz.SN),false);
+        m_Coder.Put((diff > 0)?(cz.SP):(cz.SN),false);
       }
     } else {
       // Difference is zero. Encode a zero in context zero.
@@ -436,7 +462,7 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
     while(eob >= k) {
       data = block[DCT::ScanOrder[eob]];
       if ((data >= 0)?(data >> m_ucLowBit):((-data) >> m_ucLowBit))
-	break;
+        break;
       eob--;
     }
     // The coefficient at eob is now nonzero, but eob+1 is
@@ -447,8 +473,8 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
       LONG data,sz;
       //
       if (k == eob) {
-	m_Coder.Put(m_Context[ac].ACZero[k-1].SE,true); // Code EOB.
-	break;
+        m_Coder.Put(m_Context[ac].ACZero[k-1].SE,true); // Code EOB.
+        break;
       }
       // Not EOB.
       m_Coder.Put(m_Context[ac].ACZero[k-1].SE,false);
@@ -457,55 +483,55 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
       // one non-zero coefficient must follow, so we cannot
       // run over the end of the block.
       do {
-	data = block[DCT::ScanOrder[k]];
-	data = (data >= 0)?(data >> m_ucLowBit):(-((-data) >> m_ucLowBit));
-	if (data == 0) {
-	  m_Coder.Put(m_Context[ac].ACZero[k-1].S0,false);
-	  k++;
-	}
+        data = block[DCT::ScanOrder[k]];
+        data = (data >= 0)?(data >> m_ucLowBit):(-((-data) >> m_ucLowBit));
+        if (data == 0) {
+          m_Coder.Put(m_Context[ac].ACZero[k-1].S0,false);
+          k++;
+        }
       } while(data == 0);
       m_Coder.Put(m_Context[ac].ACZero[k-1].S0,true);
       //
       // The coefficient at k is now nonzero. First code
       // the sign. This context is the uniform.
       if (data < 0) {
-	m_Coder.Put(m_Context[ac].Uniform,true);
-	sz = -data - 1;
+        m_Coder.Put(m_Context[ac].Uniform,true);
+        sz = -data - 1;
       } else {
-	m_Coder.Put(m_Context[ac].Uniform,false);
-	sz =  data - 1;
+        m_Coder.Put(m_Context[ac].Uniform,false);
+        sz =  data - 1;
       }
       //
       // Code the magnitude category. 
       if (sz >= 1) {
-	m_Coder.Put(m_Context[ac].ACZero[k-1].SP,true); // SP or SN coding.
-	if (sz >= 2) {
-	  int  i = 0;
-	  LONG m = 4;
-	  struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context[ac].ACMagnitudeHigh):(m_Context[ac].ACMagnitudeLow);
-	  //
-	  m_Coder.Put(m_Context[ac].ACZero[k-1].SP,true); // X1 coding, identical to SN and SP.
-	  // Note that AC_SN,AC_SP and AC_X1 are all the same context
-	  // all following decisions are not conditioned on k directly.
-	  while(sz >= m) {
-	    m_Coder.Put(acm.X[i],true);
-	    m <<= 1;
-	    i++;
-	  }
-	  m_Coder.Put(acm.X[i],false);
-	  //
-	  // Get the MSB to code.
-	  m >>= 1;
-	  //
-	  // Magnitude refinement coding.
-	  while((m >>= 1)) {
-	    m_Coder.Put(acm.M[i],(m & sz)?true:false);
-	  }
-	} else {
-	  m_Coder.Put(m_Context[ac].ACZero[k-1].SP,false);
-	}
+        m_Coder.Put(m_Context[ac].ACZero[k-1].SP,true); // SP or SN coding.
+        if (sz >= 2) {
+          int  i = 0;
+          LONG m = 4;
+          struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context[ac].ACMagnitudeHigh):(m_Context[ac].ACMagnitudeLow);
+          //
+          m_Coder.Put(m_Context[ac].ACZero[k-1].SP,true); // X1 coding, identical to SN and SP.
+          // Note that AC_SN,AC_SP and AC_X1 are all the same context
+          // all following decisions are not conditioned on k directly.
+          while(sz >= m) {
+            m_Coder.Put(acm.X[i],true);
+            m <<= 1;
+            i++;
+          }
+          m_Coder.Put(acm.X[i],false);
+          //
+          // Get the MSB to code.
+          m >>= 1;
+          //
+          // Magnitude refinement coding.
+          while((m >>= 1)) {
+            m_Coder.Put(acm.M[i],(m & sz)?true:false);
+          }
+        } else {
+          m_Coder.Put(m_Context[ac].ACZero[k-1].SP,false);
+        }
       } else {
-	m_Coder.Put(m_Context[ac].ACZero[k-1].SP,false);
+        m_Coder.Put(m_Context[ac].ACZero[k-1].SP,false);
       }
       //
       // Encode the next coefficient. Note that this bails out early without an
@@ -513,13 +539,15 @@ void ACSequentialScan::EncodeBlock(const LONG *block,
     } while(++k <= m_ucScanStop);
   }
 }
+#endif
 ///
 
 /// ACSequentialScan::DecodeBlock
-// Decode a single huffman block.
+// Decode a single block.
+#if ACCUSOFT_CODE
 void ACSequentialScan::DecodeBlock(LONG *block,
-				   LONG &prevdc,LONG &prevdiff,
-				   UBYTE small,UBYTE large,UBYTE kx,UBYTE dc,UBYTE ac)
+                                   LONG &prevdc,LONG &prevdiff,
+                                   UBYTE small,UBYTE large,UBYTE kx,UBYTE dc,UBYTE ac)
 {
   // DC coding
   if (m_ucScanStart == 0 && m_bResidual == false) {
@@ -534,36 +562,36 @@ void ACSequentialScan::DecodeBlock(LONG *block,
       // Positive and negative are encoded in different contexts.
       // Decode the magnitude cathegory.
       if (m_Coder.Get((sign)?(cz.SN):(cz.SP))) {
-	int  i = 0;
-	LONG m = 2;
-	
-	while(m_Coder.Get(m_Context[dc].DCMagnitude.X[i])) {
-	  m <<= 1;
-	  i++;
-	  if (m == 0) 
-	    JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
-		      "QMDecoder is out of sync");
-	}
-	//
-	// Get the MSB to decode.
-	m >>= 1;
-	sz  = m;
-	//
-	// Refinement coding of remaining bits.
-	while((m >>= 1)) {
-	  if (m_Coder.Get(m_Context[dc].DCMagnitude.M[i])) {
-	    sz |= m;
-	  }
-	}
+        int  i = 0;
+        LONG m = 2;
+        
+        while(m_Coder.Get(m_Context[dc].DCMagnitude.X[i])) {
+          m <<= 1;
+          i++;
+          if (m == 0) 
+            JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
+                      "QMDecoder is out of sync");
+        }
+        //
+        // Get the MSB to decode.
+        m >>= 1;
+        sz  = m;
+        //
+        // Refinement coding of remaining bits.
+        while((m >>= 1)) {
+          if (m_Coder.Get(m_Context[dc].DCMagnitude.M[i])) {
+            sz |= m;
+          }
+        }
       } else {
-	sz = 0;
+        sz = 0;
       }
       //
       // Done, finally, include the sign and the offset.
       if (sign) {
-	diff = -sz - 1;
+        diff = -sz - 1;
       } else {
-	diff = sz + 1;
+        diff = sz + 1;
       }
     } else {
       // Difference is zero.
@@ -590,10 +618,10 @@ void ACSequentialScan::DecodeBlock(LONG *block,
       //
       // Not yet EOB. Run coding in S0: Skip over zeros.
       while(!m_Coder.Get(m_Context[ac].ACZero[k-1].S0)) {
-	k++;
-	if (k > m_ucScanStop)
-	  JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
-		    "QMDecoder is out of sync");
+        k++;
+        if (k > m_ucScanStop)
+          JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
+                    "QMDecoder is out of sync");
       }
       //
       // Now decode the sign of the coefficient.
@@ -602,41 +630,41 @@ void ACSequentialScan::DecodeBlock(LONG *block,
       //
       // Decode the magnitude.
       if (m_Coder.Get(m_Context[ac].ACZero[k-1].SP)) {
-	// X1 coding, identical to SN and SP.
-	if (m_Coder.Get(m_Context[ac].ACZero[k-1].SP)) {
-	  int  i = 0;
-	  LONG m = 4;
-	  struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context[ac].ACMagnitudeHigh):(m_Context[ac].ACMagnitudeLow);
-	  
-	  while(m_Coder.Get(acm.X[i])) {
-	    m <<= 1;
-	    i++;
-	    if (m == 0)
-	      JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
-			"QMDecoder is out of sync");
-	  }
-	  //
-	  // Get the MSB to decode
-	  m >>= 1;
-	  sz  = m;
-	  //
-	  // Proceed to refinement.
-	  while((m >>= 1)) {
-	    if (m_Coder.Get(acm.M[i])) {
-	      sz |= m;
-	    }
-	  }
-	} else {
-	  sz = 1;
-	}
+        // X1 coding, identical to SN and SP.
+        if (m_Coder.Get(m_Context[ac].ACZero[k-1].SP)) {
+          int  i = 0;
+          LONG m = 4;
+          struct QMContextSet::ACContextMagnitudeSet &acm = (k > kx)?(m_Context[ac].ACMagnitudeHigh):(m_Context[ac].ACMagnitudeLow);
+          
+          while(m_Coder.Get(acm.X[i])) {
+            m <<= 1;
+            i++;
+            if (m == 0)
+              JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
+                        "QMDecoder is out of sync");
+          }
+          //
+          // Get the MSB to decode
+          m >>= 1;
+          sz  = m;
+          //
+          // Proceed to refinement.
+          while((m >>= 1)) {
+            if (m_Coder.Get(acm.M[i])) {
+              sz |= m;
+            }
+          }
+        } else {
+          sz = 1;
+        }
       } else {
-	sz = 0;
+        sz = 0;
       }
       //
       // Done. Finally, include sign and offset.
       sz++;
       if (sign) 
-	sz = -sz;
+        sz = -sz;
       block[DCT::ScanOrder[k]] = sz << m_ucLowBit;
       //
       // Proceed to the next block.
@@ -644,26 +672,41 @@ void ACSequentialScan::DecodeBlock(LONG *block,
     }
   }
 }
+#endif
 ///
 
 /// ACSequentialScan::WriteFrameType
 // Write the marker that indicates the frame type fitting to this scan.
 void ACSequentialScan::WriteFrameType(class ByteStream *io)
 {
+#if ACCUSOFT_CODE
   UBYTE hidden = m_pFrame->TablesOf()->HiddenDCTBitsOf();
 
   if (m_ucScanStart > 0 || m_ucScanStop < 63 || m_ucLowBit > hidden) {
     // is progressive.
-    if (m_bDifferential)
-      io->PutWord(0xffce);
-    else
-      io->PutWord(0xffca);
+    if (m_bResidual) {
+      io->PutWord(0xffba); // progressive sequential
+    } else {
+      if (m_bDifferential) {
+        io->PutWord(0xffce);
+      } else {
+        io->PutWord(0xffca);
+      }
+    }
   } else {
-    if (m_bDifferential)
+    if (m_bResidual) {
+      io->PutWord(0xffb9); // residual AC sequential
+    } else if (m_bDifferential) {
       io->PutWord(0xffcd); // AC differential sequential
-    else
+    } else if (m_bLargeRange) {
+      io->PutWord(0xffbb);
+    } else {
       io->PutWord(0xffc9); // AC sequential
+    }
   }
+#else
+  NOREF(io);
+#endif
 }
 ///
 
@@ -671,6 +714,7 @@ void ACSequentialScan::WriteFrameType(class ByteStream *io)
 // Flush the remaining bits out to the stream on writing.
 void ACSequentialScan::Flush(bool)
 {
+#if ACCUSOFT_CODE
   int i;
   
   m_Coder.Flush();
@@ -683,22 +727,7 @@ void ACSequentialScan::Flush(bool)
     m_Context[i].Init();
   }
   
-  m_Coder.OpenForWrite(m_Coder.ByteStreamOf());
-}
-///
-
-/// ACSequentialScan::GetRow
-// Return the data to process for component c. Will be overridden
-// for residual scan types.
-class QuantizedRow *ACSequentialScan::GetRow(UBYTE idx) const
-{
-  return m_pBlockCtrl->CurrentQuantizedRow(idx);
-}
-///
-
-/// ACSequentialScan::StartRow
-bool ACSequentialScan::StartRow(void) const
-{
-  return m_pBlockCtrl->StartMCUQuantizerRow(m_pScan);
+  m_Coder.OpenForWrite(m_Coder.ByteStreamOf(),m_Coder.ChecksumOf());
+#endif
 }
 ///

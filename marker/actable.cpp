@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 ** This class contains and maintains the AC conditioning
 ** parameter templates.
 **
-** $Id: actable.cpp,v 1.4 2012-06-02 10:27:14 thor Exp $
+** $Id: actable.cpp,v 1.11 2015/03/25 08:45:43 thor Exp $
 **
 */
 
@@ -62,18 +42,22 @@ the committee itself.
 ACTable::ACTable(class Environ *env)
   : JKeeper(env)
 {
+#if ACCUSOFT_CODE
   memset(m_pParameters,0,sizeof(m_pParameters));
+#endif
 }
 ///
 
 /// ACTable::~ACTable
 ACTable::~ACTable(void)
 {
+#if ACCUSOFT_CODE
   int i;
 
   for(i = 0;i < 8;i++) {
     delete m_pParameters[i];
   }
+#endif
 }
 ///
 
@@ -81,6 +65,7 @@ ACTable::~ACTable(void)
 // Write the currently defined huffman tables back to a stream.
 void ACTable::WriteMarker(class ByteStream *io)
 {
+#if ACCUSOFT_CODE
   int i = 0;
   ULONG len = 2; // marker size itself.
 
@@ -98,14 +83,19 @@ void ACTable::WriteMarker(class ByteStream *io)
   for(i = 0;i < 8;i++) {
     if (m_pParameters[i]) {
       if (i >= 4) {
-	io->Put(0x10 | (i & 0x03)); // AC table.
-	io->Put(m_pParameters[i]->BandDiscriminatorOf()); 
+        io->Put(0x10 | (i & 0x03)); // AC table.
+        io->Put(m_pParameters[i]->BandDiscriminatorOf()); 
       } else {
-	io->Put(i & 0x03); // DC table.
-	io->Put((m_pParameters[i]->UpperThresholdOf() << 4) | m_pParameters[i]->LowerThresholdOf());
+        io->Put(i & 0x03); // DC table.
+        io->Put((m_pParameters[i]->UpperThresholdOf() << 4) | m_pParameters[i]->LowerThresholdOf());
       }
     }
   }
+#else
+  NOREF(io);
+  JPG_THROW(NOT_IMPLEMENTED,"ACTable::WriteMarker",
+            "Arithmetic coding option not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
@@ -113,6 +103,7 @@ void ACTable::WriteMarker(class ByteStream *io)
 // Parse the marker contents of a DHT marker.
 void ACTable::ParseMarker(class ByteStream *io)
 {
+#if ACCUSOFT_CODE
   LONG len = io->GetWord();
 
   if (len < 2)
@@ -141,6 +132,11 @@ void ACTable::ParseMarker(class ByteStream *io)
 
     len--;
   }
+#else 
+  NOREF(io);
+  JPG_THROW(NOT_IMPLEMENTED,"ACTable::WriteMarker",
+            "Arithmetic coding option not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
@@ -148,6 +144,7 @@ void ACTable::ParseMarker(class ByteStream *io)
 // Get the template for the indicated DC table or NULL if it doesn't exist.
 class ACTemplate *ACTable::DCTemplateOf(UBYTE idx)
 {
+#if ACCUSOFT_CODE
   assert(m_pParameters && idx < 4);
     
   if (m_pParameters[idx] == NULL) {
@@ -156,6 +153,10 @@ class ACTemplate *ACTable::DCTemplateOf(UBYTE idx)
   }
 
   return m_pParameters[idx];
+#else
+  NOREF(idx);
+  return NULL;
+#endif
 }
 ///
 
@@ -163,6 +164,7 @@ class ACTemplate *ACTable::DCTemplateOf(UBYTE idx)
 // Get the template for the indicated AC table or NULL if it doesn't exist.
 class ACTemplate *ACTable::ACTemplateOf(UBYTE idx)
 {
+#if ACCUSOFT_CODE
   assert(m_pParameters && idx < 4);
     
   idx += 4;
@@ -173,5 +175,9 @@ class ACTemplate *ACTable::ACTemplateOf(UBYTE idx)
   }
 
   return m_pParameters[idx];
+#else
+  NOREF(idx);
+  return NULL;
+#endif
 }
 ///

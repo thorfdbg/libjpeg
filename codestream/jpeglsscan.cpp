@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.cpp,v 1.12 2012-09-22 20:51:40 thor Exp $
+** $Id: jpeglsscan.cpp,v 1.24 2015/03/25 08:45:43 thor Exp $
 **
 */
 
@@ -68,21 +48,48 @@ the committee itself.
 
 /// JPEGLSScan::m_lJ Runlength array
 // The runlength J array. 
+#if ACCUSOFT_CODE
 const LONG JPEGLSScan::m_lJ[32] = {0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,5,5,6,6,7,7,8,9,10,11,12,13,14,15};
+#endif
 ///
 /// JPEGLSScan::JPEGLSScan
 // Create a new scan. This is only the base type.
 JPEGLSScan::JPEGLSScan(class Frame *frame,class Scan *scan,UBYTE near,const UBYTE *mapping,UBYTE point)
-  : EntropyParser(frame,scan), m_pLineCtrl(NULL), m_pDefaultThresholds(NULL), 
+  : EntropyParser(frame,scan)
+#if ACCUSOFT_CODE
+  , m_pLineCtrl(NULL), m_pDefaultThresholds(NULL), 
     m_lNear(near), m_ucLowBit(point)
+#endif
 {
-  memcpy(m_ucMapIdx,mapping,sizeof(m_ucMapIdx));
+#if ACCUSOFT_CODE
+  memcpy(m_ucMapIdx,mapping,sizeof(m_ucMapIdx)); 
+
+  //
+  // Initialize the golomb decoder lookup.
+  
+  m_ucLeadingZeros[0] = 8;
+
+  for(UBYTE i = 255;i > 0;i--) {
+    UBYTE idx  = i;
+    UBYTE zcnt = 0;
+    while((idx & 0x80) == 0) {
+      idx <<= 1;
+      zcnt++;
+    }
+    m_ucLeadingZeros[i] = zcnt;
+  }
+#else
+  NOREF(near);
+  NOREF(mapping);
+  NOREF(point);
+#endif
 }
 ///
 
 /// JPEGLSScan::~JPEGLSScan
 JPEGLSScan::~JPEGLSScan(void)
 { 
+#if ACCUSOFT_CODE
   int i;
 
   for(i = 0;i < 4;i++) {
@@ -91,6 +98,7 @@ JPEGLSScan::~JPEGLSScan(void)
   }
 
   delete m_pDefaultThresholds;
+#endif
 }
 ///
 
@@ -98,6 +106,7 @@ JPEGLSScan::~JPEGLSScan(void)
 // Collect the component information.
 void JPEGLSScan::FindComponentDimensions(void)
 {
+#if ACCUSOFT_CODE
   class Thresholds *thres;
   LONG a0;
   unsigned int i;
@@ -185,9 +194,10 @@ void JPEGLSScan::FindComponentDimensions(void)
     if (m_ucMapIdx[i]) {
       // FIXME: Find the mapping table.
       JPG_THROW(NOT_IMPLEMENTED,"JPEGLSSScan::FindComponentDimensions",
-		"mapping tables are not implemented by this code, sorry");
+                "mapping tables are not implemented by this code, sorry");
     }
   }
+#endif
 }
 ///
 
@@ -201,31 +211,47 @@ void JPEGLSScan::WriteFrameType(class ByteStream *io)
 
 /// JPEGLSScan::StartParseScan 
 // Fill in the tables for decoding and decoding parameters in general.
-void JPEGLSScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
+void JPEGLSScan::StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 {
-
+#if ACCUSOFT_CODE
   FindComponentDimensions();
 
   assert(ctrl->isLineBased());
   m_pLineCtrl = dynamic_cast<LineBuffer *>(ctrl);
   m_pLineCtrl->ResetToStartOfScan(m_pScan);
-  m_Stream.OpenForRead(io);
+  m_Stream.OpenForRead(io,chk);
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"JPEGLSScan::StartParseScan",
+            "JPEG LS not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
 /// JPEGLSScan::StartWriteScan
 // Begin writing the scan data
-void JPEGLSScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
+void JPEGLSScan::StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 {
-
+#if ACCUSOFT_CODE
   FindComponentDimensions();
 
   assert(ctrl->isLineBased());
   m_pLineCtrl = dynamic_cast<LineBuffer *>(ctrl);
   m_pLineCtrl->ResetToStartOfScan(m_pScan);
 
+  EntropyParser::StartWriteScan(io,chk,ctrl);
+  
   m_pScan->WriteMarker(io);
-  m_Stream.OpenForWrite(io);
+  m_Stream.OpenForWrite(io,chk);
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"JPEGLSScan::StartWriteScan",
+            "JPEG LS not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
@@ -235,7 +261,7 @@ void JPEGLSScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
 void JPEGLSScan::StartMeasureScan(class BufferCtrl *)
 {
   JPG_THROW(NOT_IMPLEMENTED,"LosslessScan::StartMeasureScan",
-	    "JPEG LS is not based on Huffman coding and does not require a measurement phase");
+            "JPEG LS is not based on Huffman coding and does not require a measurement phase");
 }
 ///
 
@@ -243,7 +269,11 @@ void JPEGLSScan::StartMeasureScan(class BufferCtrl *)
 // Start a MCU scan. Returns true if there are more rows.
 bool JPEGLSScan::StartMCURow(void)
 {
+#if ACCUSOFT_CODE
   return m_pLineCtrl->StartMCUQuantizerRow(m_pScan);
+#else
+  return false;
+#endif
 }
 ///
 
@@ -251,7 +281,9 @@ bool JPEGLSScan::StartMCURow(void)
 // Flush the remaining bits out to the stream on writing.
 void JPEGLSScan::Flush(bool)
 {
+#if ACCUSOFT_CODE
   m_Stream.Flush();
+#endif
 }
 ///
 
@@ -259,12 +291,11 @@ void JPEGLSScan::Flush(bool)
 // Restart the parser at the next restart interval
 void JPEGLSScan::Restart(void)
 {
-  m_Stream.OpenForRead(m_Stream.ByteStreamOf());
+#if ACCUSOFT_CODE
+  m_Stream.OpenForRead(m_Stream.ByteStreamOf(),m_Stream.ChecksumOf());
+#endif
 }
 ///
-
-
-
 
 /// JPEGLSScan::BeginReadMCU
 // Scanning for a restart marker is here a bit more tricky due to the
@@ -273,11 +304,12 @@ void JPEGLSScan::Restart(void)
 // marker.
 bool JPEGLSScan::BeginReadMCU(class ByteStream *io)
 {
+#if ACCUSOFT_CODE
   //
   // Skip a potentially stuffed zero-bit to reach
   // and read the marker correctly.
   m_Stream.SkipStuffing();
-
+#endif
   return EntropyParser::BeginReadMCU(io);
 }
 ///

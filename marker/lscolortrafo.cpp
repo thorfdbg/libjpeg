@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** in JPEG-LS part-2. It is - in a sense - a special case of the 
 ** JPEG 2000 part-2 reversible color transformation.
 **
-** $Id: lscolortrafo.cpp,v 1.3 2012-07-20 16:30:00 thor Exp $
+** $Id: lscolortrafo.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
 **
 */
 
@@ -94,7 +74,7 @@ void LSColorTrafo::WriteMarker(class ByteStream *io)
 
   if (len > MAX_UWORD)
     JPG_THROW(OVERFLOW_PARAMETER,"LSColorTrafo::WriteMarker",
-	      "too many components, cannot create a LSE color transformation marker");
+              "too many components, cannot create a LSE color transformation marker");
 
   io->PutWord(len);
   io->Put(0x0d);    // Type of the LSE marker.
@@ -128,8 +108,8 @@ void LSColorTrafo::ParseMarker(class ByteStream *io,UWORD len)
   
   if (len < 6)
     JPG_THROW(MALFORMED_STREAM,"LSColorTrafo::ParseMarker",
-	      "length of the LSE color transformation marker is invalid, "
-	      "must be at least six bytes long");
+              "length of the LSE color transformation marker is invalid, "
+              "must be at least six bytes long");
   
   m_usMaxTrans = io->GetWord();
   m_ucDepth    = io->Get();
@@ -137,11 +117,11 @@ void LSColorTrafo::ParseMarker(class ByteStream *io,UWORD len)
 
   if (len != 2 * m_ucDepth * m_ucDepth)
     JPG_THROW(MALFORMED_STREAM,"LSColorTrafo::ParseMarker",
-	      "length of the LSE color transformation marker is invalid");
+              "length of the LSE color transformation marker is invalid");
 
   if (m_ucDepth == 0)
     JPG_THROW(MALFORMED_STREAM,"LSColorTrafo::ParseMarker",
-	      "number of components in the LSE color transformation marker must not be zero");
+              "number of components in the LSE color transformation marker must not be zero");
 
   // Read the input labels of the components to be transformed.
   assert(m_pucInputLabels == NULL);
@@ -165,7 +145,7 @@ void LSColorTrafo::ParseMarker(class ByteStream *io,UWORD len)
     m_pucShift[i]   = v & 0x7f;
     if (m_pucShift[i] > 32)
       JPG_THROW(OVERFLOW_PARAMETER,"LSColorTrafo::ParseMarker",
-		"LSE color transformation marker shift value is too large, must be < 32");
+                "LSE color transformation marker shift value is too large, must be < 32");
     // And the matrix itself.
     for(j = 0;j < m_ucDepth - 1;j++) {
       m_pusMatrix[j + i * (m_ucDepth - 1)] = io->GetWord();

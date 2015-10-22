@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +29,7 @@ the committee itself.
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.cpp,v 1.20 2012-09-23 21:11:51 thor Exp $
+** $Id: residualblockhelper.cpp,v 1.64 2015/05/09 20:09:21 thor Exp $
 **
 */
 
@@ -59,32 +39,58 @@ the committee itself.
 #include "control/blockbitmaprequester.hpp"
 #include "marker/scan.hpp"
 #include "marker/component.hpp"
-#include "marker/residualmarker.hpp"
-#include "marker/residualspecsmarker.hpp"
+#include "boxes/dctbox.hpp"
+#include "boxes/mergingspecbox.hpp"
 #include "interface/imagebitmap.hpp"
 #include "tools/rectangle.hpp"
+#include "tools/numerics.hpp"
 #include "colortrafo/colortrafo.hpp"
-#include "colortrafo/trivialtrafo.hpp"
 #include "codestream/tables.hpp"
-#include "dct/hadamard.hpp"
-#include "dct/sermsdct.hpp"
 #include "dct/dct.hpp"
 #include "std/string.hpp"
 ///
-    
+
 /// Defines
-#define NOISE_SHAPING
-//#define TEST_RESIDUALS 1
+//#define SAVE_RESIDUAL
+#ifdef SAVE_RESIDUAL
+//#define SAVE_16BIT
+#define TO_RGB
+UWORD *residual = NULL;
+ULONG res_width,res_height;
+#endif
+//#define SAVE_SPECTRUM
+#ifdef SAVE_SPECTRUM
+double spectrum[64];
+#endif
 ///
 
 /// ResidualBlockHelper::ResidualBlockHelper
-ResidualBlockHelper::ResidualBlockHelper(class Frame *frame)
-  : JKeeper(frame->EnvironOf()), m_pFrame(frame), m_pOriginalData(NULL),
-    m_ppTransformed(NULL), m_ppReconstructed(NULL), m_pusIdentity(NULL),
-    m_ppTrafo(NULL)
+ResidualBlockHelper::ResidualBlockHelper(class Frame *frame,class Frame *residual)
+  : JKeeper(frame->EnvironOf()), m_pFrame(frame), m_pResidualFrame(residual)
 { 
-  m_ucCount      = m_pFrame->DepthOf();
-  m_ucPointShift = m_pFrame->PointPreShiftOf();
+  UBYTE i;
+
+  assert(frame != residual);
+  m_ucCount         = m_pFrame->DepthOf();
+  m_ucMaxError      = frame->TablesOf()->MaxErrorOf();
+  m_bHaveQuantizers = false;
+
+  for(i = 0;i < 4;i++) {
+    m_pDCT[i]       = NULL;  
+    m_pBuffer[i]    = m_ColorBuffer[i];
+  }
+#ifdef SAVE_SPECTRUM
+  for(i = 0;i < 64;i++) {
+    spectrum[i] = 0.0;
+  }
+#endif
+#ifdef SAVE_RESIDUAL
+  {
+    res_width  = (frame->WidthOf()  + 7) & -8;
+    res_height = (frame->HeightOf() + 7) & -8;
+    ::residual = (UWORD *)malloc(sizeof(UWORD) * (res_width * res_height * 3));
+  }
+#endif
 }
 ///
 
@@ -93,186 +99,116 @@ ResidualBlockHelper::~ResidualBlockHelper(void)
 { 
   UBYTE i;
   
-  delete m_pOriginalData;
-  
-  if (m_ppTransformed) {
-    for(i = 0;i < m_ucCount;i++) {
-      delete m_ppTransformed[i];
-    }
-    m_pEnviron->FreeMem(m_ppTransformed,sizeof(struct ImageBitMap *) * m_ucCount);
+  for(i = 0;i < 4;i++) {
+    delete m_pDCT[i];
   }
 
-  if (m_ppReconstructed) {
-    for(i = 0;i < m_ucCount;i++) {
-      m_pEnviron->FreeMem(m_ppReconstructed[i],64 * sizeof(LONG));
-    }
-    m_pEnviron->FreeMem(m_ppReconstructed,sizeof(LONG *) * m_ucCount);
-  }
-
-  if (m_pusIdentity)
-    m_pEnviron->FreeVec(m_pusIdentity);
-
-  if (m_ppTrafo) {
-    for(i = 0;i < m_ucCount;i++) {
-      delete m_ppTrafo[i];
-    }
-    m_pEnviron->FreeMem(m_ppTrafo,sizeof(class DCT **) * m_ucCount);
-  }
-}
-///
-
-/// AddResidual
-// Add a residual to an external component
-template<typename external>
-static void AddResidualHelper(const LONG *residual,const RectAngle<LONG> &r,
-			      const struct ImageBitMap *target,ULONG max)
-{ 
-  LONG x,y;
-  LONG xmin   = r.ra_MinX & 7;
-  LONG ymin   = r.ra_MinY & 7;
-  LONG xmax   = r.ra_MaxX & 7;
-  LONG ymax   = r.ra_MaxY & 7;
-  external *eptr = (external *)(target->ibm_pData);
-  
-  for(y = ymin;y <= ymax;y++) {
-    const LONG *rsrc = residual + xmin + (y << 3);
-    external      *e = eptr;
-    for(x = xmin;x <= xmax;x++) {
-      LONG v = *e + *rsrc;
-      if (v < 0)         v = 0;
-      if (v > LONG(max)) v = max;
-      *e = v;
-      rsrc++;
-      e  = (external *)((UBYTE *)e + target->ibm_cBytesPerPixel);
-    }
-    eptr  = (external *)((UBYTE *)eptr + target->ibm_lBytesPerRow);
-  }
-}
-///
-
-/// ResidualBlockHelper::AddResidual
-// Add residual coding errors from a side-channel if there is such a thing.
-void ResidualBlockHelper::AddResidual(const RectAngle<LONG> &rect,
-				      const struct ImageBitMap *const *target,
-				      LONG * const *residual,ULONG max)
-{
-  if (residual) {
-    bool  noiseshaping = m_pFrame->TablesOf()->ResidualSpecsOf()->isNoiseShapingEnabled();
-    UBYTE i,k;
-    //
-    max = ((max + 1) << m_ucPointShift) - 1;
-    //
-    // Step 1
-    AllocateBuffers();
-    //
-    if (BuildTransformations()) {
-      // Run a Hadamard transform on the data, backwards now.
-      for(i = 0;i < m_ucCount;i++) {
-	m_ppTrafo[i]->InverseTransformBlock(m_ppReconstructed[i],residual[i],0);
+#ifdef SAVE_SPECTRUM
+  {
+    FILE *spectrumfile = fopen("spectrum.plot","w");
+    if (spectrumfile) {
+      for(i = 0;i <64;i++) {
+        fprintf(spectrumfile,"%d\t%g\n",i,spectrum[DCT::ScanOrder[i]]);
       }
-    } else {
-      //
-#ifdef TEST_RESIDUALS
-      {
-	LONG x = rect.ra_MinX;
-	LONG y = rect.ra_MinY;
-	LONG xmax = rect.ra_MaxX & 7;
-	LONG ymax = rect.ra_MaxY & 7;
-	UBYTE i;
-	LONG xp,yp;
-	for(i = 0;i < m_ucCount;i++) {
-	  char resname[60];
-	  char orgname[60];
-	  sprintf(resname,"/tmp/residual_%d_%d_%d",x,y,i);
-	  sprintf(orgname,"/tmp/original_%d_%d_%d",x,y,i);
-	  FILE *res = fopen(resname,"rb");
-	  FILE *org = fopen(orgname,"rb");
-	  assert(res != NULL);
-	  assert(org != NULL);
-	  for(yp = 0;yp <= ymax;yp++) {
-	    for(xp = 0;xp <= xmax;xp++) {
-	      LONG resv,orgv;
-	      LONG t    = 0x0badf00d;
-	      UBYTE *dt = (UBYTE *)(target[i]->ibm_pData);
-	      dt       += xp * target[i]->ibm_cBytesPerPixel;
-	      dt       += yp * target[i]->ibm_lBytesPerRow;
-	      switch(target[i]->ibm_ucPixelType) {
-	      case CTYP_UBYTE:
-		t = *dt;
-		break;
-	      case CTYP_UWORD:
-		t = *(UWORD *)dt;
-		break;
-	      }
-	      fscanf(res,"%d ",&resv);
-	      fscanf(org,"%d ",&orgv);
-	      assert(resv == residual[i][xp + (yp << 3)]);
-	      assert(orgv == t);
-	    }
-	  }
-	  fclose(org);
-	  fclose(res);
-	}
-      }
+      fclose(spectrumfile);
+    }
+  }
 #endif
-      //
-      // No transformation.
-      for(i = 0;i < m_ucCount;i++) {
-	UWORD quant = (i > 0 && i < 3)?(m_usChromaQuant):(m_usLumaQuant); 
-	LONG *res   = residual[i]; // the residual buffer.
-	LONG *rec   = m_ppReconstructed[i]; 
-	int x,y,dx,dy;
-	for(y = 0;y < 64;y += 16) {
-	  for(x = 0;x < 8;x += 2) {
-	    LONG avg = 0;
-	    if (noiseshaping) {
-	      for(dy = 0;dy < 16;dy += 8) {
-		for(dx = 0;dx < 2;dx++) {
-		  avg   += res[x + dx + y + dy] * quant;
-		}
-	      }
-	    }
-	    avg = (avg + 2) >> 2;
-	    for(dy = 0;dy < 16;dy += 8) {
-	      for(dx = 0;dx < 2;dx++) {
-		LONG v = res[x + dx + y + dy] * quant;
-		if (noiseshaping && v > avg - quant && v < avg + quant) {
-		  v = avg;
-		}
-		rec[x + dx + y + dy] = v;
-	      }
-	    }
-	  }
-	}
+#ifdef SAVE_RESIDUAL
+  if (residual) {
+    FILE *resfile = fopen("residual.ppm","wb");
+    if (resfile) {
+#ifdef SAVE_16BIT
+      fprintf(resfile,"P6\n%u\t%u\t65535\n",res_width,res_height);
+#else
+      fprintf(resfile,"P6\n%u\t%u\t255\n",res_width,res_height);
+#endif
+      for(ULONG y = 0;y < res_height;y++) {
+        for(ULONG x = 0;x < res_width;x++) {
+          UWORD r = residual[3 * (x + y * res_width) + 0];
+          UWORD g = residual[3 * (x + y * res_width) + 1];
+          UWORD b = residual[3 * (x + y * res_width) + 2];
+#ifdef SAVE_16BIT
+          fputc(r >> 8,resfile);
+          fputc(r >> 0,resfile);
+          fputc(g >> 8,resfile);
+          fputc(g >> 0,resfile);
+          fputc(b >> 8,resfile);
+          fputc(b >> 0,resfile);
+#else
+#ifdef TO_RGB
+          double rf = (r - 0x8000 + (b - 0x8000) * 1.40200);
+          double gf = (r - 0x8000 - (b - 0x8000) * 0.7141362859 - (g - 0x8000) * 0.3441362861);
+          double bf = (r - 0x8000 + (g - 0x8000) * 1.772);
+          WORD deltar = rf / 16.0;
+          WORD deltag = gf / 16.0;
+          WORD deltab = bf / 16.0;
+#else
+          WORD deltar = r - 0x8000;
+          WORD deltag = g - 0x8000;
+          WORD deltab = b - 0x8000;
+#endif
+          if (deltar < -128) deltar = -128;
+          if (deltar >  127) deltar = 127;
+          if (deltag < -128) deltag = -128;
+          if (deltag >  127) deltag = 127;
+          if (deltab < -128) deltab = -128;
+          if (deltab >  127) deltab = 127;
+          fputc(deltar + 128,resfile);
+          fputc(deltag + 128,resfile);
+          fputc(deltab + 128,resfile);
+#endif
+        }
       }
+      fclose(resfile);
     }
+    free(residual);
+  }
+#endif
+}
+///
+
+/// ResidualBlockHelper::DequantizeResidual
+// Dequantize the already decoded residual (possibly taking the decoded
+// image as predictor) and return it, ready for the color transformation.
+void ResidualBlockHelper::DequantizeResidual(const LONG *,LONG *target,const LONG *residual,UBYTE i)
+{
+  LONG dcshift = (1L << m_pResidualFrame->HiddenPrecisionOf()) >> 1;
+
+  assert(residual);
+  //
+  AllocateBuffers();
+  //
+  // Depending on the transformation type, either
+  // run the DCT or just dequantize.
+  if (m_pDCT[i]) {
+    m_pDCT[i]->InverseTransformBlock(target,residual,dcshift);
+  } else {
+    UWORD quant     = m_usQuantization[i];
+    const LONG *res = residual; // the residual buffer.
+    LONG *dst       = target;
     //
-    //
-    if (m_ucCount >= 3) {
-      LONG *y  = m_ppReconstructed[0];
-      LONG *cb = m_ppReconstructed[1];
-      LONG *cr = m_ppReconstructed[2];
-      for(k = 0; k < 64;k++) {
-	LONG g = y[k] - ((cr[k] + cb[k]) >> 2);
-	LONG r = cr[k] + g;
-	LONG b = cb[k] + g;
-	y[k]   = r;
-	cb[k]  = g;
-	cr[k]  = b;
-      }
-    }
-    for(i = 0;i < m_ucCount;i++) {
-      LONG *res = m_ppReconstructed[i];
-      switch(target[i]->ibm_ucPixelType) {
-      case CTYP_UBYTE:
-	AddResidualHelper<UBYTE>(res,rect,target[i],max);
-	break;
-      case CTYP_UWORD:
-	AddResidualHelper<UWORD>(res,rect,target[i],max);
-	break;
-      default:
-	JPG_THROW(INVALID_PARAMETER,"ResidualCoder::AddResidual",
-		  "sample type unknown or unsupported");
+    int x,y,dx,dy;
+    for(y = 0;y < 64;y += 16) {
+      for(x = 0;x < 8;x += 2) {
+        LONG avg = 0;
+        if (m_bNoiseShaping[i]) {
+          for(dy = 0;dy < 16;dy += 8) {
+            for(dx = 0;dx < 2;dx++) {
+              avg   += res[x + dx + y + dy] * quant;
+            }
+          }
+        }
+        avg = (avg + 2) >> 2;
+        for(dy = 0;dy < 16;dy += 8) {
+          for(dx = 0;dx < 2;dx++) {
+            LONG v = res[x + dx + y + dy] * quant;
+            if (m_bNoiseShaping[i] && v > avg - quant && v < avg + quant) {
+              v = avg;
+            }
+            dst[x + dx + y + dy] = v + dcshift;
+          }
+        }
       }
     }
   }
@@ -281,7 +217,7 @@ void ResidualBlockHelper::AddResidual(const RectAngle<LONG> &rect,
 
 /// Variance4x4
 // Compute the variance of the 4x4 subblock starting at the indicated position
-#if 0
+#ifdef EXPERIMENTAL_MASKING
 static QUAD Variance4x4(const LONG *org)
 {
   QUAD a = org[ 0] + org[ 1] + org[ 2] + org[ 3] 
@@ -300,6 +236,7 @@ static QUAD Variance4x4(const LONG *org)
 
   return v;
 }
+#endif
 ///
 
 /// Variance2x2
@@ -308,7 +245,7 @@ static LONG Variance2x2(const LONG *org)
 {
   LONG a = (org[0] + org[1] + org[8] + org[9] + 2) >> 2;
   LONG v = ((org[0] - a) * (org[0] - a) + (org[1] - a) * (org[1] - a) + 
-	    (org[8] - a) * (org[8] - a) + (org[9] - a) * (org[9] - a) + 2) >> 2;
+            (org[8] - a) * (org[8] - a) + (org[9] - a) * (org[9] - a) + 2) >> 2;
   return v;
 }
 ///
@@ -316,108 +253,62 @@ static LONG Variance2x2(const LONG *org)
 /// ClearSubblock4x4
 // Clear the 4x4 subblock at the indicated position
 // ClearSubblock
-static void ClearSubblock4x4(LONG *res)
+#ifdef EXPERIMENTAL_MASKING
+static void ClearSubblock4x4(LONG *res,LONG dcshift)
 {
-  res[ 0] = res[ 1] = res[ 2] = res[ 3] = 0;
-  res[ 8] = res[ 9] = res[10] = res[11] = 0;
-  res[16] = res[17] = res[18] = res[19] = 0;
-  res[24] = res[25] = res[26] = res[27] = 0;
+  res[ 0] = res[ 1] = res[ 2] = res[ 3] = dcshift;
+  res[ 8] = res[ 9] = res[10] = res[11] = dcshift;
+  res[16] = res[17] = res[18] = res[19] = dcshift;
+  res[24] = res[25] = res[26] = res[27] = dcshift;
 }
+#endif
 ///
 
 /// ClearSubblock2x2
 // Clear the 2x2 subblock at the indicated position
 // ClearSubblock
-static void ClearSubblock2x2(LONG *res)
+static void ClearSubblock2x2(LONG *res,LONG dcshift)
 {
-  res[ 0] = res[ 1] = 0;
-  res[ 8] = res[ 9] = 0;
+  res[ 0] = res[ 1] = dcshift;
+  res[ 8] = res[ 9] = dcshift;
 }
 ///
 
 /// ClearSubblock8x8
 // Clear the 8x8 subblock at the indicated position
 // ClearSubblock
-static void ClearSubblock8x8(LONG *res)
+static void ClearSubblock8x8(LONG *res,LONG dcshift)
 {
   for(int k = 0;k < 64;k++) {
-    *res++ = 0;
+    *res++ = dcshift;
   }
 }
-#endif
 ///
 
-/// ResidualBlockHelper::CreateTrivialTrafo
-// Create a trivial color transformation that pulls the data from the source
-class ColorTrafo *ResidualBlockHelper::CreateTrivialTrafo(class ColorTrafo *ctrafo,UBYTE bpp)
+/// ResidualBlockHelper::FindQuantizationFor
+// Find the quantization table for residual component i (index, not label).
+// Throws if this table is not available.
+const UWORD *ResidualBlockHelper::FindQuantizationFor(UBYTE i) const
+{ 
+  const UWORD *table    = NULL;
+  class Component *comp = m_pResidualFrame->ComponentOf(i);
+  if (comp)
+    table = m_pResidualFrame->TablesOf()->FindQuantizationTable(comp->QuantizerOf());
+  if (table == NULL)
+    JPG_THROW(MALFORMED_STREAM,"ResidualBlockHelper::FindQuantizationFor",
+              "Unable to find the specified residual quantization matrix in "
+              "the legacy codestream.");
+  //
+  return table;
+}
+///
+
+/// ResidualBlockHelper::FindDCTFor
+// Find the DCT transformation for component i, if enabled.
+class DCT *ResidualBlockHelper::FindDCTFor(UBYTE i) const
 {
-  // Get the color transformer that just collects the
-  // original data for computing the residuals.
-  if (m_pOriginalData == NULL) {
-    switch(m_ucCount) {
-    case 1:
-      switch(ctrafo->PixelTypeOf()) {
-      case CTYP_UBYTE:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UBYTE,1>(m_pEnviron);
-	break;
-      case CTYP_UWORD:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UWORD,1>(m_pEnviron);
-	break;
-      }
-      break;
-     case 2:
-      switch(ctrafo->PixelTypeOf()) {
-      case CTYP_UBYTE:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UBYTE,2>(m_pEnviron);
-	break;
-      case CTYP_UWORD:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UWORD,2>(m_pEnviron);
-	break;
-      }
-      break;
-    case 3:
-      switch(ctrafo->PixelTypeOf()) {
-      case CTYP_UBYTE:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UBYTE,3>(m_pEnviron);
-	break;
-      case CTYP_UWORD:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UWORD,3>(m_pEnviron);
-	break;
-      }
-      break;
-     case 4:
-      switch(ctrafo->PixelTypeOf()) {
-      case CTYP_UBYTE:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UBYTE,4>(m_pEnviron);
-	break;
-      case CTYP_UWORD:
-	m_pOriginalData = new(m_pEnviron) class TrivialTrafo<UWORD,4>(m_pEnviron);
-	break;
-      }
-      break;
-    }
-    if (m_pOriginalData == NULL) {
-      JPG_THROW(INVALID_PARAMETER,"ResidualBlockHelper::CreateTrivialTrafo",
-		"sample type unknown or unsupported");
-    }
-
-    // Define a trivial tone mapping algorithm:
-    // Simply the identity.
-    if (m_pusIdentity == NULL) {
-      int i,size = 1 << bpp;
-      m_pusIdentity = (UWORD *)m_pEnviron->AllocVec(size * sizeof(UWORD));
-      for(i = 0;i < size;i++) {
-	m_pusIdentity[i] = i;
-      }
-    }
-    {
-      const UWORD *tables[4] = {m_pusIdentity,m_pusIdentity,m_pusIdentity,m_pusIdentity};
-      m_pOriginalData->DefineEncodingTables(tables);
-      m_pOriginalData->DefineDecodingTables(tables);
-    }
-  }
-
-  return m_pOriginalData;
+  return m_pResidualFrame->TablesOf()->BuildDCT(m_pResidualFrame->ComponentOf(i),m_ucCount,
+                                                m_pResidualFrame->HiddenPrecisionOf());
 }
 ///
 
@@ -426,249 +317,150 @@ class ColorTrafo *ResidualBlockHelper::CreateTrivialTrafo(class ColorTrafo *ctra
 // Only required during encoding.
 void ResidualBlockHelper::AllocateBuffers(void)
 {
-  UBYTE i;
-
-  if (m_ppTransformed == NULL) {
-    m_ppTransformed = (struct ImageBitMap **)m_pEnviron->AllocMem(sizeof(struct ImageBitMap *) * m_ucCount);
-    memset(m_ppTransformed,0,sizeof(struct ImageBitMap *) * m_ucCount);
-    for(i = 0;i < m_ucCount;i++) {
-      m_ppTransformed[i] = new(m_pEnviron) struct ImageBitMap();
-    }
-  }
-
-  if (m_ppReconstructed == NULL) {
-    m_ppReconstructed = (LONG **)m_pEnviron->AllocMem(sizeof(LONG *) * m_ucCount);
-    memset(m_ppReconstructed,0,sizeof(LONG *) * m_ucCount);
-    for(i = 0;i < m_ucCount;i++) {
-      m_ppReconstructed[i] = (LONG *)m_pEnviron->AllocMem(sizeof(LONG) * 64);
-    }
-  }
-}
-///
-
-/// ResidualBlockHelper::BuildTransformations
-// Allocate the Hadamard transformations
-// and initialize their quantization factors.
-bool ResidualBlockHelper::BuildTransformations(void)
-{
-  class ResidualSpecsMarker *residual = m_pFrame->TablesOf()->ResidualSpecsOf();
-
-  if (m_ppTrafo == NULL) {
-    const UWORD *quant;
-    const UWORD *hdrluma   = NULL;
-    const UWORD *hdrchroma = NULL;
-    UWORD table[64];
-    UBYTE i,k;
-
-    if (residual) {
-      UBYTE lumatable   = residual->LumaQuantizationMatrix();
-      UBYTE chromatable = residual->ChromaQuantizationMatrix();
-      
-      if (lumatable < MAX_UBYTE)
-	hdrluma = m_pFrame->TablesOf()->FindQuantizationTable(lumatable);
-
-      if (chromatable < MAX_UBYTE)
-	hdrchroma = m_pFrame->TablesOf()->FindQuantizationTable(chromatable);
-    }
+  if (!m_bHaveQuantizers) {
+    class MergingSpecBox *res = m_pFrame->TablesOf()->ResidualSpecsOf(); 
+    UBYTE rbits   = m_pResidualFrame->TablesOf()->FractionalColorBitsOf(m_ucCount);
+    UBYTE i,depth = m_pFrame->DepthOf();
     
-    if (residual->isHadamardEnabled()) {
-      m_ppTrafo = (class DCT **)m_pEnviron->AllocMem(sizeof(class DCT *) * m_ucCount);
-      memset(m_ppTrafo,0,sizeof(class DCT *) * m_ucCount);
-      
-      for(i = 0;i < m_ucCount;i++) {
-	m_ppTrafo[i] = new(m_pEnviron) class Hadamard(m_pEnviron);
-	//m_ppTrafo[i] = new(m_pEnviron) class SERMSDCT(m_pEnviron);
-	if (i == 0 && hdrluma) {
-	  m_ppTrafo[i]->DefineQuant(hdrluma);
-	} else if (i > 0 && i < 3 && hdrchroma) {
-	  m_ppTrafo[i]->DefineQuant(hdrchroma);
-	} else {
-	  quant = m_pFrame->TablesOf()->FindQuantizationTable(m_pFrame->ComponentOf(i)->QuantizerOf());
-	  for(k = 0;k < 64;k++) {
-	    table[k] = quant[k]; // >> ((i > 0)?(4):(5));
-	    if (table[k] < 32) {
-	      table[k] = 1;
-	    } else if (m_ucCount >= 3 && (i == 1 || i == 2)) {
-	      table[k] <<= 1;
-	    }
-	  }
-	  m_ppTrafo[i]->DefineQuant(table);
-	}
+    m_ucCount     = depth;
+    //
+    // There hopefully is a merging spec box.
+    if (res) {
+      //
+      // Find noise shaping and quantization and DCT parameters.
+      for(i = 0;i < depth;i++) {
+        assert(m_pDCT[i] == NULL);
+        
+        switch(res->RDCTProcessOf()) {
+        case DCTBox::Bypass:
+          m_bNoiseShaping[i] = res->isNoiseShapingEnabled();
+          //
+          // Only the highest frequency entry is used.
+          m_usQuantization[i] = FindQuantizationFor(i)[63];
+          // If this is a color signal with pre-shifted bits, include
+          // the subtraction of pre-shifted color bits so we get integer
+          // bits already. For RCT, we could either say that there is one
+          // fractional bit and quantization deltas are halfed, or we say
+          // that the bit-range is one bit larger.
+          if (rbits > 1)
+            m_usQuantization[i] <<= rbits;
+          // Actually, was NULL before.
+          m_pDCT[i]           = NULL;
+          break;
+        case DCTBox::FDCT:
+        case DCTBox::IDCT:
+          // Both handled by the same process.
+          m_bNoiseShaping[i]  = false;
+          m_pDCT[i]           = FindDCTFor(i);
+          m_usQuantization[i] = 0;
+        }
       }
-      return true;
     } else {
-      if (hdrluma)
-	m_usLumaQuant = hdrluma[63];
-      else
-	m_usLumaQuant = 1;
-
-      if (hdrchroma)
-	m_usChromaQuant = hdrchroma[63];
-      else
-	m_usChromaQuant = 1;
-
-      return false;
+      // Code should actually not go in here. How wierd.
+      for(i = 0;i < depth;i++) {
+        m_bNoiseShaping[i]  = false;
+        m_pDCT[i]           = NULL;
+        m_usQuantization[i] = 1;
+      }
     }
+    //
+    //
+    m_bHaveQuantizers = true;
   }
-
-  return true;
 }
 ///
 
-/// ResidualBlockHelper::ComputeResiduals
+/// ResidualBlockHelper::QuantizeResidual
 // Compute the residuals of a block given the DCT data
-void ResidualBlockHelper::ComputeResiduals(const RectAngle<LONG> &r,
-					   class BlockBitmapRequester *req,
-					   const struct ImageBitMap *const *source,
-					   LONG *const *dct,LONG **residual,ULONG max)
+#ifdef SAVE_RESIDUAL
+void ResidualBlockHelper::QuantizeResidual(const LONG *legacy,LONG *residual,UBYTE i,LONG bx,LONG by)
+#else
+void ResidualBlockHelper::QuantizeResidual(const LONG *legacy,LONG *residual,UBYTE i,LONG   ,LONG   )
+#endif
 { 
-  class ColorTrafo *ctrafo = req->ColorTrafoOf(false);
-  class DCT *const *dtrafo = req->DCTsOf();
-  ULONG pmax               = max;
-  bool  noiseshaping       = m_pFrame->TablesOf()->ResidualSpecsOf()->isNoiseShapingEnabled();
-  UBYTE i,k;
-  //
-  // Adjust the maximum and the level shift to that of the original input.
-  pmax = ((max + 1) << m_ucPointShift) - 1;
-  //
-  // Pull the data once to collect the original. No shifting here.
-  CreateTrivialTrafo(ctrafo,8 + m_ucPointShift)->RGB2YCbCr(r,source,(pmax + 1) >> 1,pmax);
+  ULONG rmaxval  = (1UL << m_pResidualFrame->HiddenPrecisionOf()) - 1;
+  ULONG rdcshift = (rmaxval + 1) >> 1;
+
   //
   AllocateBuffers();
   //
-  // Reconstruct into the transformed YCbCr buffer of the color transformer.
-  for(i = 0;i < m_ucCount;i++) {
-    dtrafo[i]->InverseTransformBlock(ctrafo->BufferOf()[i],dct[i],(max + 1) >> 1);
-  }
-
-  for(i = 0;i < m_ucCount;i++) {
-    LONG *dest                             = m_ppReconstructed[i];
-    m_ppTransformed[i]->ibm_pData          = dest;
-    m_ppTransformed[i]->ibm_cBytesPerPixel =     sizeof(LONG);
-    m_ppTransformed[i]->ibm_lBytesPerRow   = 8 * sizeof(LONG);
-    m_ppTransformed[i]->ibm_ulWidth        = 8;
-    m_ppTransformed[i]->ibm_ulHeight       = 8;
-    m_ppTransformed[i]->ibm_ucPixelType    = CTYP_LONG;
-    memset(dest,0,64 * sizeof(LONG));
-  }
-  //
-  // Inverse transform into this buffer, i.e. into its own buffer, overwriting the
-  // content there.
-  ctrafo->YCbCr2RGB(r,m_ppTransformed,(max + 1) >> 1,max);
-  //
-  // Compute now the residual
-  for(i = 0;i < m_ucCount;i++) { 
-    LONG *rec = m_ppReconstructed[i];
-    LONG *org = m_pOriginalData->BufferOf()[i]; // the original data.
-    LONG *res = residual[i]; // the residual buffer.
-    for(k = 0;k < 64;k++) {
-      res[k] = org[k] - rec[k];
+#ifdef SAVE_RESIDUAL
+  if (::residual) {
+    int x,y;
+    UBYTE rbits  = 0;
+    // The output of the YCbCr transformation is preshifted by four bits by convention in
+    // this implementation (not part of the specs!). Get the shift to fixup the DC
+    // offset.
+    if (m_pResidualFrame->TablesOf()->RTrafoTypeOf(m_ucCount) == MergingSpecBox::YCbCr) {
+      rbits = m_pResidualFrame->TablesOf()->FractionalColorBitsOf(m_ucCount);
+    }
+    UWORD *rgb = ::residual + 3 * ((bx << 3) + (by << 3) * res_width);
+    for(y = 0;y < 8;y++) {
+      for(x = 0;x < 8;x++) {
+        rgb[(x + y * res_width) * 3 + i] = 0x8000 + ((residual[x + y * 8] - (rdcshift << rbits)));
+      }
     }
   }
-  //
-  // If there are three or more components, run an RCT on the first three
-  // of them.
-  if (m_ucCount >= 3) {
-    LONG *r = residual[0]; // the residual buffer.
-    LONG *g = residual[1];
-    LONG *b = residual[2];
-    for(k = 0;k < 64;k++) {
-       LONG y  = (r[k] + (g[k] << 1) + b[k]) >> 2;
-       LONG cb = b[k] - g[k];
-       LONG cr = r[k] - g[k];
-       r[k]    = y;
-       g[k]    = cb;
-       b[k]    = cr;
-    }
-  }
-  //
-#if 0
-  //
+#endif
   // A test: Measure the variance in each 4x4 subblock in the original image, if all of them are 
   // above a threshold, drop the residual due to masking.
-  if (m_ucMaxError > 0) {
-    for(i = 0;i < m_ucCount;i++) { 
-      LONG thres = (m_ucMaxError + 1) * (m_ucMaxError + 1);
-      LONG *org  = m_pOriginalData->BufferOf()[i]; // the original data.
-      LONG *res  = residual[i]; // the residual buffer.
-      int count  = 0;
-      for(int yoff = 0; yoff < 8;yoff += 2) {
-	for (int xoff = 0;xoff < 8;xoff += 2) {
-	  if (Variance2x2(org + xoff + yoff * 8) > thres) {
-	    ClearSubblock2x2(res + xoff + yoff * 8);
-	    count++;
-	  }
-	}
+  if (legacy && m_ucMaxError > 0) {
+    LONG thres      = (m_ucMaxError + 1) * (m_ucMaxError + 1);
+    const LONG *org = legacy;    // the original data.
+    LONG *res       = residual;  // the residual buffer.
+    int count       = 0;
+    for(int yoff = 0; yoff < 8;yoff += 2) {
+      for (int xoff = 0;xoff < 8;xoff += 2) {
+        if (Variance2x2(org + xoff + yoff * 8) > thres) {
+          ClearSubblock2x2(res + xoff + yoff * 8,rdcshift);
+          count++;
+        }
       }
-      if (count < 3 || count > 11) {
-	ClearSubblock8x8(res);
-      }
+    }
+    if (count > 11) {
+      ClearSubblock8x8(res,rdcshift);
     }
   }
-#endif
   //
-  if (BuildTransformations()) {
-    //
-    // Finally, run a Hadamard transformation on the data.
-    for(i = 0;i < m_ucCount;i++) {
-      m_ppTrafo[i]->TransformBlock(residual[i],residual[i],0);
+  // Finally, DCT transform and quantize, or quantize directly.
+  if (m_pDCT[i]) {
+    m_pDCT[i]->TransformBlock(residual,residual,rdcshift);
+#ifdef SAVE_SPECTRUM
+    // Add up the signal energy of the residual in all bands.
+    {
+      for(int j = 0;j < 64;j++) {
+        spectrum[j] += residual[j] * residual[j];
+      }
     }
+#endif
   } else {
-    // No transformation.
-    for(i = 0;i < m_ucCount;i++) {
-      UWORD quant = (i > 0 && i < 3)?(m_usChromaQuant):(m_usLumaQuant); 
-      LONG *res   = residual[i]; // the residual buffer.
-      LONG  error = 0;
-      int   p     = 0;
-      LONG  v;
-      int qnt;
-      int x,y,dx,dy;
-      for(y = 0;y < 64;y += 16) {
-	for(x = 0;x < 8;x += 2) {
-	  for(dy = 0;dy < 16;dy += 8) {
-	    for(dx = 0;dx < 2;dx++) {
-	      p      = x + dx + y + dy;
-	      v      = res[p];
-	      if (noiseshaping)
-		v     += error;
-	      qnt    = v / quant;
-	      error += res[p] - quant * qnt;
-	      res[p] = qnt;
-	    }
-	  }
-	}
+    // Quantize and noise-shape in the spatial domain
+    UWORD quant = m_usQuantization[i];
+    LONG *res   = residual; // the residual buffer.
+    LONG  error = 0;
+    int   p     = 0;
+    LONG  v;
+    int qnt;
+    int x,y,dx,dy;
+    for(y = 0;y < 64;y += 16) {
+      for(x = 0;x < 8;x += 2) {
+        for(dy = 0;dy < 16;dy += 8) {
+          for(dx = 0;dx < 2;dx++) {
+            p      = x + dx + y + dy;
+            v      = res[p] - rdcshift;
+            if (m_bNoiseShaping[i])
+              v     += error;
+            // This is currently a deadzone-quantizer with a deadzone T = 2\Delta.
+            qnt    = v / quant;
+            error += res[p] - rdcshift - quant * qnt;
+            if (qnt > int(rdcshift) || qnt < -int(rdcshift) || qnt > MAX_WORD || qnt < MIN_WORD)
+              JPG_THROW(OVERFLOW_PARAMETER,"ResidualBlockHelper::QuantizeResidual",
+                        "Error residual is too large, try to increase the base layer quality");
+            res[p] = qnt;
+          }
+        }
       }
-    }
-  }  
-  //
-#ifdef TEST_RESIDUALS
-  {
-    LONG x = r.ra_MinX;
-    LONG y = r.ra_MinY;
-    LONG xmax = r.ra_MaxX & 7;
-    LONG ymax = r.ra_MaxY & 7;
-    UBYTE i;
-    LONG xp,yp;
-    for(i = 0;i < m_ucCount;i++) {
-      char resname[60];
-      char orgname[60];
-      sprintf(resname,"/tmp/residual_%d_%d_%d",x,y,i);
-      sprintf(orgname,"/tmp/original_%d_%d_%d",x,y,i);
-      FILE *res = fopen(resname,"wb");
-      FILE *org = fopen(orgname,"wb");
-      for(yp = 0;yp <= ymax;yp++) {
-	for(xp = 0;xp <= xmax;xp++) {
-	  fprintf(res,"%d ",residual[i][xp + (yp << 3)]);
-	  fprintf(org,"%d ",m_ppReconstructed[i][xp + (yp << 3)]);
-	}
-	fprintf(res,"\n");
-	fprintf(org,"\n");
-      }
-      fclose(org);
-      fclose(res);
     }
   }
-#endif
-  //
 }
 ///

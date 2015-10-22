@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 **
 ** Represents the scan including the scan header.
 **
-** $Id: losslessscan.cpp,v 1.33 2012-09-22 20:51:40 thor Exp $
+** $Id: losslessscan.cpp,v 1.50 2015/03/25 08:45:43 thor Exp $
 **
 */
 
@@ -67,6 +47,7 @@ the committee itself.
 #include "coding/huffmandecoder.hpp"
 #include "coding/huffmanstatistics.hpp"
 #include "codestream/tables.hpp"
+#include "codestream/predictorbase.hpp"
 #include "tools/line.hpp"
 ///
 
@@ -74,11 +55,13 @@ the committee itself.
 LosslessScan::LosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lowbit,bool differential)
   : PredictiveScan(frame,scan,predictor,lowbit,differential)
 { 
+#if ACCUSOFT_CODE
   for(int i = 0;i < 4;i++) {
     m_pDCDecoder[i]    = NULL;
     m_pDCCoder[i]      = NULL;
     m_pDCStatistics[i] = NULL;
   }
+#endif
 }
 ///
 
@@ -92,17 +75,22 @@ LosslessScan::~LosslessScan(void)
 // Write the marker that indicates the frame type fitting to this scan.
 void LosslessScan::WriteFrameType(class ByteStream *io)
 {
+#if ACCUSOFT_CODE
   if (m_bDifferential) {
     io->PutWord(0xffc7); // differential lossless sequential
   } else {
     io->PutWord(0xffc3); // lossless sequential
   }
+#else
+  NOREF(io);
+#endif
 }
 ///
 
 /// LosslessScan::StartParseScan
-void LosslessScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
+void LosslessScan::StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 {
+#if ACCUSOFT_CODE
   int i;
 
   FindComponentDimensions();
@@ -114,13 +102,21 @@ void LosslessScan::StartParseScan(class ByteStream *io,class BufferCtrl *ctrl)
   assert(ctrl->isLineBased());
   m_pLineCtrl = dynamic_cast<LineBuffer *>(ctrl);
   m_pLineCtrl->ResetToStartOfScan(m_pScan);
-  m_Stream.OpenForRead(io);
+  m_Stream.OpenForRead(io,chk);
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"LosslessScan::StartParseScan",
+            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
 /// LosslessScan::StartWriteScan
-void LosslessScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
+void LosslessScan::StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl)
 {
+#if ACCUSOFT_CODE
   int i;
 
   FindComponentDimensions();
@@ -134,16 +130,26 @@ void LosslessScan::StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl)
   m_pLineCtrl = dynamic_cast<LineBuffer *>(ctrl);
   m_pLineCtrl->ResetToStartOfScan(m_pScan); 
 
+  EntropyParser::StartWriteScan(io,chk,ctrl);
+  
   m_pScan->WriteMarker(io);
-  m_Stream.OpenForWrite(io); 
+  m_Stream.OpenForWrite(io,chk); 
 
   m_bMeasure = false;
+#else
+  NOREF(io);
+  NOREF(chk);
+  NOREF(ctrl);
+  JPG_THROW(NOT_IMPLEMENTED,"LosslessScan::StartWriteScan",
+            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
 /// LosslessScan::StartMeasureScan
 void LosslessScan::StartMeasureScan(class BufferCtrl *ctrl)
 {
+#if ACCUSOFT_CODE
   int i;
 
   FindComponentDimensions();
@@ -156,8 +162,13 @@ void LosslessScan::StartMeasureScan(class BufferCtrl *ctrl)
   assert(ctrl->isLineBased());
   m_pLineCtrl = dynamic_cast<LineBuffer *>(ctrl);
   m_pLineCtrl->ResetToStartOfScan(m_pScan);
-
+  
+  m_Stream.OpenForWrite(NULL,NULL);
+  
   m_bMeasure = true;
+#else
+  NOREF(ctrl);
+#endif
 }
 ///
 
@@ -167,11 +178,11 @@ void LosslessScan::StartMeasureScan(class BufferCtrl *ctrl)
 // here a group of pixels. But it is more practical this way.
 bool LosslessScan::WriteMCU(void)
 {
+#if ACCUSOFT_CODE
   int i;
   struct Line *top[4],*prev[4];
   int lines      = 8; // total number of MCU lines processed.
-  UBYTE preshift = m_ucLowBit + FractionalColorBitsOf();
-
+  
   for(i = 0;i < m_ucCount;i++) {
     class Component *comp = ComponentOf(i);
     UBYTE idx       = comp->IndexOf();
@@ -180,25 +191,22 @@ bool LosslessScan::WriteMCU(void)
     m_ulX[i]        = 0;
     m_ulY[i]        = m_pLineCtrl->CurrentYOf(idx);
   }
-
+  
   // Loop over lines and columns
   do {
     do {
-      BeginWriteMCU(m_Stream.ByteStreamOf());
+      BeginWriteMCU(m_Stream.ByteStreamOf());    
       //
       if (m_bMeasure) {
-	MeasureMCU(prev,top,preshift);
+        MeasureMCU(prev,top);
       } else {
-	WriteMCU(prev,top,preshift);
+        WriteMCU(prev,top);
       }
     } while(AdvanceToTheRight());
     //
-    // Turn on prediction again after the restart line.
-    m_bNoPrediction = false;
-    //
     // Advance to the next line.
   } while(AdvanceToTheNextLine(prev,top) && --lines);
-
+#endif
   return false;
 }
 ///
@@ -206,8 +214,9 @@ bool LosslessScan::WriteMCU(void)
 /// LosslessScan::WriteMCU
 // The actual MCU-writer, write a single group of pixels to the stream,
 // or measure their statistics.
-void LosslessScan::WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+void LosslessScan::WriteMCU(struct Line **prev,struct Line **top)
 {
+#if ACCUSOFT_CODE
   UBYTE i;
   //
   // Parse a single MCU, which is now a group of pixels.
@@ -215,61 +224,52 @@ void LosslessScan::WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift)
     class HuffmanCoder *dc = m_pDCCoder[i];
     struct Line *line = top[i];
     struct Line *pline= prev[i];
+    class PredictorBase *mcupred = m_pPredict[i];
     UBYTE ym = m_ucMCUHeight[i];
-    ULONG  x = m_ulX[i];
-    ULONG  y = m_ulY[i];
-    LONG *lp = line->m_pData + x;
-    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
-    //
-    if (m_bNoPrediction) {
-      y = 0;
-    }
+    LONG *lp = line->m_pData + m_ulX[i];
+    LONG *pp = (pline)?(pline->m_pData + m_ulX[i]):(NULL);
     //
     // Write MCUwidth * MCUheight coefficients starting at the line top.
     do {
-      UBYTE xm     = m_ucMCUWidth[i];
+      class PredictorBase *pred = mcupred;
+      UBYTE xm = m_ucMCUWidth[i];
       do {
-	UBYTE mode = PredictionMode(x,y);
-	LONG pred  = PredictSample(mode,preshift,lp,pp);
-	// Decode now the difference between the predicted value and
-	// the real value.
-	LONG v;  // 16 bit integer arithmetic required.
-	//
-	v = WORD((lp[0] >> preshift) - pred); // value to be encoded. Standard requires 16 bit modulo arithmetic.
-	if (v == 0) {
-	  dc->Put(&m_Stream,0);
-	} else if (v == -32768) {
-	  dc->Put(&m_Stream,16); // Do not append bits
-	} else {
-	  UBYTE symbol = 0;
-	  do {
-	    symbol++;
-	    if (v > -(1 << symbol) && v < (1 << symbol)) {
-	      dc->Put(&m_Stream,symbol);
-	      if (v >= 0) {
-		m_Stream.Put(symbol,v);
-	      } else {
-		m_Stream.Put(symbol,v - 1);
-	      }
-	      break;
-	    }
-	  } while(true);
-	}
-	//
-	// One pixel done. Proceed to the next in the MCU. Note that
-	// the lines have been extended such that always a complete MCU is present.
-	lp++,pp++;x++;
-      } while(--xm);
+        // Decode now the difference between the predicted value and
+        // the real value.
+        LONG v = pred->EncodeSample(lp,pp);
+        //
+        if (v == 0) {
+          dc->Put(&m_Stream,0);
+        } else if (v == MIN_WORD) {
+          dc->Put(&m_Stream,16); // Do not append bits
+        } else {
+          UBYTE symbol = 0;
+          do {
+            symbol++;
+            if (v > -(1 << symbol) && v < (1 << symbol)) {
+              dc->Put(&m_Stream,symbol);
+              if (v >= 0) {
+                m_Stream.Put(symbol,v);
+              } else {
+                m_Stream.Put(symbol,v - 1);
+              }
+              break;
+            }
+          } while(true);
+        }
+        //
+        // One pixel done. Proceed to the next in the MCU. Note that
+        // the lines have been extended such that always a complete MCU is present.
+      } while(--xm && (lp++,pp++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
-      x  = x  - m_ucMCUWidth[i];
-      pp = lp - m_ucMCUWidth[i];
-      if (line->m_pNext)
-	line = line->m_pNext;
-      lp = line->m_pData + x;
-      y++;
-    } while(--ym);
+    } while(--ym && (pp = line->m_pData + m_ulX[i],line = (line->m_pNext)?(line->m_pNext):(line),
+                     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
   }
+#else
+  NOREF(prev);
+  NOREF(top);
+#endif
 }
 ///
 
@@ -277,8 +277,9 @@ void LosslessScan::WriteMCU(struct Line **prev,struct Line **top,UBYTE preshift)
 // The actual MCU-writer, write a single group of pixels to the stream,
 // or measure their statistics. This here only measures the statistics
 // to design an optimal Huffman table
-void LosslessScan::MeasureMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+void LosslessScan::MeasureMCU(struct Line **prev,struct Line **top)
 {
+#if ACCUSOFT_CODE
   UBYTE i;
   //
   // Parse a single MCU, which is now a group of pixels.
@@ -286,64 +287,57 @@ void LosslessScan::MeasureMCU(struct Line **prev,struct Line **top,UBYTE preshif
     class HuffmanStatistics *dcstat = m_pDCStatistics[i];
     struct Line *line = top[i];
     struct Line *pline= prev[i];
+    class PredictorBase *mcupred = m_pPredict[i];
     UBYTE ym = m_ucMCUHeight[i];
-    ULONG  x = m_ulX[i];
-    ULONG  y = m_ulY[i];
-    LONG *lp = line->m_pData + x;
-    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
+    LONG *lp = line->m_pData + m_ulX[i];
+    LONG *pp = (pline)?(pline->m_pData + m_ulX[i]):(NULL);
     //
-    if (m_bNoPrediction) {
-      y = 0;      
-    }
     //
     // Write MCUwidth * MCUheight coefficients starting at the line top.
     do {
-      UBYTE xm     = m_ucMCUWidth[i];
+      class PredictorBase *pred = mcupred;
+      UBYTE xm = m_ucMCUWidth[i];
       do {
-	UBYTE mode = PredictionMode(x,y);
-	LONG pred  = PredictSample(mode,preshift,lp,pp);
-	// Decode now the difference between the predicted value and
-	// the real value.
-	LONG v;  // 16 bit integer arithmetic required.
-	//
-	v = WORD((lp[0] >> preshift) - pred); // value to be encoded. Standard requires 16 bit modulo arithmetic.
-	if (v == 0) {
-	  dcstat->Put(0);
-	} else if (v == -32768) {
-	  dcstat->Put(16); // Do not append bits
-	} else {
-	  UBYTE symbol = 0;
-	  do {
-	    symbol++;
-	    if (v > -(1 << symbol) && v < (1 << symbol)) {
-	      dcstat->Put(symbol);
-	      break;
-	    }
-	  } while(true);
-	}
-	//
-	// One pixel done. Proceed to the next in the MCU. Note that
-	// the lines have been extended such that always a complete MCU is present.
-	lp++,pp++;x++;
-      } while(--xm);
+        // Decode now the difference between the predicted value and
+        // the real value.
+        LONG v = pred->EncodeSample(lp,pp);
+        //
+        if (v == 0) {
+          dcstat->Put(0);
+        } else if (v == -32768) {
+          dcstat->Put(16); // Do not append bits
+        } else {
+          UBYTE symbol = 0;
+          do {
+            symbol++;
+            if (v > -(1 << symbol) && v < (1 << symbol)) {
+              dcstat->Put(symbol);
+              break;
+            }
+          } while(true);
+        }
+        //
+        // One pixel done. Proceed to the next in the MCU. Note that
+        // the lines have been extended such that always a complete MCU is present.
+      } while(--xm && (lp++,pp++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
-      x  = x  - m_ucMCUWidth[i];
-      pp = lp - m_ucMCUWidth[i];
-      if (line->m_pNext)
-	line = line->m_pNext;
-      lp = line->m_pData + x;
-      y++;
-    } while(--ym);
+    } while(--ym && (pp = line->m_pData + m_ulX[i],line = (line->m_pNext)?(line->m_pNext):(line),
+                     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
   }
+#else
+  NOREF(prev);
+  NOREF(top);
+#endif
 }
 ///
 
 /// LosslessScan::ParseMCU
 // This is actually the true MCU-parser, not the interface that reads
 // a full line.
-void LosslessScan::ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift)
+void LosslessScan::ParseMCU(struct Line **prev,struct Line **top)
 { 
+#if ACCUSOFT_CODE
   UBYTE i;
   //
   // Parse a single MCU, which is now a group of pixels.
@@ -352,56 +346,46 @@ void LosslessScan::ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift)
     struct Line *line = top[i];
     struct Line *pline= prev[i];
     UBYTE ym = m_ucMCUHeight[i];
-    ULONG  x = m_ulX[i];
-    ULONG  y = m_ulY[i];
-    LONG *lp = line->m_pData + x;
-    LONG *pp = (pline)?(pline->m_pData + x):(NULL);
-    //
-    if (m_bNoPrediction) {
-      y = 0;
-    }
+    class PredictorBase *mcupred = m_pPredict[i];
+    LONG *lp = line->m_pData + m_ulX[i];
+    LONG *pp = (pline)?(pline->m_pData + m_ulX[i]):(NULL);
     //
     // Parse MCUwidth * MCUheight coefficients starting at the line top.
     do {
-      UBYTE xm     = m_ucMCUWidth[i];
+      class PredictorBase *pred = mcupred;
+      UBYTE xm = m_ucMCUWidth[i];
       do {
-	UBYTE mode = PredictionMode(x,y);
-	LONG pred  = PredictSample(mode,preshift,lp,pp);
-	// Decode now the difference between the predicted value and
-	// the real value.
-	LONG v;
-	UBYTE symbol = dc->Get(&m_Stream);
-	
-	if (symbol == 0) {
-	  v = 0;
-	} else if (symbol == 16) {
-	  v = -32768;
-	} else {
-	  LONG thre = 1L << (symbol - 1);
-	  LONG diff = m_Stream.Get(symbol); // get the number of bits 
-	  if (diff < thre) {
-	    diff += (-1L << symbol) + 1;
-	  }
-	  v = diff;
-	}
-	//
-	// Set the current pixel, do the inverse pointwise transformation.
-	lp[0] = WORD(v + pred) << preshift;
-	//
-	// One pixel done. Proceed to the next in the MCU. Note that
-	// the lines have been extended such that always a complete MCU is present.
-	lp++,pp++;x++;
-      } while(--xm);
+        LONG v;
+        UBYTE symbol = dc->Get(&m_Stream);
+        
+        if (symbol == 0) {
+          v = 0;
+        } else if (symbol == 16) {
+          v = -32768;
+        } else {
+          LONG thre = 1L << (symbol - 1);
+          LONG diff = m_Stream.Get(symbol); // get the number of bits 
+          if (diff < thre) {
+            diff += (-1L << symbol) + 1;
+          }
+          v = diff;
+        }
+        //
+        // Set the current pixel, do the inverse pointwise transformation.
+        lp[0] = pred->DecodeSample(v,lp,pp);
+        //
+        // One pixel done. Proceed to the next in the MCU. Note that
+        // the lines have been extended such that always a complete MCU is present.
+      } while(--xm && (lp++,pp++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
-      x  = x  - m_ucMCUWidth[i];
-      pp = lp - m_ucMCUWidth[i];
-      if (line->m_pNext)
-	line = line->m_pNext;
-      lp = line->m_pData + x;
-      y++;
-    } while(--ym);
+    } while(--ym && (pp = line->m_pData + m_ulX[i],line = (line->m_pNext)?(line->m_pNext):(line),
+                     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
   }
+#else
+  NOREF(prev);
+  NOREF(top);
+#endif
 }
 ///
 
@@ -411,11 +395,11 @@ void LosslessScan::ParseMCU(struct Line **prev,struct Line **top,UBYTE preshift)
 // here a group of pixels. But it is more practical this way.
 bool LosslessScan::ParseMCU(void)
 {
+#if ACCUSOFT_CODE
   int i;
   struct Line *top[4],*prev[4];
   int lines      = 8; // total number of MCU lines processed.
-  UBYTE preshift = m_ucLowBit + FractionalColorBitsOf();
-
+ 
   for(i = 0;i < m_ucCount;i++) {
     class Component *comp = ComponentOf(i);
     UBYTE idx       = comp->IndexOf();
@@ -427,20 +411,27 @@ bool LosslessScan::ParseMCU(void)
 
   // Loop over lines and columns
   do {
+    bool startofline = true;
     do {
       if (BeginReadMCU(m_Stream.ByteStreamOf())) {
-	ParseMCU(prev,top,preshift);
+        ParseMCU(prev,top);
       } else {
-	ClearMCU(top);
+        // Only if this is not due to a DNL marker that has been detected.
+        if (m_ulPixelHeight != 0 && !hasFoundDNL()) {
+          ClearMCU(top);
+        } else if (!startofline) {
+          // The problem is here that the DNL marker might have been detected, even though decoding
+          // is not yet done completely. This may be because there are still just enough bits in the
+          // bitream present to run a single decode. Big Outch! Just continue decoding in this case.
+          ParseMCU(prev,top);
+        } else break;
       }
+      startofline = false;
     } while(AdvanceToTheRight());
-    //
-    // Turn on prediction again after the restart line.
-    m_bNoPrediction = false;
     //
     // Advance to the next line.
   } while(AdvanceToTheNextLine(prev,top) && --lines);
-  
+#endif  
   return false; // no further blocks here.
 }
 ///
@@ -449,7 +440,11 @@ bool LosslessScan::ParseMCU(void)
 // Start a MCU scan. Returns true if there are more rows.
 bool LosslessScan::StartMCURow(void)
 {
+#if ACCUSOFT_CODE
   return m_pLineCtrl->StartMCUQuantizerRow(m_pScan);
+#else
+  return false;
+#endif
 }
 ///
 
@@ -457,9 +452,12 @@ bool LosslessScan::StartMCURow(void)
 // Flush the remaining bits out to the stream on writing.
 void LosslessScan::Flush(bool)
 {  
+#if ACCUSOFT_CODE
   if (!m_bMeasure)
     m_Stream.Flush();
-  m_bNoPrediction = true; 
+
+  PredictiveScan::FlushOnMarker();
+#endif
 }
 ///
 
@@ -467,7 +465,10 @@ void LosslessScan::Flush(bool)
 // Restart the parser at the next restart interval
 void LosslessScan::Restart(void)
 { 
-  m_Stream.OpenForRead(m_Stream.ByteStreamOf());
-  m_bNoPrediction = true;
+#if ACCUSOFT_CODE
+  m_Stream.OpenForRead(m_Stream.ByteStreamOf(),m_Stream.ChecksumOf());
+
+  PredictiveScan::RestartOnMarker();
+#endif
 }
 ///

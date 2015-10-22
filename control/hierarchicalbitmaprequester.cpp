@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,7 +30,7 @@ the committee itself.
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.21 2012-09-15 21:45:51 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.36 2015/03/25 08:45:43 thor Exp $
 **
 */
 
@@ -73,11 +53,14 @@ the committee itself.
 // that contains the dimensions, actually a DHP marker segment
 // without any data in it.
 HierarchicalBitmapRequester::HierarchicalBitmapRequester(class Frame *dimensions)
-  : BitmapCtrl(dimensions), m_ppDownsampler(NULL), m_ppUpsampler(NULL), 
+  : BitmapCtrl(dimensions)
+#if ACCUSOFT_CODE
+  , m_ppDownsampler(NULL), m_ppUpsampler(NULL), 
     m_ppTempIBM(NULL), m_pSmallestScale(NULL), m_pLargestScale(NULL), m_pTempAdapter(NULL),
     m_pulReadyLines(NULL), m_pulY(NULL), m_pulHeight(NULL),
     m_ppEncodingMCU(NULL), m_ppDecodingMCU(NULL),
     m_bSubsampling(false)
+#endif
 {
 }
 ///
@@ -85,6 +68,7 @@ HierarchicalBitmapRequester::HierarchicalBitmapRequester(class Frame *dimensions
 /// HierarchicalBitmapRequester::~HierarchicalBitmapRequester
 HierarchicalBitmapRequester::~HierarchicalBitmapRequester(void)
 {
+#if ACCUSOFT_CODE
   class LineAdapter *la;
   UBYTE i;
   
@@ -142,15 +126,16 @@ HierarchicalBitmapRequester::~HierarchicalBitmapRequester(void)
 
   if (m_pulHeight)
     m_pEnviron->FreeMem(m_pulHeight,m_ucCount * sizeof(ULONG));
+#endif
 }
 ///
 
 /// HierarchicalBitmapRequester::BuildCommon
 // Build common structures for encoding and decoding
+#if ACCUSOFT_CODE
 void HierarchicalBitmapRequester::BuildCommon(void)
 {
   BitmapCtrl::BuildCommon();
-
   if (m_ppTempIBM == NULL) {
     m_ppTempIBM = (struct ImageBitMap **)m_pEnviron->AllocMem(sizeof(struct ImageBitMap **) * m_ucCount);
     memset(m_ppTempIBM,0,sizeof(struct ImageBitMap *) * m_ucCount);
@@ -178,6 +163,7 @@ void HierarchicalBitmapRequester::BuildCommon(void)
     }
   }
 }
+#endif
 ///
 
 /// HierarchicalBitmapRequester::PrepareForEncoding
@@ -185,6 +171,7 @@ void HierarchicalBitmapRequester::BuildCommon(void)
 // May throw on out of memory situations
 void HierarchicalBitmapRequester::PrepareForEncoding(void)
 {
+#if ACCUSOFT_CODE
   
   BuildCommon();
 
@@ -212,6 +199,7 @@ void HierarchicalBitmapRequester::PrepareForEncoding(void)
 
   if (m_pLargestScale)
     m_pLargestScale->PrepareForEncoding();
+#endif
 }
 ///
 
@@ -220,6 +208,8 @@ void HierarchicalBitmapRequester::PrepareForEncoding(void)
 // May throw on out of memory situations
 void HierarchicalBitmapRequester::PrepareForDecoding(void)
 {
+#if ACCUSOFT_CODE
+
   UBYTE i;
 
   BuildCommon();
@@ -248,6 +238,7 @@ void HierarchicalBitmapRequester::PrepareForDecoding(void)
 
   if (m_pLargestScale)
     m_pLargestScale->PrepareForDecoding();
+#endif
 }
 ///
 
@@ -255,8 +246,7 @@ void HierarchicalBitmapRequester::PrepareForDecoding(void)
 // Return the color transformer responsible for this scan.
 class ColorTrafo *HierarchicalBitmapRequester::ColorTrafoOf(bool encoding)
 {
-  return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,
-					    PixelTypeOf(),m_pFrame->HiddenPrecisionOf(),m_ucCount,encoding);
+  return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,NULL,PixelTypeOf(),encoding);
 }
 ///
 
@@ -266,13 +256,14 @@ class ColorTrafo *HierarchicalBitmapRequester::ColorTrafoOf(bool encoding)
 // buffered already from previous frames, will be expanded.
 void HierarchicalBitmapRequester::AddImageScale(class Frame *frame,bool expandh,bool expandv)
 {
+#if ACCUSOFT_CODE
   if (m_pLargestScale == NULL) {
     assert(m_pSmallestScale == NULL);
     assert(expandh == false && expandv == false);
     // Actually, this is the smallest scale... as it is the first we build.
     m_pLargestScale  = frame->BuildLineAdapter();
     m_pSmallestScale = m_pLargestScale;
-    frame->SetImage(m_pLargestScale);
+    frame->SetImageBuffer(m_pLargestScale);
   } else {
     class LineMerger *merger;
     // Two things need to be build: The adapter to the new band, and the merger
@@ -283,14 +274,19 @@ void HierarchicalBitmapRequester::AddImageScale(class Frame *frame,bool expandh,
     m_pTempAdapter   = frame->BuildLineAdapter();
     // ...and this guy will merge them with what we currently have.
     merger           = new(m_pEnviron) class LineMerger(frame,m_pLargestScale,m_pTempAdapter,
-							expandh,expandv);
+                                                        expandh,expandv);
     //
     // And this becomes the next largest scale.
     m_pLargestScale  = merger;
     // and controls now the life-time of its children.
-    frame->SetImage(m_pTempAdapter);
+    frame->SetImageBuffer(m_pTempAdapter);
     m_pTempAdapter   = NULL; 
   }
+#else
+  NOREF(frame);
+  NOREF(expandh);
+  NOREF(expandv);
+#endif
 }
 ///
 
@@ -300,8 +296,9 @@ void HierarchicalBitmapRequester::AddImageScale(class Frame *frame,bool expandh,
 // residuals, make this frame ready for encoding, and retrieve the downscaling
 // data.
 void HierarchicalBitmapRequester::GenerateDifferentialImage(class Frame *target,
-							    bool &hexp,bool &vexp)
+                                                            bool &hexp,bool &vexp)
 {
+#if ACCUSOFT_CODE
   class LineAdapter *lap = m_pLargestScale;
 
   while(lap) {
@@ -317,14 +314,22 @@ void HierarchicalBitmapRequester::GenerateDifferentialImage(class Frame *target,
     lap = lap->LowPassOf();
   }
   assert(!"target band not found");
+#else
+  NOREF(target);
+  NOREF(hexp);
+  NOREF(vexp);
+  JPG_THROW(NOT_IMPLEMENTED,"HierarchicalBitmapRequester::GenerateDifferentialImage",
+            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+#endif
 }
 ///
 
 /// HierarchicalBitmapRequester::DefineRegion
 // Define a single 8x8 block starting at the x offset and the given
 // line, taking the input 8x8 buffer.
+#if ACCUSOFT_CODE
 void HierarchicalBitmapRequester::DefineRegion(LONG x,const struct Line *const *line,
-					       const LONG *buffer,UBYTE comp)
+                                               const LONG *buffer,UBYTE comp)
 {
   int cnt = 8;
   
@@ -339,11 +344,13 @@ void HierarchicalBitmapRequester::DefineRegion(LONG x,const struct Line *const *
     line++;
   } while(--cnt);
 }
+#endif
 ///
 
 /// HierarchicalBitmapRequester::FetchRegion
 // Define a single 8x8 block starting at the x offset and the given
 // line, taking the input 8x8 buffer.
+#if ACCUSOFT_CODE
 void HierarchicalBitmapRequester::FetchRegion(LONG x,const struct Line *const *line,LONG *buffer)
 {
   int cnt = 8;
@@ -354,10 +361,12 @@ void HierarchicalBitmapRequester::FetchRegion(LONG x,const struct Line *const *l
     line++;
   } while(--cnt);
 }
+#endif
 ///
 
 /// HierarchicalBitmapRequester::Allocate8Lines
 // Get the next block of eight lines of the image
+#if ACCUSOFT_CODE
 void HierarchicalBitmapRequester::Allocate8Lines(UBYTE c)
 {
   int cnt;
@@ -370,11 +379,13 @@ void HierarchicalBitmapRequester::Allocate8Lines(UBYTE c)
     y++;
   }
 }
+#endif
 ///
 
 /// HierarchicalBitmapRequester::Push8Lines
 // Advance the image line pointer by the next eight lines
 // which is here a "pseudo"-MCU block.
+#if ACCUSOFT_CODE
 void HierarchicalBitmapRequester::Push8Lines(UBYTE c)
 {
   int cnt;
@@ -389,11 +400,13 @@ void HierarchicalBitmapRequester::Push8Lines(UBYTE c)
 
   m_pulY[c] = y;
 }
+#endif
 ///
 
 /// HierarchicalBitmapRequester::Pull8Lines
 // Pull 8 lines from the top-level and place them into
 // the decoder MCU.
+#if ACCUSOFT_CODE
 void HierarchicalBitmapRequester::Pull8Lines(UBYTE c)
 { 
  int cnt;
@@ -406,10 +419,12 @@ void HierarchicalBitmapRequester::Pull8Lines(UBYTE c)
     y++;
   }
 }
+#endif
 ///
 
 /// HierarchicalBitmapRequester::Release8Lines
 // Release the currently buffered decoder MCU for the given component.
+#if ACCUSOFT_CODE
 void HierarchicalBitmapRequester::Release8Lines(UBYTE c)
 { 
   int cnt;
@@ -422,192 +437,74 @@ void HierarchicalBitmapRequester::Release8Lines(UBYTE c)
     y++;
   }
 }
+#endif
 ///
 
-/// HierarchicalBitmapRequester::EncodeRegion
-// Encode a region without downsampling but color transformation
-void HierarchicalBitmapRequester::EncodeRegion(class BitMapHook *bmh,const struct RectangleRequest *)
-{
-  ULONG maxmcu                 = MAX_ULONG;
-  ULONG maxval                 = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
-  class ColorTrafo *ctrafo;
-  RectAngle<LONG> region;
+/// HierarchicalBitmapRequester::CropEncodingRegion
+// First step of a region encoder: Find the region that can be pulled in the next step,
+// from a rectangle request. This potentially shrinks the rectangle, which should be
+// initialized to the full image.
+void HierarchicalBitmapRequester::CropEncodingRegion(RectAngle<LONG> &region,const struct RectangleRequest *)
+{ 
+#if ACCUSOFT_CODE
   int i;
-  //
-  // Install the full image region. The code cannot encode just a part of the
-  // image and leave the rest undefined.
-  region.ra_MinX = 0;
-  region.ra_MinY = m_ulPixelHeight;
-  region.ra_MaxX = m_ulPixelWidth  - 1;
-  region.ra_MaxY = m_ulPixelHeight - 1;
-  //
+
+  ClipToImage(region);
+
   // Find the region to request.
   for(i = 0;i < m_ucCount;i++) {
     if (m_pulReadyLines[i] < ULONG(region.ra_MinY))
       region.ra_MinY = m_pulReadyLines[i];
   }
+#else
+  NOREF(region);
+#endif
+}
+///
 
+/// HierarchicalBitmapRequester::RequestUserDataForEncoding
+// Request user data for encoding for the given region, potentially clip the region to the
+// data available from the user.
+void HierarchicalBitmapRequester::RequestUserDataForEncoding(class BitMapHook *bmh,RectAngle<LONG> &region,bool alpha)
+{
+#if ACCUSOFT_CODE
+  int i;
+
+  m_ulMaxMCU = MAX_ULONG;
+  
   for(i = 0;i < m_ucCount;i++) {
     ULONG max;
     //
     // Components are always requested completely on encoding.
-    RequestUserData(bmh,region,i);
+    RequestUserData(bmh,region,i,alpha);
     // All components must have the same sample precision here.
     max = (m_ppBitmap[i]->ibm_ulHeight - 1) >> 3;
-    if (max < maxmcu)
-      maxmcu = max; 
+    if (max < m_ulMaxMCU)
+      m_ulMaxMCU = max; 
     if (LONG(m_ppBitmap[i]->ibm_ulHeight) - 1 < region.ra_MaxY)
       region.ra_MaxY = m_ppBitmap[i]->ibm_ulHeight - 1;
   }
-  
-  // 
-  // Now that the pixel type is known, request the color transformer.
-  ctrafo = ColorTrafoOf(true);
-
-  if (m_bSubsampling) { 
-    RectAngle<LONG> r;
-    ULONG minx   = region.ra_MinX >> 3;
-    ULONG maxx   = region.ra_MaxX >> 3;
-    ULONG miny   = region.ra_MinY >> 3;
-    ULONG maxy   = region.ra_MaxY >> 3;
-    ULONG x,y;
-    LONG *const *buffer      = ctrafo->BufferOf();
-    
-    assert(maxy <= maxmcu);
-    //
-    // First part: Collect the data from
-    // the user and push it into the color transformer buffer.
-    // For that first build the downsampler.
-    for(i = 0;i < m_ucCount;i++) {
-      if (m_ppDownsampler[i]) {
-	m_ppDownsampler[i]->SetBufferedRegion(region);
-      }
-    }
-    
-    for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
-      r.ra_MaxY = (r.ra_MinY & -8) + 7;
-      if (r.ra_MaxY > region.ra_MaxY)
-	r.ra_MaxY = region.ra_MaxY;
-
-      for(i = 0;i < m_ucCount;i++) {
-	if (m_ppDownsampler[i] == NULL) {
-	  Allocate8Lines(i);
-	}
-      }
-      
-      for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	if (r.ra_MaxX > region.ra_MaxX)
-	  r.ra_MaxX = region.ra_MaxX;
-	
-	for(i = 0;i < m_ucCount;i++) {
-	  // Collect the source data.
-	  ExtractBitmap(m_ppTempIBM[i],r,i);
-	}
-	
-	//
-	// Run the color transformer.
-	ctrafo->RGB2YCbCr(r,m_ppTempIBM,(maxval + 1) >> 1,maxval);
-	
-	// Now push the transformed data into either the downsampler, 
-	// or the forward DCT block row.
-	for(i = 0;i < m_ucCount;i++) {
-	  if (m_ppDownsampler[i]) {
-	    // Just collect the data in the downsampler for the time
-	    // being. Will be taken care of as soon as it is complete.
-	    m_ppDownsampler[i]->DefineRegion(x,y,buffer[i]);
-	  } else { 
-	    DefineRegion(x,m_ppEncodingMCU + (i << 3),buffer[i],i);
-	  }
-	}
-      }
-      //
-      // Advance the quantized rows for the non-subsampled components,
-      // downsampled components will be advanced later.
-      for(i = 0;i < m_ucCount;i++) {
-	m_pulReadyLines[i]    += 8; // somehwere in the buffer.
-	if (m_ppDownsampler[i] == NULL) {
-	  Push8Lines(i);
-	} else {
-	  LONG bx,by;
-	  RectAngle<LONG> blocks;
-	  // Collect the downsampled blocks and push that into the DCT.
-	  m_ppDownsampler[i]->GetCollectedBlocks(blocks);
-	  for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-	    Allocate8Lines(i);
-	    for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-	      LONG src[64]; // temporary buffer, the DCT requires a 8x8 block
-	      m_ppDownsampler[i]->DownsampleRegion(bx,by,src);
-	      DefineRegion(bx,m_ppEncodingMCU + (i << 3),src,i);
-	    }
-	    m_ppDownsampler[i]->RemoveBlocks(by);
-	    Push8Lines(i);
-	  }
-	}
-      }
-    }
-  } else { // No downsampling required, residual coding possible.
-    RectAngle<LONG> r;
-    ULONG minx   = region.ra_MinX >> 3;
-    ULONG maxx   = region.ra_MaxX >> 3;
-    ULONG miny   = region.ra_MinY >> 3;
-    ULONG maxy   = region.ra_MaxY >> 3;
-    ULONG x,y;
-
-    assert(maxy <= maxmcu);
-    
-    for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
-      r.ra_MaxY = (r.ra_MinY & -8) + 7;
-      if (r.ra_MaxY > region.ra_MaxY)
-	r.ra_MaxY = region.ra_MaxY;
-
-      for(i = 0;i < m_ucCount;i++) {
-	Allocate8Lines(i);
-      }
-      
-      for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	if (r.ra_MaxX > region.ra_MaxX)
-	  r.ra_MaxX = region.ra_MaxX;
-
-	for(i = 0;i < m_ucCount;i++) {      
-	  ExtractBitmap(m_ppTempIBM[i],r,i);
-	}
-	
-	ctrafo->RGB2YCbCr(r,m_ppTempIBM,(maxval + 1) >> 1,maxval);
-
-	for(i = 0;i < m_ucCount;i++) {
-	  DefineRegion(x,m_ppEncodingMCU + (i << 3),ctrafo->BufferOf()[i],i);
-	}
-      }
-      for(i = 0;i < m_ucCount;i++) {
-	Push8Lines(i);
-	m_pulReadyLines[i]   += 8;
-      }
-    }
-  }
-       
-  for(i = 0;i < m_ucCount;i++) {
-    ReleaseUserData(bmh,region,i);
-  }
+#else
+  NOREF(bmh);
+  NOREF(region);
+  NOREF(alpha);
+#endif
 }
 ///
 
-/// HierarchicalBitmapRequester::ReconstructRegion
-// Reconstruct a block, or part of a block
-void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const struct RectangleRequest *rr)
+/// HierarchicalBitmapRequester::RequestUserDataForDecoding
+// Pull data buffers from the user data bitmap hook
+void HierarchicalBitmapRequester::RequestUserDataForDecoding(class BitMapHook *bmh,RectAngle<LONG> &region,
+                                                             const struct RectangleRequest *rr,bool alpha)
 {
-  ULONG maxmcu  = MAX_ULONG;
-  UBYTE i;
-  ULONG maxval  = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
-  RectAngle<LONG> region = rr->rr_Request;
-  class ColorTrafo *ctrafo;
-
+#if ACCUSOFT_CODE
+  int i;
+  
   if (m_pLargestScale->FrameOf()->WidthOf()   != m_pFrame->WidthOf() ||
       (m_pLargestScale->FrameOf()->HeightOf() != m_pFrame->HeightOf() &&
        m_pLargestScale->FrameOf()->HeightOf() != 0 && m_pFrame->HeightOf() != 0)) {
     JPG_THROW(MALFORMED_STREAM,"HierarchicalBitmapRequester::ReconstructRegion",
-	      "hierarchical frame hierarchy is damaged, largest frame does not match the image");
+              "hierarchical frame hierarchy is damaged, largest frame does not match the image");
   }
   
   if (m_ulPixelHeight == 0) {
@@ -622,19 +519,165 @@ void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const 
     }
   }
   
-  ClipToImage(region);
+  m_ulMaxMCU = MAX_ULONG;
   
   for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
-    RequestUserData(bmh,region,i);
+    RequestUserData(bmh,region,i,alpha);
     ULONG max = (BitmapOf(i).ibm_ulHeight >> 3) - 1;
-    if (max < maxmcu)
-      maxmcu = max;
+    if (max < m_ulMaxMCU)
+      m_ulMaxMCU = max;
   }
+#else
+  NOREF(bmh);
+  NOREF(region);
+  NOREF(rr);
+  NOREF(alpha);
+#endif
+}
+///
 
-  //
-  // Get the color tranformer. Must delay this until here now that we have the pixel type.
-  //
-  ctrafo = ColorTrafoOf(false);
+/// HierarchicalBitmapRequester::EncodeRegion
+// Encode a region without downsampling but color transformation
+void HierarchicalBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
+{
+#if ACCUSOFT_CODE
+  class ColorTrafo *ctrafo = ColorTrafoOf(true);
+  int i;
+  // 
+  // Now that the pixel type is known, request the color transformer.
+  ctrafo = ColorTrafoOf(true);
+
+  if (m_bSubsampling) { 
+    RectAngle<LONG> r;
+    ULONG minx   = region.ra_MinX >> 3;
+    ULONG maxx   = region.ra_MaxX >> 3;
+    ULONG miny   = region.ra_MinY >> 3;
+    ULONG maxy   = region.ra_MaxY >> 3;
+    ULONG x,y;
+    
+    // First part: Collect the data from
+    // the user and push it into the color transformer buffer.
+    // For that first build the downsampler.
+    for(i = 0;i < m_ucCount;i++) {
+      if (m_ppDownsampler[i]) {
+        m_ppDownsampler[i]->SetBufferedRegion(region);
+      }
+    }
+    
+    for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
+      r.ra_MaxY = (r.ra_MinY & -8) + 7;
+      if (r.ra_MaxY > region.ra_MaxY)
+        r.ra_MaxY = region.ra_MaxY;
+
+      for(i = 0;i < m_ucCount;i++) {
+        if (m_ppDownsampler[i] == NULL) {
+          Allocate8Lines(i);
+        }
+      }
+      
+      for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
+        r.ra_MaxX = (r.ra_MinX & -8) + 7;
+        if (r.ra_MaxX > region.ra_MaxX)
+          r.ra_MaxX = region.ra_MaxX;
+        
+        for(i = 0;i < m_ucCount;i++) {
+          // Collect the source data.
+          ExtractBitmap(m_ppTempIBM[i],r,i);
+        }
+        
+        //
+        // Run the color transformer.
+        ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
+        
+        // Now push the transformed data into either the downsampler, 
+        // or the forward DCT block row.
+        for(i = 0;i < m_ucCount;i++) {
+          if (m_ppDownsampler[i]) {
+            // Just collect the data in the downsampler for the time
+            // being. Will be taken care of as soon as it is complete.
+            m_ppDownsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
+          } else { 
+            DefineRegion(x,m_ppEncodingMCU + (i << 3),m_ppCTemp[i],i);
+          }
+        }
+      }
+      //
+      // Advance the quantized rows for the non-subsampled components,
+      // downsampled components will be advanced later.
+      for(i = 0;i < m_ucCount;i++) {
+        m_pulReadyLines[i]    += 8; // somehwere in the buffer.
+        if (m_ppDownsampler[i] == NULL) {
+          Push8Lines(i);
+        } else {
+          LONG bx,by;
+          RectAngle<LONG> blocks;
+          // Collect the downsampled blocks and push that into the DCT.
+          m_ppDownsampler[i]->GetCollectedBlocks(blocks);
+          for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
+            Allocate8Lines(i);
+            for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+              LONG src[64]; // temporary buffer, the DCT requires a 8x8 block
+              m_ppDownsampler[i]->DownsampleRegion(bx,by,src);
+              DefineRegion(bx,m_ppEncodingMCU + (i << 3),src,i);
+            }
+            m_ppDownsampler[i]->RemoveBlocks(by);
+            Push8Lines(i);
+          }
+        }
+      }
+    }
+  } else { // No downsampling required, residual coding possible.
+    RectAngle<LONG> r;
+    ULONG minx   = region.ra_MinX >> 3;
+    ULONG maxx   = region.ra_MaxX >> 3;
+    ULONG miny   = region.ra_MinY >> 3;
+    ULONG maxy   = region.ra_MaxY >> 3;
+    ULONG x,y;
+
+    for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
+      r.ra_MaxY = (r.ra_MinY & -8) + 7;
+      if (r.ra_MaxY > region.ra_MaxY)
+        r.ra_MaxY = region.ra_MaxY;
+
+      for(i = 0;i < m_ucCount;i++) {
+        Allocate8Lines(i);
+      }
+      
+      for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
+        r.ra_MaxX = (r.ra_MinX & -8) + 7;
+        if (r.ra_MaxX > region.ra_MaxX)
+          r.ra_MaxX = region.ra_MaxX;
+
+        for(i = 0;i < m_ucCount;i++) {      
+          ExtractBitmap(m_ppTempIBM[i],r,i);
+        }
+        
+        ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
+
+        for(i = 0;i < m_ucCount;i++) {
+          DefineRegion(x,m_ppEncodingMCU + (i << 3),m_ppCTemp[i],i);
+        }
+      }
+      for(i = 0;i < m_ucCount;i++) {
+        Push8Lines(i);
+        m_pulReadyLines[i]   += 8;
+      }
+    }
+  }
+#else
+  NOREF(region);
+#endif
+}
+///
+
+/// HierarchicalBitmapRequester::ReconstructRegion
+// Reconstruct a block, or part of a block
+void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &region,const struct RectangleRequest *rr)
+{
+#if ACCUSOFT_CODE
+  class ColorTrafo *ctrafo = ColorTrafoOf(false);
+  UBYTE i;
+  
   if (m_bSubsampling) { 
     for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
       class Component *comp = m_pFrame->ComponentOf(i);
@@ -647,34 +690,34 @@ void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const 
       // Compute the region of blocks
       assert(subx > 0 && suby > 0);
       if ((up = m_ppUpsampler[i])) {
-	LONG bwidth           = ((m_ulPixelWidth  + subx - 1) / subx + 7) >> 3;
-	LONG bheight          = ((m_ulPixelHeight + suby - 1) / suby + 7) >> 3;
-	LONG rx               = (subx > 1)?(1):(0);
-	LONG ry               = (suby > 1)?(1):(0);
-	// The +/-1 include additional lines required for subsampling expansion
-	blocks.ra_MinX        = ((region.ra_MinX / subx - rx) >> 3);
-	blocks.ra_MaxX        = ((region.ra_MaxX / subx + rx) >> 3);
-	blocks.ra_MinY        = ((region.ra_MinY / suby - ry) >> 3);
-	blocks.ra_MaxY        = ((region.ra_MaxY / suby + ry) >> 3);
-	// Clip.
-	if (blocks.ra_MinX < 0)        blocks.ra_MinX = 0;
-	if (blocks.ra_MaxX >= bwidth)  blocks.ra_MaxX = bwidth - 1;
-	if (blocks.ra_MinY < 0)        blocks.ra_MinY = 0;
-	if (blocks.ra_MaxY >= bheight) blocks.ra_MaxY = bheight - 1;
-	up->SetBufferedRegion(blocks); // also removes the rectangle of blocks already buffered.
-	//
-	for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-	  Pull8Lines(i);
-	  for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-	    LONG dst[64];
-	    FetchRegion(bx,m_ppDecodingMCU + (i << 3),dst);
-	    up->DefineRegion(bx,by,dst);
-	  }
-	  Release8Lines(i);
-	}
+        LONG bwidth           = ((m_ulPixelWidth  + subx - 1) / subx + 7) >> 3;
+        LONG bheight          = ((m_ulPixelHeight + suby - 1) / suby + 7) >> 3;
+        LONG rx               = (subx > 1)?(1):(0);
+        LONG ry               = (suby > 1)?(1):(0);
+        // The +/-1 include additional lines required for subsampling expansion
+        blocks.ra_MinX        = ((region.ra_MinX / subx - rx) >> 3);
+        blocks.ra_MaxX        = ((region.ra_MaxX / subx + rx) >> 3);
+        blocks.ra_MinY        = ((region.ra_MinY / suby - ry) >> 3);
+        blocks.ra_MaxY        = ((region.ra_MaxY / suby + ry) >> 3);
+        // Clip.
+        if (blocks.ra_MinX < 0)        blocks.ra_MinX = 0;
+        if (blocks.ra_MaxX >= bwidth)  blocks.ra_MaxX = bwidth - 1;
+        if (blocks.ra_MinY < 0)        blocks.ra_MinY = 0;
+        if (blocks.ra_MaxY >= bheight) blocks.ra_MaxY = bheight - 1;
+        up->SetBufferedRegion(blocks); // also removes the rectangle of blocks already buffered.
+        //
+        for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
+          Pull8Lines(i);
+          for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+            LONG dst[64];
+            FetchRegion(bx,m_ppDecodingMCU + (i << 3),dst);
+            up->DefineRegion(bx,by,dst);
+          }
+          Release8Lines(i);
+        }
       } else {
-	// Load into the decoding MCU
-	Pull8Lines(i);
+        // Load into the decoding MCU
+        Pull8Lines(i);
       }
     }
     // Now push blocks into the color transformer from the upsampler.
@@ -685,45 +728,44 @@ void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const 
       ULONG miny   = region.ra_MinY >> 3;
       ULONG maxy   = region.ra_MaxY >> 3;
       ULONG x,y;
-      LONG *const *buffer      = ctrafo->BufferOf();
       
-      if (maxy > maxmcu)
-	maxy = maxmcu;
+      if (maxy > m_ulMaxMCU)
+        maxy = m_ulMaxMCU;
 
       for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
-	r.ra_MaxY = (r.ra_MinY & -8) + 7;
-	if (r.ra_MaxY > region.ra_MaxY)
-	  r.ra_MaxY = region.ra_MaxY;
-	
-	for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	  r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	  if (r.ra_MaxX > region.ra_MaxX)
-	    r.ra_MaxX = region.ra_MaxX;
-	  
-	  for(i = 0;i < m_ucCount;i++) {
-	    if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-	      ExtractBitmap(m_ppTempIBM[i],r,i);
-	      if (m_ppUpsampler[i]) {
-		// Upsampled case, take from the upsampler, transform
-		// into the color buffer.
-		m_ppUpsampler[i]->UpsampleRegion(r,buffer[i]);
-	      } else {
-		FetchRegion(x,m_ppDecodingMCU + (i << 3),buffer[i]);
-	      }
-	    } else {
-	      // Not requested, zero the buffer.
-	      memset(buffer[i],0,sizeof(LONG) * 64);
-	    }
-	  }
-	  ctrafo->YCbCr2RGB(r,m_ppTempIBM,(maxval + 1) >> 1,maxval);
-	}
-	//
-	// Advance the quantized rows for the non-subsampled components,
-	// upsampled components have been advanced above.
-	for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
-	  if (m_ppUpsampler[i] == NULL)
-	    Release8Lines(i);
-	}
+        r.ra_MaxY = (r.ra_MinY & -8) + 7;
+        if (r.ra_MaxY > region.ra_MaxY)
+          r.ra_MaxY = region.ra_MaxY;
+        
+        for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
+          r.ra_MaxX = (r.ra_MinX & -8) + 7;
+          if (r.ra_MaxX > region.ra_MaxX)
+            r.ra_MaxX = region.ra_MaxX;
+          
+          for(i = 0;i < m_ucCount;i++) {
+            if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+              ExtractBitmap(m_ppTempIBM[i],r,i);
+              if (m_ppUpsampler[i]) {
+                // Upsampled case, take from the upsampler, transform
+                // into the color buffer.
+                m_ppUpsampler[i]->UpsampleRegion(r,m_ppCTemp[i]);
+              } else {
+                FetchRegion(x,m_ppDecodingMCU + (i << 3),m_ppCTemp[i]);
+              }
+            } else {
+              // Not requested, zero the buffer.
+              memset(m_ppCTemp[i],0,sizeof(LONG) * 64);
+            }
+          }
+          ctrafo->YCbCr2RGB(r,m_ppTempIBM,m_ppCTemp,NULL);
+        }
+        //
+        // Advance the quantized rows for the non-subsampled components,
+        // upsampled components have been advanced above.
+        for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
+          if (m_ppUpsampler[i] == NULL)
+            Release8Lines(i);
+        }
       }
     }
   } else { 
@@ -736,8 +778,8 @@ void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const 
     ULONG maxy   = region.ra_MaxY >> 3;
     ULONG x,y;
       
-    if (maxy > maxmcu)
-      maxy = maxmcu;
+    if (maxy > m_ulMaxMCU)
+      maxy = m_ulMaxMCU;
 
     for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
       Pull8Lines(i);
@@ -746,37 +788,37 @@ void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const 
     for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
       r.ra_MaxY = (r.ra_MinY & -8) + 7;
       if (r.ra_MaxY > region.ra_MaxY)
-	r.ra_MaxY = region.ra_MaxY;
-	
+        r.ra_MaxY = region.ra_MaxY;
+        
       for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	if (r.ra_MaxX > region.ra_MaxX)
-	  r.ra_MaxX = region.ra_MaxX;
+        r.ra_MaxX = (r.ra_MinX & -8) + 7;
+        if (r.ra_MaxX > region.ra_MaxX)
+          r.ra_MaxX = region.ra_MaxX;
 
-	for(i = 0;i < m_ucCount;i++) {      
-	  LONG *dst = ctrafo->BufferOf()[i];
-	  if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-	    ExtractBitmap(m_ppTempIBM[i],r,i);
-	    FetchRegion(x,m_ppDecodingMCU + (i << 3),dst);
-	  } else {
-	    memset(dst,0,sizeof(LONG) * 64);
-	  }
-	}
-	//
-	// Perform the color transformation now.
-	ctrafo->YCbCr2RGB(r,m_ppTempIBM,(maxval + 1) >> 1,maxval);
+        for(i = 0;i < m_ucCount;i++) {      
+          LONG *dst = m_ppCTemp[i];
+          if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+            ExtractBitmap(m_ppTempIBM[i],r,i);
+            FetchRegion(x,m_ppDecodingMCU + (i << 3),dst);
+          } else {
+            memset(dst,0,sizeof(LONG) * 64);
+          }
+        }
+        //
+        // Perform the color transformation now.
+        ctrafo->YCbCr2RGB(r,m_ppTempIBM,m_ppCTemp,NULL);
       } // of loop over x
       //
       // Advance the rows.
       for(i = 0;i < m_ucCount;i++) {
-	Release8Lines(i);
+        Release8Lines(i);
       }
     }
   }
-
-  for(i = rr->rr_usFirstComponent;i <=rr->rr_usLastComponent;i++) {
-    ReleaseUserData(bmh,region,i);
-  }
+#else
+  NOREF(region);
+  NOREF(rr);
+#endif
 }
 ///
 
@@ -785,9 +827,13 @@ void HierarchicalBitmapRequester::ReconstructRegion(class BitMapHook *bmh,const 
 // to the encoder.
 bool HierarchicalBitmapRequester::isNextMCULineReady(void) const
 {
+#if ACCUSOFT_CODE
   // MCUs can only be written if the smallest scale, which is written first,
   // is ready.
   return m_pSmallestScale->isNextMCULineReady();
+#else
+  return false;
+#endif
 }
 ///
 
@@ -797,6 +843,7 @@ bool HierarchicalBitmapRequester::isNextMCULineReady(void) const
 // for encoding or decoding.
 void HierarchicalBitmapRequester::ResetToStartOfImage(void)
 {
+#if ACCUSOFT_CODE
   for(UBYTE i = 0;i < m_ucCount;i++) {
     m_pulY[i] = 0;
     m_pulReadyLines[i] = 0;
@@ -805,6 +852,7 @@ void HierarchicalBitmapRequester::ResetToStartOfImage(void)
   assert(m_pLargestScale);
   // Now iterate through the tree.
   m_pLargestScale->ResetToStartOfImage();
+#endif
 }
 ///
 
@@ -813,11 +861,15 @@ void HierarchicalBitmapRequester::ResetToStartOfImage(void)
 // the image buffer.
 bool HierarchicalBitmapRequester::isImageComplete(void) const
 { 
+#if ACCUSOFT_CODE
   for(UBYTE i = 0;i < m_ucCount;i++) {
     if (m_pulReadyLines[i] < m_ulPixelHeight)
       return false;
   }
   return true;
+#else
+  return false;
+#endif
 }
 ///
 
@@ -825,6 +877,7 @@ bool HierarchicalBitmapRequester::isImageComplete(void) const
 // Return the number of lines available for reconstruction from this scan.
 ULONG HierarchicalBitmapRequester::BufferedLines(const struct RectangleRequest *rr) const
 {
+#if ACCUSOFT_CODE
   ULONG maxlines = m_ulPixelHeight;
   
   for(UBYTE i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
@@ -847,6 +900,10 @@ ULONG HierarchicalBitmapRequester::BufferedLines(const struct RectangleRequest *
   }
 
   return maxlines;
+#else
+  NOREF(rr);
+  return 0;
+#endif
 }
 ///
 
@@ -856,7 +913,7 @@ ULONG HierarchicalBitmapRequester::BufferedLines(const struct RectangleRequest *
 void HierarchicalBitmapRequester::PostImageHeight(ULONG lines)
 {
   BitmapCtrl::PostImageHeight(lines);
-
+#if ACCUSOFT_CODE
   assert(m_pulHeight);
 
   if (m_pLargestScale)
@@ -867,5 +924,6 @@ void HierarchicalBitmapRequester::PostImageHeight(ULONG lines)
     UBYTE suby            = comp->SubYOf();
     m_pulHeight[i]        = (m_ulPixelHeight + suby - 1) / suby;
   }
+#endif
 }
 ///

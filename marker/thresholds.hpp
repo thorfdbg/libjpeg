@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** This class contains the marker that defines the JPEG LS thresholds.
 **
-** $Id: thresholds.hpp,v 1.3 2012-07-19 18:59:12 thor Exp $
+** $Id: thresholds.hpp,v 1.9 2014/09/30 08:33:17 thor Exp $
 **
 */
 
@@ -67,19 +47,19 @@ class Thresholds : public JKeeper {
   // Parameters of the JPEG LS coder as defined by C.2.4.1.1
   //
   // Maximum sample value.
-  UBYTE m_usMaxVal;
+  UWORD m_usMaxVal;
   //
   // Bucket threshold 1
-  UBYTE m_usT1;
+  UWORD m_usT1;
   //
   // Bucket threshold 2
-  UBYTE m_usT2;
+  UWORD m_usT2;
   //
   // Bucket threshold 3
-  UBYTE m_usT3;
+  UWORD m_usT3;
   //
   // The statistics reset value.
-  UBYTE m_usReset;
+  UWORD m_usReset;
   //
 public:
   Thresholds(class Environ *env);

@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
  * This hook function is used to pull data out of the
  * client to make it available to the jpeglib
  * 
- * $Id: bitmaphook.hpp,v 1.3 2012-06-02 10:27:14 thor Exp $
+ * $Id: bitmaphook.hpp,v 1.10 2015/03/11 16:02:42 thor Exp $
  *
  */
 
@@ -70,10 +50,10 @@ struct JPG_Hook;
 /// Design
 /** Design
 ******************************************************************
-** class BitMapHook						**
-** Super Class:	none						**
-** Sub Classes: none						**
-** Friends:	none						**
+** class BitMapHook                                             **
+** Super Class: none                                            **
+** Sub Classes: none                                            **
+** Friends:     none                                            **
 ******************************************************************
 
 Using a JPG_Hook as its main ingredience, the bitmap hook defines
@@ -114,16 +94,37 @@ delivers this output data by means of an "ImageBitMap" structure.
 // client.
 class BitMapHook : public JObject {
   //
-  struct JPG_Hook   *m_pHook; // Setup on creation, contains the jump-in location
+  // The function to call for reading the HDR data.
+  // Setup by ParseTags.
+  struct JPG_Hook   *m_pHook; 
   // 
+  // The function to call for retrieving the LDR data. This is
+  // optional, tone mapping may be performed within the library code.
+  struct JPG_Hook   *m_pLDRHook;
+  //
+  // The function to call for retrieving opacity data. This is
+  // only required if there is opacity data.
+  struct JPG_Hook   *m_pAlphaHook;
+  //
   // The following keep default data for lazy applications:
   struct ImageBitMap m_DefaultImageLayout;
   //
   // Prepared tags for requesting usual bitmap tags.
   struct JPG_TagItem m_BitmapTags[25];
   //
-  // Init the tags for the given canvas/slice coordinates.
-  void Init(const struct JPG_TagItem *tags);
+  // Prepared tags for the LDR image request
+  struct JPG_TagItem m_LDRTags[25];
+  //
+  // Setup the input parameter tags for the user hook.
+  void InitHookTags(struct JPG_TagItem *tags);
+  //
+  // Fill the tag items for a request call and make the call.
+  void Request(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
+               const RectAngle<LONG> &rect,struct ImageBitMap *ibm,const class Component *comp,bool alpha);
+  //
+  // Release the tag items for a release call and make the call.
+  void Release(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
+               const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,const class Component *comp,bool alpha);
   //
 public:
   //
@@ -134,14 +135,45 @@ public:
   // Only re-parse the tags to re-define the default bitmap layout.
   void ParseTags(const struct JPG_TagItem *tags);
   //
+  // Collect data from the user.
   void RequestClientData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-			 const class Component *comp);
+                         const class Component *comp);
   //
   // Release the image portion from the client, called to signal the client
   // that all has gone well.
   void ReleaseClientData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-			 const class Component *comp);
+                         const class Component *comp);
   //
+  // Collect alpha channel (opacity) data from the user, either to request the input
+  // opacity on encoding, or to request a buffer where the alpha data is placed
+  // when decoding. Note that you cannot define dedicated LDR data for alpha. It is
+  // always automatically generated with the alpha "tone mapper".
+  void RequestClientAlpha(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
+                          const class Component *comp);
+  //
+  // Release the opacity information again. On decoding, this means that opacity is now
+  // ready to be used. On encoding it means that the encoder has processed the data.
+  void ReleaseClientAlpha(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
+                          const class Component *comp);
+  //
+  // Check whether an LDR image is available (returns true) or whether
+  // the caller has to do the tonemapping itself (returns false).
+  bool providesLDRImage(void) const
+  {
+    return (m_pLDRHook)?(true):(false);
+  }
+  //
+  // Retrieve the LDR tone mapped version of the user. This requires that an
+  // LDR hook function is available, i.e. should only be called if the 
+  // providesLDRImage() method above returns true.
+  void RequestLDRData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
+                      const class Component *comp);
+  //
+  // Release the requested LDR data. Requires that an LDR hook is available, i.e.
+  // providesLDRImage() must have been checked before and must have returned
+  // true for this to make sense.
+  void ReleaseLDRData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
+                      const class Component *comp);
 };
 ///
 

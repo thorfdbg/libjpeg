@@ -2,7 +2,7 @@
 ##
 ## Specific GCC project settings.
 ##
-## $Id: Makefile_Settings.gcc,v 1.2 2012-02-08 17:29:28 thor Exp $
+## $Id: Makefile_Settings.gcc,v 1.3 2014/01/31 21:02:53 thor Exp $
 ##
 
 CXX		= $(COMPILER_CMD)
@@ -19,7 +19,7 @@ OPTIMIZER	= -O3 -DDEBUG_LEVEL=0 -DCHECK_LEVEL=0 -funroll-loops -fstrict-aliasing
 # Additional tuning of the template generation by means of -frepo or the like did not at all change the
 # size of the final executable. Thus, it's not done.
 #
-PROFILER	= -O3 -pg -ggdb3 -pg -fno-omit-frame-pointer -fno-inline
+PROFILER	= -O3 -pg -ggdb3 -pg -fno-omit-frame-pointer #-fno-inline
 LDPROF		= -pg
 DEBUGGER	= -ggdb3 -fno-omit-frame-pointer -fno-inline -DDEBUG_LEVEL=2 -DCHECK_LEVEL=3
 VERBOSE		= -ggdb3 -fno-inline -DDEBUG_LEVEL=3 -DCHECK_LEVEL=3

@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,19 +27,21 @@ the committee itself.
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.82 2012-09-23 14:10:12 thor Exp $
+** $Id: frame.cpp,v 1.124 2015/03/16 15:14:41 thor Exp $
 **
 */
 
 /// Includes
+#include "tools/environment.hpp"
+#include "tools/checksum.hpp"
 #include "marker/frame.hpp"
 #include "marker/component.hpp"
 #include "io/bytestream.hpp"
+#include "io/checksumadapter.hpp"
 #include "std/string.hpp"
 #include "codestream/tables.hpp"
+#include "codestream/image.hpp"
 #include "marker/scan.hpp"
-#include "marker/residualmarker.hpp"
-#include "marker/residualspecsmarker.hpp"
 #include "control/bitmapctrl.hpp"
 #include "control/lineadapter.hpp"
 #include "control/blockbitmaprequester.hpp"
@@ -68,17 +50,19 @@ the committee itself.
 #include "control/blocklineadapter.hpp"
 #include "control/linelineadapter.hpp"
 #include "control/residualblockhelper.hpp"
+#include "boxes/databox.hpp"
+#include "boxes/checksumbox.hpp"
 ///
 
 /// Frame::Frame
 // Construct a frame object
-Frame::Frame(class Tables *tables,ScanType t)
-  : JKeeper(tables->EnvironOf()), m_pNext(NULL), m_pTables(tables), 
+Frame::Frame(class Image *image,class Tables *tables,ScanType t)
+  : JKeeper(tables->EnvironOf()), m_pParent(image), m_pNext(NULL), m_pTables(tables), 
     m_pScan(NULL), m_pLast(NULL), m_pCurrent(NULL), m_pImage(NULL),
-    m_pBlockHelper(NULL), m_Type(t), m_ucPrecision(0), m_ucDepth(0), m_ppComponent(NULL),
-    m_bWriteDNL(false), 
-    m_bBuildResidual(false), m_bCreatedResidual(false),
-    m_bBuildRefinement(false), m_bCreatedRefinement(false)
+    m_pBlockHelper(NULL), m_Type(t), m_ucPrecision(0), m_ucDepth(0), 
+    m_ppComponent(NULL), m_pCurrentRefinement(NULL), m_pAdapter(NULL),
+    m_bWriteDNL(false), m_bBuildRefinement(false), m_bCreatedRefinement(false), 
+    m_usRefinementCount(0)
 {
 }
 ///
@@ -101,6 +85,7 @@ Frame::~Frame(void)
     delete scan;
   }
 
+  delete m_pAdapter;
   delete m_pBlockHelper;
 }
 ///
@@ -122,9 +107,22 @@ void Frame::ParseMarker(class ByteStream *io)
   case DifferentialLossless:
   case ACLossless:
   case ACDifferentialLossless:
-  case JPEG_LS:
+  case JPEG_LS: 
     if (m_ucPrecision < 2 || m_ucPrecision > 16)
       JPG_THROW(MALFORMED_STREAM,"Frame::ParseMarker","frame precision in lossless mode must be between 2 and 16");
+    break;
+  case Residual:
+  case ACResidual:
+  case ResidualProgressive:
+  case ACResidualProgressive:
+  case ResidualDCT:
+  case ACResidualDCT:
+    if (m_ucPrecision < 2 || m_ucPrecision > 17)
+      JPG_THROW(MALFORMED_STREAM,"Frame::ParseMarker","frame precision in residual mode must be between 2 and 17");
+    break;
+  case Baseline:
+    if (m_ucPrecision != 8)
+      JPG_THROW(MALFORMED_STREAM,"Frame::ParseMarker","frame precision in baseline mode must be 8");
     break;
   default: // all others.
     if (m_ucPrecision != 8 && m_ucPrecision != 12)
@@ -212,7 +210,7 @@ void Frame::ComputeMCUSizes(void)
     maxy = m_ppComponent[i]->SubYOf() * maxy / gcd(m_ppComponent[i]->SubYOf(),maxy);
     if (maxx > MAX_UBYTE || maxy > MAX_UBYTE)
       JPG_THROW(OVERFLOW_PARAMETER,"Frame::ComputeMCUSizes",
-		"the smallest common multiple of all subsampling factors must be smaller than 255");
+                "the smallest common multiple of all subsampling factors must be smaller than 255");
   }
   
   m_ucMaxMCUWidth  = maxx;
@@ -226,9 +224,9 @@ void Frame::ComputeMCUSizes(void)
   // then JPEG cannot support this subsampling setting. Wierd.
   for(i = 0;i < m_ucDepth;i++) {
     if (m_ppComponent[i]->SubXOf() != m_ucMaxMCUWidth  / m_ppComponent[i]->MCUWidthOf() ||
-	m_ppComponent[i]->SubYOf() != m_ucMaxMCUHeight / m_ppComponent[i]->MCUHeightOf())
+        m_ppComponent[i]->SubYOf() != m_ucMaxMCUHeight / m_ppComponent[i]->MCUHeightOf())
       JPG_THROW(INVALID_PARAMETER,"Frame::ComputeMCUSizes",
-		"the given set of subsampling parameters is not supported by JPEG");
+                "the given set of subsampling parameters is not supported by JPEG");
   }
 }
 ///
@@ -266,12 +264,31 @@ void Frame::WriteMarker(class ByteStream *io)
 // Write the scan trailer of this frame. This is only the
 // DNL marker if it is enabled.
 void Frame::WriteTrailer(class ByteStream *io)
-{
-  if (m_bWriteDNL) {
+{       
+  assert(m_pCurrent);
+
+  //
+  // The DNL marker does not go into the refinement
+  // scan.
+  if (!m_pCurrent->isHidden() && m_bWriteDNL) {
     io->PutWord(0xffdc); // DNL marker
     io->PutWord(4);      // its size
     io->PutWord(m_ulHeight); // the height
     m_bWriteDNL = false;
+  }
+}
+///
+
+/// Frame::CompleteRefinementScan
+// Complete the current refinement scan if there is one.
+void Frame::CompleteRefimentScan(class ByteStream *io)
+{
+  assert(m_pCurrent);
+
+  if (m_pCurrent->isHidden()) {
+    assert(m_pCurrentRefinement);
+    m_pCurrentRefinement->Flush(io,m_usRefinementCount++);
+    m_pCurrentRefinement = NULL;
   }
 }
 ///
@@ -300,15 +317,15 @@ class Component *Frame::DefineComponent(UBYTE idx,UBYTE subx,UBYTE suby)
 {
   if (m_ucDepth == 0)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::DefineComponent",
-	      "Frame depth must be specified first before defining the component properties");
+              "Frame depth must be specified first before defining the component properties");
 
   if (m_ucPrecision == 0)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::DefineComponent",
-	      "Frame precision must be specified first before defining the component properties");
+              "Frame precision must be specified first before defining the component properties");
 
   if (idx >= m_ucDepth)
     JPG_THROW(OVERFLOW_PARAMETER,"Frame::DefineComponent",
-	      "component index is out of range, must be between 0 and depth-1");
+              "component index is out of range, must be between 0 and depth-1");
   
   if (m_ppComponent == NULL) {
     m_ppComponent = (class Component **)m_pEnviron->AllocMem(sizeof(class Component *) * m_ucDepth);
@@ -317,7 +334,7 @@ class Component *Frame::DefineComponent(UBYTE idx,UBYTE subx,UBYTE suby)
 
   if (m_ppComponent[idx])
     JPG_THROW(OBJECT_EXISTS,"Frame::DefineComponent",
-	      "the indicated component is already defined");
+              "the indicated component is already defined");
 
   m_ppComponent[idx] = new(m_pEnviron) Component(m_pEnviron,idx,m_ucPrecision,subx,suby);
 
@@ -336,27 +353,176 @@ UBYTE Frame::HiddenPrecisionOf(void) const
 /// Frame::PointPreShiftOf
 // Return the point preshift, the adjustment of the
 // input samples by a shift that moves them into the
-// limits of JPEG.
+// limits of JPEG. This is the parameter R_b
 UBYTE Frame::PointPreShiftOf(void) const
 {
   if (m_pTables) {
-    class ResidualSpecsMarker *resmarker;
+    class MergingSpecBox *res;
     
-    if ((resmarker  = m_pTables->ResidualSpecsOf())) {
-      return resmarker->PointPreShiftOf();
+    if ((res = m_pTables->ResidualSpecsOf())) {
+      return res->ResidualBitsOf();
     }
   }
   return 0;
 }
 ///
 
+/// Frame::CreateSequentialScanParameters
+// Helper function to create a regular scan from the tags.
+// There are no scan tags here, instead all components are included.
+// If breakup is set, then each component gets its own scan, otherwise
+// groups of four components get into one scan.
+void Frame::CreateSequentialScanParameters(bool breakup,ULONG tagoffset,const struct JPG_TagItem *tags)
+{ 
+  UBYTE maxdepth = 4;
+  UBYTE depth    = m_ucDepth;
+  UBYTE comp     = 0;  
+
+  if (breakup)
+    maxdepth = 1;
+
+  // Create multiple scans for more than maxdepth components.
+  while(depth) {
+    class Scan *scan;
+    UBYTE curdepth = (depth > maxdepth)?(maxdepth):(depth);
+    struct JPG_TagItem ctags[] = {
+      JPG_ValueTag((curdepth > 0)?(JPGTAG_SCAN_COMPONENT0 + tagoffset):JPGTAG_TAG_IGNORE,comp + 0),
+      JPG_ValueTag((curdepth > 1)?(JPGTAG_SCAN_COMPONENT1 + tagoffset):JPGTAG_TAG_IGNORE,comp + 1),
+      JPG_ValueTag((curdepth > 2)?(JPGTAG_SCAN_COMPONENT2 + tagoffset):JPGTAG_TAG_IGNORE,comp + 2),
+      JPG_ValueTag((curdepth > 3)?(JPGTAG_SCAN_COMPONENT3 + tagoffset):JPGTAG_TAG_IGNORE,comp + 3),
+      JPG_Continue(tags)
+    };
+    
+    scan = new(m_pEnviron) class Scan(this);
+    if (m_pScan == NULL) {
+      assert(m_pScan == NULL && m_pLast == NULL);
+      m_pScan = scan;
+    } else {
+      assert(m_pScan && m_pLast);
+      m_pLast->TagOn(scan);
+    }
+    m_pLast = scan;
+    scan->InstallDefaults(curdepth,tagoffset,ctags);
+    comp += maxdepth;
+    depth-= curdepth;
+  }
+}
+///
+
+/// Frame::CreateProgressiveScanParameters
+// Helper function to create progressive scans. These need to be broken
+// up over several components. A progressive scan cannot contain more
+// than one component if it includes AC parameters.
+void Frame::CreateProgressiveScanParameters(bool breakup,ULONG tagoffset,const struct JPG_TagItem *,
+                                            const struct JPG_TagItem *scantags)
+{  
+  UBYTE i;
+  
+  // Frist check whether the "chroma" mechanism is used to create multiple scans.
+  if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENTS_CHROMA + tagoffset) || 
+      scantags->FindTagItem(JPGTAG_SCAN_COMPONENTS_CHROMA)) {
+    // This actually creates a group of tags if the spectral selection contains
+    // AC bands.
+    if (m_ucDepth > 1) {
+      // Need to break up the scan into several scans if AC components are included.
+      if (breakup) {
+        struct JPG_TagItem ctags[] = {
+          JPG_ValueTag(JPGTAG_SCAN_COMPONENT0 + tagoffset,0),
+          JPG_Continue(scantags)
+        };
+        for(i = 1; i < m_ucDepth;i++) {
+          class Scan *scan = new(m_pEnviron) class Scan(this);
+          if (m_pScan == NULL) {
+            m_pScan = scan;
+          } else {
+            m_pLast->TagOn(scan);
+          }
+          m_pLast = scan;
+          ctags[0].ti_Data.ti_lData = i;
+          scan->InstallDefaults(1,tagoffset,ctags);
+        }
+      } else {
+        struct JPG_TagItem ctags[] = {
+          JPG_ValueTag((m_ucDepth > 1)?(JPGTAG_SCAN_COMPONENT0 + tagoffset):JPGTAG_TAG_IGNORE,1),
+          JPG_ValueTag((m_ucDepth > 2)?(JPGTAG_SCAN_COMPONENT1 + tagoffset):JPGTAG_TAG_IGNORE,2),
+          JPG_ValueTag((m_ucDepth > 3)?(JPGTAG_SCAN_COMPONENT2 + tagoffset):JPGTAG_TAG_IGNORE,3),
+          JPG_Continue(scantags)
+        };
+        class Scan *scan = new(m_pEnviron) class Scan(this);
+        if (m_pScan == NULL) {
+          m_pScan = scan;
+        } else {
+          m_pLast->TagOn(scan);
+        }
+        m_pLast = scan;
+        scan->InstallDefaults(m_ucDepth - 1,tagoffset,ctags);
+      }
+    } // Nothing to do if chroma channels are not present.
+  } else {
+    // The "chroma" magic is not used.
+    UBYTE create,depth = 0;
+    if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + tagoffset) || 
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0)) depth++;
+    if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT1 + tagoffset) ||
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT1)) depth++;
+    if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT2 + tagoffset) ||
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT2)) depth++;
+    if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT3 + tagoffset) ||
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT3)) depth++;
+    //
+    // The number of scans to create.
+    create = (depth == 0)?(m_ucDepth):(depth);
+    // Break up the scans?
+    if (breakup) {
+      struct JPG_TagItem ctags[] = {
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT0 + tagoffset,0),
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT1 + tagoffset,0),
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT2 + tagoffset,0),
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT3 + tagoffset,0),
+        JPG_Continue(scantags)
+      };
+      for(i = 0;i < create;i++) {
+        const struct JPG_TagItem *comp = scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + i + tagoffset);
+        if (comp == NULL) 
+          comp = scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + i);
+        if (depth == 0 || comp) {
+          ctags[0].ti_Data.ti_lData = (comp)?(comp->ti_Data.ti_lData):(i);
+          class Scan *scan = new(m_pEnviron) class Scan(this);
+          if (m_pScan == NULL) {
+            m_pScan = scan;
+          } else {
+            m_pLast->TagOn(scan);
+          }
+          m_pLast = scan;
+          scan->InstallDefaults(1,tagoffset,ctags);
+        }
+      }
+    } else {
+      class Scan *scan = new(m_pEnviron) class Scan(this);
+      if (m_pScan == NULL) {
+        m_pScan = scan;
+      } else {
+        m_pLast->TagOn(scan);
+      }
+      m_pLast = scan;
+      scan->InstallDefaults(m_ucDepth,tagoffset,scantags);
+    }
+  }
+}
+///
+
 /// Frame::InstallDefaultParameters
 // Define default scan parameters. Returns the scan for further refinement if required.
+// tagoffset is an offset added to the tags - used to read from the residual scan types
+// rather the regular ones if this is a residual frame.
 class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,UBYTE prec,
-					    bool writednl,const UBYTE *psubx,const UBYTE *psuby,
-					    const struct JPG_TagItem *tags)
+                                            bool writednl,const UBYTE *psubx,const UBYTE *psuby,
+                                            ULONG tagoffset,
+                                            const struct JPG_TagItem *tags)
 {
-  int i;
+  UBYTE i;
+  bool breakup;
+  bool colortrafo = m_pTables->hasSeparateChroma(m_ucDepth);
   
   if (m_pScan || m_ucDepth != 0 || m_ucPrecision != 0)
     JPG_THROW(OBJECT_EXISTS,"Frame::InstallDefaultScanParameters","the scan has already been installed");
@@ -378,7 +544,11 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
   //
   // Check the validity of the precision.
   switch(m_Type) {
-  case Baseline:
+  case Baseline: 
+    if (m_ucPrecision != 8)
+      JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters",
+                "image precision for baseline scan must be 8");
+    break;
   case Sequential:
   case Progressive:
   case DifferentialSequential:
@@ -389,11 +559,27 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
   case ACDifferentialProgressive:
     //
     if (m_ucPrecision != 8 && m_ucPrecision != 12)
-      JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters","image precision must be 8 or 12");
+      JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters",
+                "image precision must be 8 or 12");
     break;
-  default: // lossless
+  case Residual:
+  case ACResidual:
+  case ResidualProgressive:
+  case ACResidualProgressive:
+  case ResidualDCT:
+  case ACResidualDCT:
+    // Disable subsampling if lossless
+    if (TablesOf()->isLossless()) {
+      psubx = NULL;
+      psuby = NULL;
+    }
+    if (m_ucPrecision < 2 || m_ucPrecision > 17)
+      JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters",
+                "image precision for residual coding must be between 2 and 17");
+    break;
+  default: // lossless, residual.
     if (m_ucPrecision < 2 || m_ucPrecision > 16)
-      JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters","image precision must be between 2 and 16");
+      JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters","image precision in lossless mode must be between 2 and 16");
     break;
   }
   m_bWriteDNL   = writednl;
@@ -415,11 +601,7 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     //
     class Component *comp = DefineComponent(i,sx,sy);
     comp->SetComponentID(i);        // simple 1-1 mapping.
-    if (m_pTables->UseColortrafo()) {
-      comp->SetQuantizer(i == 0?0:1); // one lume and one chroma quantizer
-    } else {
-      comp->SetQuantizer(0);          // only one quantizer
-    }
+    comp->SetQuantizer((colortrafo == false || i == 0)?0:1); // one lume and one chroma quantizer
   }
 
   ComputeMCUSizes();
@@ -429,180 +611,76 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
   // If this is only the DHP marker segment, do not create a scan.
   if (m_Type == Dimensions)
     return NULL;
-  
-  if (m_Type == Progressive             || 
-      m_Type == ACProgressive           ||
-      m_Type == DifferentialProgressive || 
-      m_Type == ACDifferentialProgressive) {
+
+  switch(m_Type) {
+  case Progressive:
+  case ACProgressive:
+  case DifferentialProgressive:
+  case ACDifferentialProgressive:
     if (m_ucDepth > 4)
       JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultParameters",
-		"progressive mode allows only up to four components");
+                "progressive mode allows only up to four components");
     //
-    while(tags && (tags = tags->FindTagItem(JPGTAG_IMAGE_SCAN))) {
+    while(tags && (tags = tags->FindTagItem(JPGTAG_IMAGE_SCAN + tagoffset))) {
       const struct JPG_TagItem *scantags = (struct JPG_TagItem *)(tags->ti_Data.ti_pPtr);
       if (scantags) {
-	if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENTS_CHROMA)) {
-	  // This actually creates a group of tags if the spectral selection contains
-	  // AC bands.
-	  if (m_ucDepth > 1) {
-	    if (scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START) > 0) {
-	      UBYTE i;
-	      struct JPG_TagItem ctags[] = {
-		JPG_ValueTag(JPGTAG_SCAN_COMPONENT0,0),
-		JPG_Continue(scantags)
-	      };
-	      for(i = 1; i < m_ucDepth;i++) {
-		class Scan *scan = new(m_pEnviron) class Scan(this);
-		if (m_pScan == NULL) {
-		  m_pScan = scan;
-		} else {
-		  m_pLast->TagOn(scan);
-		}
-		m_pLast = scan;
-		ctags[0].ti_Data.ti_lData = i;
-		scan->InstallDefaults(1,ctags);
-	      }
-	    } else {
-	      struct JPG_TagItem ctags[] = {
-		JPG_ValueTag((m_ucDepth > 1)?JPGTAG_SCAN_COMPONENT0:JPGTAG_TAG_IGNORE,1),
-		JPG_ValueTag((m_ucDepth > 2)?JPGTAG_SCAN_COMPONENT1:JPGTAG_TAG_IGNORE,2),
-		JPG_ValueTag((m_ucDepth > 3)?JPGTAG_SCAN_COMPONENT2:JPGTAG_TAG_IGNORE,3),
-		JPG_Continue(scantags)
-	      };
-	      class Scan *scan = new(m_pEnviron) class Scan(this);
-	      if (m_pScan == NULL) {
-		m_pScan = scan;
-	      } else {
-		m_pLast->TagOn(scan);
-	      }
-	      m_pLast = scan;
-	      scan->InstallDefaults(m_ucDepth - 1,ctags);
-	    }
-	  } // Nothing to do if chroma channels are not present.
-	} else { 
-	  UBYTE depth = m_ucDepth;
-	  if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0)) depth = 1;
-	  if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT1)) depth = 2;
-	  if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT2)) depth = 3;
-	  if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT3)) depth = 4;
-	  //
-	  // If this is an AC scan, and there is more than one component, separate
-	  // into several scans.
-	  if (depth > 1 && scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START) > 0) {
-	    UBYTE i;
-	    struct JPG_TagItem ctags[] = {
-	      JPG_ValueTag(JPGTAG_SCAN_COMPONENT0,0),
-	      JPG_ValueTag(JPGTAG_SCAN_COMPONENT1,0),
-	      JPG_ValueTag(JPGTAG_SCAN_COMPONENT2,0),
-	      JPG_ValueTag(JPGTAG_SCAN_COMPONENT3,0),
-	      JPG_Continue(scantags)
-	    };
-	    for(i = 0;i < depth;i++) {
-	      const struct JPG_TagItem *comp = scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + i);
-	      ctags[0].ti_Data.ti_lData = (comp)?(comp->ti_Data.ti_lData):(i);
-	      class Scan *scan = new(m_pEnviron) class Scan(this);
-	      if (m_pScan == NULL) {
-		m_pScan = scan;
-	      } else {
-		m_pLast->TagOn(scan);
-	      }
-	      m_pLast = scan;
-	      scan->InstallDefaults(1,ctags);
-	    }
-	  } else {
-	    class Scan *scan = new(m_pEnviron) class Scan(this);
-	    if (m_pScan == NULL) {
-	      m_pScan = scan;
-	    } else {
-	      m_pLast->TagOn(scan);
-	    }
-	    m_pLast = scan;
-	    scan->InstallDefaults(depth,scantags);
-	  }
-	}
+        LONG sstart  = scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START);
+        sstart = scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START + tagoffset,sstart);
+        //
+        // If there are AC frequencies included, break up the scans.
+        breakup = (sstart > 0)?true:false;
+        CreateProgressiveScanParameters(breakup,tagoffset,tags,scantags);
       }
       tags = tags->NextTagItem();
     }
-  } else {
-    UBYTE maxdepth    = 4;
+    break;
+  case Residual:
+  case ACResidual:
+  case ResidualDCT:
+  case ACResidualDCT:
+    // Create a residual scan?
+    if (m_pTables->UseResiduals()) {
+      // Always create separate scans here. Not actually required, but performs better.
+      CreateSequentialScanParameters(true,tagoffset,tags);
+    }
+    break;
+  case ResidualProgressive:
+  case ACResidualProgressive:
+    //
+    if (m_pTables->UseResiduals()) { 
+      if (m_ucDepth > 4)
+        JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultParameters",
+                  "progressive mode allows only up to four components");
+      //
+      while(tags && (tags = tags->FindTagItem(JPGTAG_IMAGE_SCAN + tagoffset))) {
+        const struct JPG_TagItem *scantags = (struct JPG_TagItem *)(tags->ti_Data.ti_pPtr);
+        if (scantags) {
+          // Must always break up the scan.
+          CreateProgressiveScanParameters(true,tagoffset,tags,scantags);
+        }
+        tags = tags->NextTagItem();
+      }
+    }
+    break;
+  default:
+    // Create a regular scan
+    breakup = false;
     if (m_Type == JPEG_LS) {
       if (tags->GetTagData(JPGTAG_SCAN_LS_INTERLEAVING,JPGFLAG_SCAN_LS_INTERLEAVING_NONE) == 
-	  JPGFLAG_SCAN_LS_INTERLEAVING_NONE)
-	maxdepth = 1;
+          JPGFLAG_SCAN_LS_INTERLEAVING_NONE)
+        breakup = true;
     }
-    UBYTE depth       = m_ucDepth;
-    UBYTE comp        = 0;
-    //
-    // Create multiple scans for more than maxdepth components.
-    while(depth) {
-      class Scan *scan;
-      UBYTE curdepth = (depth > maxdepth)?(maxdepth):(depth);
-      struct JPG_TagItem ctags[] = {
-	JPG_ValueTag((curdepth > 0)?JPGTAG_SCAN_COMPONENT0:JPGTAG_TAG_IGNORE,comp + 0),
-	JPG_ValueTag((curdepth > 1)?JPGTAG_SCAN_COMPONENT1:JPGTAG_TAG_IGNORE,comp + 1),
-	JPG_ValueTag((curdepth > 2)?JPGTAG_SCAN_COMPONENT2:JPGTAG_TAG_IGNORE,comp + 2),
-	JPG_ValueTag((curdepth > 3)?JPGTAG_SCAN_COMPONENT3:JPGTAG_TAG_IGNORE,comp + 3),
-	JPG_Continue(tags)
-      };
-      
-      scan = new(m_pEnviron) class Scan(this);
-      if (m_pScan == NULL) {
-	assert(m_pScan == NULL && m_pLast == NULL);
-	m_pScan = scan;
-      } else {
-	assert(m_pScan && m_pLast);
-	m_pLast->TagOn(scan);
-      }
-      m_pLast = scan;
-      scan->InstallDefaults(curdepth,ctags);
-      comp += maxdepth;
-      depth-= curdepth;
-    }
+    CreateSequentialScanParameters(breakup,tagoffset,tags);
   }
   //
-  // Create a residual scan?
-  if (m_pTables->UseResiduals()) {
-    switch(m_Type) {
-    case Lossless:
-    case ACLossless:
-    case JPEG_LS:
-      JPG_THROW(INVALID_PARAMETER,"Frame::InstallDefaultScanParameters",
-		"the lossless scans do not create residuals, no need to code them");
-      break;
-    case DifferentialSequential:
-    case DifferentialProgressive:
-    case DifferentialLossless:
-    case ACDifferentialSequential:
-    case ACDifferentialProgressive:
-    case ACDifferentialLossless:
-      // Hmm. At this time, simply disallow. There is probably a way how to fit this into
-      // the highest hierarchical level, but not now.
-      JPG_THROW(NOT_IMPLEMENTED,"Frame::InstallDefaultScanParameters",
-		"the hierarchical mode does not yet allow residual coding");
-      break;
-    default:
-      // Make the first scan a residual scan.
-      { 
-	UBYTE component = m_ucDepth;
-	class Scan *scan;
-	do {
-	  component--;
-	  scan = new(m_pEnviron) class Scan(this);
-	  scan->TagOn(m_pScan);
-	  m_pScan = scan;
-	  scan->MakeResidualScan(ComponentOf(component));
-	} while(component);
-      }
-      break;
-    }
-  }
+  // Create refinements for this scan?
   if (m_pTables->UseRefinements()) {
     switch(m_Type) {
     case Lossless:
     case ACLossless:
     case JPEG_LS:
       JPG_THROW(INVALID_PARAMETER,"Frame::InstallDefaultScanParameters",
-		"the lossless scans do not support hidden refinement scans");
+                "the lossless scans do not support hidden refinement scans");
       break;
     case DifferentialSequential:
     case DifferentialProgressive:
@@ -613,28 +691,53 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
       // Hmm. At this time, simply disallow. There is probably a way how to fit this into
       // the highest hierarchical level, but not now.
       JPG_THROW(NOT_IMPLEMENTED,"Frame::InstallDefaultScanParameters",
-		"the hierarchical mode does not yet allow hidden refinement coding");
+                "the hierarchical mode does not yet allow hidden refinement coding");
+      break;
+    case Residual:
+    case ACResidual:
+    case ResidualProgressive:
+    case ACResidualProgressive:
+    case ResidualDCT:
+    case ACResidualDCT:
+      // Create hidden refinement scans for residual scans.
+      {
+        UBYTE hiddenbits;
+        UBYTE totalhidden = m_pTables->HiddenDCTBitsOf();
+        UBYTE component;
+        class Scan *scan;
+        for(hiddenbits = 0;hiddenbits < totalhidden;hiddenbits++) {
+          component = m_ucDepth;
+          do {
+            component--;
+            scan = new(m_pEnviron) class Scan(this);
+            scan->TagOn(m_pScan);
+            m_pScan = scan; // The AC part
+            scan->MakeHiddenRefinementScan(hiddenbits,ComponentOf(component),0,63);
+          } while(component);
+        }
+      }
       break;
     default:
-      // Create hidden refinement scans.
+      // Create hidden refinement scans for regular scans: Separate DC scans are required here.
       {
-	UBYTE hiddenbits;
-	UBYTE component;
-	class Scan *scan;
-	for(hiddenbits = 0;hiddenbits < m_pTables->HiddenDCTBitsOf();hiddenbits++) {
-	  component = m_ucDepth;
-	  do {
-	    component--;
-	    scan = new(m_pEnviron) class Scan(this);
-	    scan->TagOn(m_pScan);
-	    m_pScan = scan;
-	    scan->MakeHiddenRefinementACScan(hiddenbits,ComponentOf(component));
-	  } while(component);
-	  scan = new(m_pEnviron) class Scan(this);
-	  scan->TagOn(m_pScan);
-	  m_pScan = scan;
-	  scan->MakeHiddenRefinementDCScan(hiddenbits);
-	}
+        UBYTE hiddenbits;
+        UBYTE totalhidden = m_pTables->HiddenDCTBitsOf();
+        UBYTE component;
+        class Scan *scan;
+        for(hiddenbits = 0;hiddenbits < totalhidden;hiddenbits++) {
+          component = m_ucDepth;
+          do {
+            component--;
+            scan = new(m_pEnviron) class Scan(this);
+            scan->TagOn(m_pScan);
+            m_pScan = scan; // The AC part
+            scan->MakeHiddenRefinementScan(hiddenbits,ComponentOf(component),1,63);
+          } while(component);
+          scan = new(m_pEnviron) class Scan(this);
+          scan->TagOn(m_pScan);
+          m_pScan = scan; // The DC part
+          scan->MakeHiddenRefinementScan(hiddenbits,NULL,0,0);
+        }
       }
       break;
     }
@@ -645,13 +748,13 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
 ///
  
 /// Frame::StartParseScan
-class Scan *Frame::StartParseScan(class ByteStream *io)
+class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
 {
   class Scan *scan;
 
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartParseScan",
-	      "frame is currently not available for parsing");
+              "frame is currently not available for parsing");
 
   scan = new(m_pEnviron) class Scan(this);
 
@@ -669,40 +772,39 @@ class Scan *Frame::StartParseScan(class ByteStream *io)
   // If there is a residual marker, and this is the final scan,
   // build it now.
   if (m_bBuildRefinement && !m_bCreatedRefinement) {
-    assert(m_pTables->RefinementDataOf());
-    class ByteStream *stream = m_pTables->RefinementDataOf()->StreamOf();
+    class DataBox *box = m_pTables->RefinementDataOf(m_usRefinementCount++);
+    assert(box);
+    class ByteStream *stream = box->DecoderBufferOf();
     //
     // De-activate unless re-activated on the next scan/trailer.
-    m_pTables->ParseTables(stream);
+    // The refinement scans are not checksummed.
+    m_pTables->ParseTables(stream,NULL);
     m_bBuildRefinement = false;
     if (ScanForScanHeader(stream)) {
-      scan->StartParseHiddenRefinementScan(m_pImage);
-      return scan;
-    }
-  } else if (m_bBuildResidual && !m_bCreatedResidual) {
-    assert(m_pTables->ResidualDataOf());
-    class ByteStream *stream = m_pTables->ResidualDataOf()->StreamOf();
-    class BlockBitmapRequester *bb = dynamic_cast<class BlockBitmapRequester *>(m_pImage);
-    assert(stream && bb);
-    //
-    // De-activate unless re-activated on the next scan/trailer.
-    m_pTables->ParseTables(stream); 
-    if (m_pBlockHelper == NULL)
-      m_pBlockHelper  = new(m_pEnviron) class ResidualBlockHelper(this);
-    bb->SetBlockHelper(m_pBlockHelper);
-
-    m_bBuildResidual = false;
-    if (ScanForScanHeader(stream)) {
-      scan->StartParseResidualScan(m_pImage);
+      scan->StartParseHiddenRefinementScan(stream,m_pImage);
       return scan;
     }
   } else {
     // Regular scan.
-    m_pTables->ParseTables(io);
-    //
-    if (ScanForScanHeader(io)) {
-      scan->ParseMarker(io);
-      scan->StartParseScan(io,m_pImage);
+    m_pTables->ParseTables(io,chk);
+    // 
+    // Everything else is checksummed.
+    if (chk && m_pTables->ChecksumTables()) {
+      assert(m_pAdapter == NULL);
+      //
+      // The scan requires a valid IO stream that stays over this
+      // call.
+      m_pAdapter = new(m_pEnviron) class ChecksumAdapter(io,chk,false);
+      if (ScanForScanHeader(m_pAdapter)) {
+        scan->ParseMarker(m_pAdapter);
+        scan->StartParseScan(m_pAdapter,chk,m_pImage);
+        return scan;
+      }
+    } else {
+      if (ScanForScanHeader(io)) {
+        scan->ParseMarker(io);
+        scan->StartParseScan(io,chk,m_pImage);
+      }
       return scan;
     }
   }
@@ -718,7 +820,6 @@ bool Frame::ScanForScanHeader(class ByteStream *stream)
 { 
   LONG data;
 
-  
   //
   data = stream->GetWord();
   if (data != 0xffda) {
@@ -728,17 +829,17 @@ bool Frame::ScanForScanHeader(class ByteStream *stream)
     do {
       stream->LastUnDo();
       do {
-	data = stream->Get();
+        data = stream->Get();
       } while(data != 0xff && data != ByteStream::EOF);
       //
       if (data == ByteStream::EOF)
-	break; // Try from the main stream
+        break; // Try from the main stream
       stream->LastUnDo();
       //
       // If this is SOS, we recovered. Maybe.
       data = stream->GetWord();
       if (data == ByteStream::EOF)
-	break;
+        break;
       // Check for the proper marker.
     } while(data != 0xffda);
   }
@@ -749,19 +850,37 @@ bool Frame::ScanForScanHeader(class ByteStream *stream)
 
 /// Frame::StartWriteScan
 // Start writing a single scan. Scan parameters must have been installed before.
-class Scan *Frame::StartWriteScan(class ByteStream *io)
+class Scan *Frame::StartWriteScan(class ByteStream *io,class Checksum *chk)
 {
   if (m_pCurrent == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartWriteScan",
-	      "scan parameters have not been defined yet"); 
+              "scan parameters have not been defined yet"); 
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartWriteScan",
-	      "frame is currently not available for measurements");
+              "frame is currently not available for measurements");
   //
   // Create a compatible image buffer and put it into BitmapCtrl,
   // or re-use it.
   //m_pTables->WriteTables(io);
-  m_pCurrent->StartWriteScan(io,m_pImage);
+
+  // If this scan is not hidden, write the previously collected
+  // refinement data out. Scan creation puts all the hidden scans first.
+  if (!m_pCurrent->isHidden()) {
+    assert(m_pCurrentRefinement == NULL);
+    if (m_pTables->ChecksumTables()) {
+      // The checksum is computed toplevel.
+      m_pCurrent->StartWriteScan(io,NULL,m_pImage);
+    } else {
+      m_pCurrent->StartWriteScan(io,chk,m_pImage);
+    }
+  } else {
+    // Write into the refinement box.
+    class DataBox *box = m_pTables->AppendRefinementData();
+    assert(box); 
+    assert(m_pCurrentRefinement == NULL);
+    m_pCurrentRefinement   = box;
+    m_pCurrent->StartWriteScan(box->EncoderBufferOf(),NULL,m_pImage);
+  }
 
   return m_pCurrent;
 }
@@ -773,16 +892,48 @@ class Scan *Frame::StartMeasureScan(void)
 {
   if (m_pCurrent == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartMeasureScan",
-	      "scan parameters have not been defined yet");
+              "scan parameters have not been defined yet");
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartMeasureScan",
-	      "frame is currently not available for measurements");
+              "frame is currently not available for measurements");
   // 
   // Create a compatible image buffer and put it into BitmapCtrl,
   // or re-use it.
   m_pCurrent->StartMeasureScan(m_pImage);
 
   return m_pCurrent;
+}
+///
+
+/// Frame::EndParseScan
+// End parsing the current scan.
+void Frame::EndParseScan(void)
+{
+  assert(m_pCurrent);
+  //
+  if (m_pAdapter && m_pTables->ChecksumTables() == false) {
+    //
+    // Compute the checksum so far and let the thing go.
+    m_pAdapter->Close(); 
+    delete m_pAdapter;
+    m_pAdapter = NULL;
+  }
+}
+///
+
+/// Frame::EndWriteScan
+// End writing the current scan
+void Frame::EndWriteScan(void)
+{
+  assert(m_pCurrent);
+  m_pCurrent->Flush();
+  if (m_pAdapter && m_pTables->ChecksumTables() == false) {
+    //
+    // Compute the checksum so far and let the thing go.
+    m_pAdapter->Close(); 
+    delete m_pAdapter;
+    m_pAdapter = NULL;
+  }
 }
 ///
 
@@ -802,7 +953,7 @@ void Frame::WriteFrameType(class ByteStream *io) const
 {
   if (m_pScan == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::WriteFrameType",
-	      "frame parameters have not yet been installed, cannot write frame type");
+              "frame parameters have not yet been installed, cannot write frame type");
 
   m_pScan->WriteFrameType(io);
 }
@@ -813,10 +964,22 @@ void Frame::WriteFrameType(class ByteStream *io) const
 // if there are no more scans in the file, true otherwise.
 bool Frame::ParseTrailer(class ByteStream *io)
 {
+  // The frame itself has not trailer (only the image has).
+  // Anyhow, there is no data to be checksummed here, so conclude with
+  // the checksum.
+  delete m_pAdapter;m_pAdapter = NULL;
+  //
   do {
     LONG marker = io->PeekWord();
+    class DataBox *box;
     
     switch(marker) {
+    case 0xffb1: // residual sequential
+    case 0xffb2: // residual progressive.
+    case 0xffb3:
+    case 0xffb9:
+    case 0xffba:
+    case 0xffbb:
     case 0xffc0:
     case 0xffc1:
     case 0xffc2:
@@ -824,65 +987,38 @@ bool Frame::ParseTrailer(class ByteStream *io)
     case 0xffc9:
     case 0xffca:
     case 0xffcb:
-    case 0xfff7:
+    case 0xfff7: // JPEG LS SOS
       // All non-differential frames, may not appear in a hierarchical process.
       JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-	       "found a non-differential frame start behind the initial frame");
-      return true;
-    case 0xffd9: // The EOI still needs to be seen by the image.
+               "found a non-differential frame start behind the initial frame");
+      return false;
+    case 0xffde: // DHP, should not go here.
+      JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
+               "found a double DHP marker behind a frame start");
+      return false;
     case 0xffc5:
     case 0xffc6:
     case 0xffc7:
     case 0xffcd:
-    case 0xffce:  
+    case 0xffce:
     case 0xffcf:
-    case 0xffdf: // EXP-marker also terminates this frame.
-      // All differential frame starts: The frame ends here.
-      // If we have a residual scan that is not yet parsed off,
-      // create it now and parse it last so it sees the original
-      // data. 
-      if (m_pTables->RefinementDataOf() && !m_bCreatedRefinement) {
-	assert(m_pImage);
-	if (dynamic_cast<class BlockBitmapRequester *>(m_pImage)) {
-	  LONG data;
-	  do {
-	    data = m_pTables->RefinementDataOf()->StreamOf()->PeekWord();
-	    if (data == 0xffff) {
-	      m_pTables->RefinementDataOf()->StreamOf()->Get(); // Filler byte
-	    }
-	  } while(data == 0xffff);
-	  if (data != ByteStream::EOF && data != 0xffd9) {
-	    m_bBuildRefinement = true;
-	    //
-	    // Come here again when the refinement is parsed off.
-	    return true;
-	  } else {
-	    // Do not come again, refinement is there already.
-	    m_bCreatedRefinement = true;
-	  }
-	}
-      }
-      if (m_pTables->ResidualDataOf() && !m_bCreatedResidual) {
-	assert(m_pImage);
-	if (dynamic_cast<class BlockBitmapRequester *>(m_pImage)) { 
-	  LONG data;
-	  do {
-	    data = m_pTables->ResidualDataOf()->StreamOf()->PeekWord();
-	    if (data == 0xffff) {
-	      m_pTables->ResidualDataOf()->StreamOf()->Get(); // Filler byte
-	    }
-	  } while(data == 0xffff);
-	  if (data != ByteStream::EOF && data != 0xffd9) {
-	    m_bBuildResidual = true;
-	    //
-	    // Come here again when the residual is parsed off.
-	    return true;
-	  } else {
-	    // Do not come again, refinement is there already.
-	    m_bCreatedResidual = true;
-	  }
-	}
-      }
+      // All differential types, may only appear in a differential frame.
+      if (!m_pParent->isHierarchical())
+        JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
+                 "found a differential frame start outside a hierarchical process");
+      return false;
+    case 0xffda: // This is an SOS marker, i.e. the frame does not end here.
+      return true;
+    case 0xffd9: // The EOI still needs to be seen by the image.
+      // Once we run into the EOI, check for the refinement scans.
+      if ((box = m_pTables->RefinementDataOf(m_usRefinementCount)) && !m_bCreatedRefinement) {
+        assert(m_pImage);
+        // This must be the start of a new scan. No filler bytes allowed here.
+        m_bBuildRefinement = true;
+        return true;
+      } 
+      // No refinement scans, or refinement scans done:
+      // We're done here.
       return false;
     case 0xffff:
       // A filler byte. Remove the filler, try again.
@@ -901,34 +1037,41 @@ bool Frame::ParseTrailer(class ByteStream *io)
       break;
     case ByteStream::EOF:
       JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-	       "expecting an EOI marker at the end of the stream");
+               "missing an EOI marker at the end of the stream");
       return false;
     default:
       if (marker < 0xff00) {
-	JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-		 "expecting a marker or marker segment - stream is out of sync");
-	// Advance to the next marker and see how it goes from there...
-	io->Get(); // Remove the invalid thing.
-	do {
-	  marker = io->Get();
-	} while(marker != 0xff && marker != ByteStream::EOF);
-	//
-	if (marker == ByteStream::EOF) {
-	  JPG_WARN(UNEXPECTED_EOF,"Frame::ParseTrailer",
-		   "run into an EOF while scanning for the next marker");
-	  return false;
-	}
-	io->LastUnDo();
-	// Continue parsing, check what the next marker might be.
-      } else if (marker < 0xffc0) {
-	JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-		 "detected an unknown marker - stream is out of sync");
-	return true;
+        JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
+                 "expecting a marker or marker segment - stream is out of sync");
+        // Advance to the next marker and see how it goes from there...
+        io->Get(); // Remove the invalid thing.
+        do {
+          marker = io->Get();
+        } while(marker != 0xff && marker != ByteStream::EOF);
+        //
+        if (marker == ByteStream::EOF) {
+          JPG_WARN(UNEXPECTED_EOF,"Frame::ParseTrailer",
+                   "run into an EOF while scanning for the next marker");
+          return false;
+        }
+        io->LastUnDo();
+        // Continue parsing, check what the next marker might be.
       } else {
-	return true;
+        // Something that looks like a valid marker. This could be the
+        // tables/misc section of the next frame or next scan, depending
+        // on whether we are hierarchical (next frame) or progressive (next scan).
+        // Unfortunately, what is what we only know after having received either
+        // the SOS marker (next scan) or an SOF marker (next frame).
+        // Thus, at this time, parse of the tables, place its data in the
+        // global table namespace, overriding what was there, then
+        // continue parsing here until we know what we have.
+        assert(m_pTables);
+        // This might include EXP if we are hierarchical.
+        m_pTables->ParseTables(io,NULL,m_pParent->isHierarchical());
       }
     }
   } while(true);
+  
   return true; // code never goes here.
 }
 ///
@@ -949,6 +1092,10 @@ class LineAdapter *Frame::BuildLineAdapter(void)
   case ACDifferentialProgressive:
   case Residual:
   case ACResidual:
+  case ResidualProgressive:
+  case ACResidualProgressive:
+  case ResidualDCT:
+  case ACResidualDCT:
     return new(m_pEnviron) class BlockLineAdapter(this); // all block based.
   case Lossless:
   case ACLossless:
@@ -964,9 +1111,10 @@ class LineAdapter *Frame::BuildLineAdapter(void)
 }
 ///
 
-/// Frame::BuildImage
-// Build the image buffer type fitting to the frame type.
-class BitmapCtrl *Frame::BuildImage(void)
+/// Frame::ExtendImageBuffer
+// Extend the image by a merging process, and install it
+// here.
+void Frame::ExtendImageBuffer(class BufferCtrl *img,class Frame *residual)
 {
   switch(m_Type) {
   case Baseline: // also sequential
@@ -974,14 +1122,48 @@ class BitmapCtrl *Frame::BuildImage(void)
   case Progressive:  
   case ACSequential:
   case ACProgressive: 
-    {
-      if (m_pTables->ResidualDataOf()) {
-	m_pBlockHelper  = new(m_pEnviron) class ResidualBlockHelper(this);
+    if (m_pBlockHelper == NULL) {
+      class BlockBitmapRequester *bb = dynamic_cast<class BlockBitmapRequester *>(img);
+      if (bb && m_pTables->ResidualDataOf()) {
+        m_pBlockHelper  = new(m_pEnviron) class ResidualBlockHelper(this,residual);
+        bb->SetBlockHelper(m_pBlockHelper);
       }
-      class BlockBitmapRequester *bb = new(m_pEnviron) class BlockBitmapRequester(this); 
-      bb->SetBlockHelper(m_pBlockHelper);
-      return bb;
     }
+    break;
+  case Lossless:
+  case ACLossless:
+  case JPEG_LS:
+    JPG_THROW(MALFORMED_STREAM,"Frame::ExtendImage",
+              "Lossless codestreams cannot be extended by a residual stream");
+    break;
+  case Residual:
+  case ACResidual:  
+  case ResidualProgressive:
+  case ACResidualProgressive:
+  case ResidualDCT:
+  case ACResidualDCT:
+    JPG_THROW(MALFORMED_STREAM,"Frame::ExtendImage",
+              "Residual scans cannot be extended by residuals itself");
+    break;
+  default: 
+    JPG_THROW(MALFORMED_STREAM,"Frame::ExtendImage",
+              "Hierarchical codestreams cannot be extended a residual stream");
+    break;
+  }
+}
+///
+
+/// Frame::BuildImageBuffer
+// Build the image buffer type fitting to the frame type.
+class BitmapCtrl *Frame::BuildImageBuffer(void)
+{
+  switch(m_Type) {
+  case Baseline: // also sequential
+  case Sequential:
+  case Progressive:  
+  case ACSequential:
+  case ACProgressive: 
+    return new(m_pEnviron) class BlockBitmapRequester(this); 
   case Lossless:
   case ACLossless:
   case DifferentialLossless:
@@ -990,6 +1172,13 @@ class BitmapCtrl *Frame::BuildImage(void)
     return new(m_pEnviron) class LineBitmapRequester(this);
   case Dimensions:
     return new(m_pEnviron) class HierarchicalBitmapRequester(this);
+  case Residual:
+  case ACResidual:
+  case ResidualProgressive:
+  case ACResidualProgressive:
+  case ResidualDCT:
+  case ACResidualDCT:
+    return NULL; // No image required.
   default:
     break; // Everything else is part of a hierarchical scan and does not have a full image buffer by itself.
   }
@@ -1010,10 +1199,10 @@ void Frame::PostImageHeight(ULONG height)
     m_pImage->PostImageHeight(height);
   } else if (m_ulHeight == height) {
     JPG_WARN(MALFORMED_STREAM,"Frame::PostImageHeight",
-	     "found a double DNL marker for a frame, frame size is known already");
+             "found a double DNL marker for a frame, frame size is known already");
   } else {
     JPG_THROW(MALFORMED_STREAM,"Frame::PostImageHeight",
-	      "found a double DNL marker for a frame, indicating an inconsistent frame height");
+              "found a double DNL marker for a frame, indicating an inconsistent frame height");
   }
 }
 ///

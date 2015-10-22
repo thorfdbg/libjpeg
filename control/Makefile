@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.12 2012-05-20 16:17:27 thor Exp $
+## $Id: Makefile,v 1.13 2013/03/05 08:12:39 thor Exp $
 ##
 ## Makefile for the jpeg transcoder project,
 ## THOR Software, May 20, 2012, Thomas Richter
@@ -9,7 +9,7 @@
 ##
 
 FILES	=	bitmapctrl residualblockhelper \
-		blockbuffer linebuffer \
+		blockctrl blockbuffer residualbuffer linebuffer \
 		blockbitmaprequester linebitmaprequester \
 		lineadapter blocklineadapter linelineadapter \
 		linemerger hierarchicalbitmaprequester bufferctrl

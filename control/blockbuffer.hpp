@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbuffer.hpp,v 1.5 2012-06-02 10:27:13 thor Exp $
+** $Id: blockbuffer.hpp,v 1.13 2015/05/10 15:21:43 thor Exp $
 **
 */
 
@@ -57,6 +37,7 @@ the committee itself.
 
 /// Includes
 #include "tools/environment.hpp"
+#include "control/blockctrl.hpp"
 ///
 
 /// Forwards
@@ -71,7 +52,7 @@ class ResidualBlockHelper;
 /// class BlockBuffer
 // This class pulls blocks from the frame and reconstructs from those
 // quantized block lines or encodes from them.
-class BlockBuffer : public JKeeper {
+class BlockBuffer : public BlockCtrl {
   //
   class Frame               *m_pFrame;
   //
@@ -112,15 +93,6 @@ protected:
   // Current position in stream parsing for the residual.
   class QuantizedRow      ***m_pppRStream;
   //
-  // Current position in reconstruction or encoding,
-  // going through the color transformation.
-  // On decoding, the line in here has the Y-coordinate 
-  // in m_ulReadyLines.
-  class QuantizedRow      ***m_pppQImage;
-  //
-  // Current position for the residual image.
-  class QuantizedRow      ***m_pppRImage;
-  //
   // Build common structures for encoding and decoding
   void BuildCommon(void);
   //
@@ -138,7 +110,7 @@ public:
   }
   //
   // Return the current top MCU quantized line.
-  class QuantizedRow *CurrentQuantizedRow(UBYTE comp)
+  virtual class QuantizedRow *CurrentQuantizedRow(UBYTE comp)
   {
     assert(comp < m_ucCount);
     return *m_pppQStream[comp];
@@ -156,9 +128,6 @@ public:
   // Start a MCU scan by initializing the quantized rows for this row
   // in this scan.
   virtual bool StartMCUQuantizerRow(class Scan *scan);
-  //
-  // The same for a row of residuals.
-  virtual bool StartMCUResidualRow(void);
   //
   // Scan-dependent residual start
   virtual bool StartMCUResidualRow(class Scan *scan);

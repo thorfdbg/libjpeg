@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 /*
 ** Definition of the Environment.
 ** 
-** $Id: environment.cpp,v 1.3 2012-06-02 10:27:14 thor Exp $
+** $Id: environment.cpp,v 1.9 2014/09/30 08:33:18 thor Exp $
 **
 ** The environment holds structures for exception management without
 ** exceptions, and for memory management without a global new.
@@ -105,7 +85,7 @@ static ULONG lifetimer = 0;
 #include "std/stdio.hpp"
 void BreakPoint(void)
 {
-  printf("***stop***\n");
+
 }
 #endif
 ///
@@ -154,7 +134,7 @@ static void PrintHist(void)
   
   for(i=0;i<32;i++) {
     printf("Allocations for memory of chunk size between %10lu and %10lu: %lu\n",
-	   1UL<<i,1UL<<(i+1),(unsigned long)memhist[i]);
+           1UL<<i,1UL<<(i+1),(unsigned long)memhist[i]);
   }
   for(i=0;i<SMALL_MEM_LIMIT;i++) {
     if (smallmem[i])
@@ -404,16 +384,16 @@ Environ::~Environ(void)
 #if CHECK_LEVEL > 0
     // Check only on the final destruction.
     printf("\n%ld bytes memory not yet released.\n"
-	   "\n%ld bytes maximal required.\n"
-	   "\n%ld allocations performed.\n",
-	   long(totalmem),long(maxmem),long(malloccount));
+           "\n%ld bytes maximal required.\n"
+           "\n%ld allocations performed.\n",
+           long(totalmem),long(maxmem),long(malloccount));
 # ifndef USE_VALGRIND
     // All memory released?
 #  if defined(HAVE_ATOMIC_ADDSUB) || defined(USE_I386_XADD) || defined(USE_INTERLOCKED)
     assert(totalmem == 0);
 #  else
     printf("\nFinal memory check skipped,\n"
-	   "unreliable due to missing locking primitive\n");
+           "unreliable due to missing locking primitive\n");
 #  endif
 # endif
 #endif
@@ -432,9 +412,9 @@ void Environ::MergeWarningQueueFrom(class Environ *p)
   if (m_bSuppressMultiple) {
     for (i = 0;i < WarnQueueSize;i++) {
       if (!p->m_WarnQueue[i].isEmpty()) {
-	// This will also enter the warning into the database.
-	isWarned(p->m_WarnQueue[i]);
-	p->m_WarnQueue[i].Reset();
+        // This will also enter the warning into the database.
+        isWarned(p->m_WarnQueue[i]);
+        p->m_WarnQueue[i].Reset();
       }
     }
   }
@@ -443,8 +423,8 @@ void Environ::MergeWarningQueueFrom(class Environ *p)
 
 /// Environ::Throw
 void Environ::Throw(const LONG error,const char *what,const LONG line, 
-		    const char *where, 
-		    const char *description)
+                    const char *where, 
+                    const char *description)
 {
   // Must have an error.
   assert(error);
@@ -536,12 +516,12 @@ bool Environ::isWarned(const class Exception &e)
       // here as a key. No string comparison! This is good enough
       // for our purposes.
       if (m_WarnQueue[i] == e) {
-	// Found already. Ok, move this to front.
-	if (i > 0) {
-	  m_WarnQueue[i]   = m_WarnQueue[i-1];
-	  m_WarnQueue[i-1] = e;
-	}
-	return true;
+        // Found already. Ok, move this to front.
+        if (i > 0) {
+          m_WarnQueue[i]   = m_WarnQueue[i-1];
+          m_WarnQueue[i-1] = e;
+        }
+        return true;
       }
     }
   }
@@ -568,7 +548,7 @@ void Environ::LowerToWarning(void)
 
 /// Environ::Warn
 void Environ::Warn(const LONG error,const char *what,const LONG line, 
-		   const char *where, const char *description)
+                   const char *where, const char *description)
 {  
   // Only if there is an error
   if (error) {
@@ -599,7 +579,7 @@ void Environ::Warn(const class Exception &exc)
 void Environ::PostLastError(void)
 {
   ForwardMessage(m_pExceptionHook,m_ExceptionTags,
-		 m_Root.m_Exception);
+                 m_Root.m_Exception);
 }
 ///
 
@@ -608,7 +588,7 @@ void Environ::PostLastError(void)
 void Environ::PostLastWarning(void)
 {
   ForwardMessage(m_pWarningHook,m_WarningTags,
-		 m_WarnRoot.m_Exception);
+                 m_WarnRoot.m_Exception);
 }
 ///
 
@@ -623,11 +603,11 @@ void Environ::NextWarning(void)
     // Deactivate the current warning by going thru the warning queue.
     for(i = 0;i < WarnQueueSize;i++) {
       if (!m_WarnQueue[i].isEmpty()) {
-	if (m_WarnQueue[i] == m_WarnRoot.LastException()) {
-	  m_WarnQueue[i].Reset();
-	} else {
-	  next = i; // This will be the next warning.
-	}
+        if (m_WarnQueue[i] == m_WarnRoot.LastException()) {
+          m_WarnQueue[i].Reset();
+        } else {
+          next = i; // This will be the next warning.
+        }
       }
     }
     if (next >= 0) {
@@ -690,17 +670,17 @@ inline void *Environ::CoreAllocMem(ULONG bytesize,ULONG reqments)
       ULONG  s = bytesize;
       ULONG *p = (ULONG *)mem;
       while(s >= sizeof(ULONG)) {
-	*p++ = 0xdeadf00dUL;
-	s   -= sizeof(ULONG);
+        *p++ = 0xdeadf00dUL;
+        s   -= sizeof(ULONG);
       }
       UBYTE *q = (UBYTE *)p;
       switch(s) {
       case 3:
-	*q++ = 0xde;
+        *q++ = 0xde;
       case 2:
-	*q++ = 0xad;
+        *q++ = 0xad;
       case 1:
-	*q++ = 0xf0;
+        *q++ = 0xf0;
       }
     }
     {
@@ -737,17 +717,17 @@ inline void Environ::CoreFreeMem(void *mem,ULONG bytesize)
       ULONG  s = bytesize;
       ULONG *p = (ULONG *)mem;
       while(s >= sizeof(ULONG)) {
-	*p++ = 0xdeadbeefUL;
-	s   -= sizeof(ULONG);
+        *p++ = 0xdeadbeefUL;
+        s   -= sizeof(ULONG);
       }
       UBYTE *q = (UBYTE *)p;
       switch(s) {
       case 3:
-	*q++ = 0xde;
+        *q++ = 0xde;
       case 2:
-	*q++ = 0xad;
+        *q++ = 0xad;
       case 1:
-	*q++ = 0xbe;
+        *q++ = 0xbe;
       }
     }
 #endif
@@ -837,7 +817,7 @@ void Environ::FreeMem(void *mem,size_t bytesize)
 /// Environ::ForwardMessage
 // Forward a warning or an exception to the supplied hook
 void Environ::ForwardMessage(struct JPG_Hook *hook,struct JPG_TagItem *tags,
-			     const Exception &exc)
+                             const Exception &exc)
 {
   // Check whether a hook is available. If not, ignore.
   // Note that this is only thread-safe if the user supplied hook is.

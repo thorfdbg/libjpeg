@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
  * Tag item definitions
  * 
- * $Id: tagitem.cpp,v 1.2 2012-06-02 10:27:14 thor Exp $
+ * $Id: tagitem.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
  *
  * Tag items provide a convenient mechanism to build functions with are
  * easely extendable. A tag item consists of:
@@ -85,14 +65,14 @@ struct JPG_TagItem *JPG_TagItem::NextTagItem(void)
       // go to the next list
       current = (struct JPG_TagItem *)(current->ti_Data.ti_pPtr); 
       if (current == NULL)
-	return NULL;
+        return NULL;
       continue;
     case JPGTAG_TAG_SKIP:
       current = current + 1 + current->ti_Data.ti_lData; // skip this and the next n items
       continue;
     default: 
       if (current->ti_Tag & JPGTAG_TAG_USER)
-	return current;
+        return current;
       // Runs into the following
     case JPGTAG_TAG_IGNORE:    
       current++;
@@ -120,15 +100,15 @@ struct JPG_TagItem *JPG_TagItem::FindTagItem(JPG_Tag id)
       // go to the next list
       current = (struct JPG_TagItem *)(current->ti_Data.ti_pPtr); 
       if (current == NULL)
-	return NULL;
+        return NULL;
       continue;
     case JPGTAG_TAG_SKIP:
       current = current + 1 + current->ti_Data.ti_lData; // skip this and the next n items
       continue;
     default: 
       if (current->ti_Tag & JPGTAG_TAG_USER) {
-	if (current->ti_Tag == id)
-	  return current;
+        if (current->ti_Tag == id)
+          return current;
       }
       // Runs into the following
     case JPGTAG_TAG_IGNORE:    
@@ -142,7 +122,7 @@ struct JPG_TagItem *JPG_TagItem::FindTagItem(JPG_Tag id)
 ///
 
 /// JPG_TagItem::GetTagData
-LONG JPG_TagItem::GetTagData(JPG_Tag id,LONG defdata) const
+JPG_LONG JPG_TagItem::GetTagData(JPG_Tag id,JPG_LONG defdata) const
 {
   const struct JPG_TagItem *current;
 
@@ -153,6 +133,20 @@ LONG JPG_TagItem::GetTagData(JPG_Tag id,LONG defdata) const
   return defdata;
 }
 ///
+
+/// JPG_TagItem::GetTagFloat
+JPG_FLOAT JPG_TagItem::GetTagFloat(JPG_Tag id,JPG_FLOAT defdata) const
+{
+  const struct JPG_TagItem *current;
+
+  if ((current = FindTagItem(id)) != NULL) {
+    return current->ti_Data.ti_fData;
+  }
+
+  return defdata;
+}
+///
+
 
 /// JPG_TagItem::GetTagPtr
 APTR JPG_TagItem::GetTagPtr(JPG_Tag id,APTR defptr) const
@@ -168,12 +162,23 @@ APTR JPG_TagItem::GetTagPtr(JPG_Tag id,APTR defptr) const
 ///
 
 /// JPG_TagItem::SetTagData
-void JPG_TagItem::SetTagData(JPG_Tag id,LONG data)
+void JPG_TagItem::SetTagData(JPG_Tag id,JPG_LONG data)
 {
   struct JPG_TagItem *current;
 
   if ((current = FindTagItem(id)) != NULL) {
     current->ti_Data.ti_lData = data;
+  }
+}
+///
+
+/// JPG_TagItem::SetTagFloat
+void JPG_TagItem::SetTagFloat(JPG_Tag id,JPG_FLOAT data)
+{
+  struct JPG_TagItem *current;
+
+  if ((current = FindTagItem(id)) != NULL) {
+    current->ti_Data.ti_fData = data;
   }
 }
 ///
@@ -224,7 +229,7 @@ void JPG_TagItem::ClearTagSets()
 // new taglist. If the target taglist is NULL, it is not
 // filled in, but tags are just counted.
 JPG_LONG JPG_TagItem::FilterTags(struct JPG_TagItem *target,const struct JPG_TagItem *source,
-				 const struct JPG_TagItem *defaults,const struct JPG_TagItem *drop)
+                                 const struct JPG_TagItem *defaults,const struct JPG_TagItem *drop)
 {
   LONG count = 0;
   const struct JPG_TagItem *parse = source;
@@ -233,7 +238,7 @@ JPG_LONG JPG_TagItem::FilterTags(struct JPG_TagItem *target,const struct JPG_Tag
     if (parse->ti_Tag & JPGTAG_TAG_USER) {
       // Got a setting tag, carry it over.
       if (target) {
-	*target++ = *parse;
+        *target++ = *parse;
       }
       count++;
     }
@@ -247,13 +252,13 @@ JPG_LONG JPG_TagItem::FilterTags(struct JPG_TagItem *target,const struct JPG_Tag
       // Check whether there are any tags we shall not add from
       // the defaults.
       if (drop == NULL || drop->FindTagItem(defaults->ti_Tag) == NULL) {
-	if (source == NULL || source->FindTagItem(defaults->ti_Tag) == NULL) {
-	  // Ok, we know nothing about this value, attach.
-	  if (target) {
-	    *target++ = *defaults;
-	  }
-	  count++;
-	}
+        if (source == NULL || source->FindTagItem(defaults->ti_Tag) == NULL) {
+          // Ok, we know nothing about this value, attach.
+          if (target) {
+            *target++ = *defaults;
+          }
+          count++;
+        }
       }
     }
     defaults = defaults->NextTagItem();

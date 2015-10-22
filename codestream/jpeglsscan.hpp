@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.hpp,v 1.19 2012-09-27 20:33:06 thor Exp $
+** $Id: jpeglsscan.hpp,v 1.30 2014/11/13 21:21:50 thor Exp $
 **
 */
 
@@ -81,6 +61,7 @@ class Thresholds;
 // A JPEG LS scan, the base class for all LS scan types
 class JPEGLSScan : public EntropyParser {
   //
+#if ACCUSOFT_CODE
   // The class used for pulling and pushing data.
   class LineBuffer          *m_pLineCtrl;
   //
@@ -96,11 +77,11 @@ class JPEGLSScan : public EntropyParser {
   UBYTE                      m_ucMapIdx[4];
   // 
   // The previous line, required to compute the contexts and the prediction.
-  class Line                 m_Top[4];
+  struct Line                m_Top[4];
   //
   // The line above the previous line. This and m_pusTop are swapped every
   // line to have a continuous line buffer.
-  class Line                 m_AboveTop[4];
+  struct Line                m_AboveTop[4];
   //
 protected:
   //
@@ -166,6 +147,10 @@ protected:
   //
   // The low bit for the point transform.
   UBYTE                      m_ucLowBit;
+  //
+  // Quick golomb decoder. This array returns the number of leading
+  // zero bits of its input.
+  UBYTE                      m_ucLeadingZeros[256];
   //
   // Context state variables. The first two are
   // reserved for the run mode.
@@ -240,9 +225,9 @@ protected:
   bool isRunMode(LONG d1,LONG d2,LONG d3) const
   {
     if ((d1 > m_lNear || d1 < -m_lNear) ||
-	(d2 > m_lNear || d2 < -m_lNear) ||
-	(d3 > m_lNear || d3 < -m_lNear))
-	 return false;
+        (d2 > m_lNear || d2 < -m_lNear) ||
+        (d3 > m_lNear || d3 < -m_lNear))
+         return false;
     return true;
   }
   //
@@ -293,9 +278,9 @@ protected:
     } else {
       px += m_lC[ctxt];
     }
-    if (px > m_lMaxVal)
+    if (unlikely(px > m_lMaxVal))
       return m_lMaxVal;
-    if (px < 0) 
+    if (unlikely(px < 0))
       return 0;
     return px;
   }
@@ -311,15 +296,15 @@ protected:
       rx = px + errval * m_lDelta;
     
     // First wraparound into the extended reconstruct range.
-    if (rx < m_lMinReconstruct)
+    if (unlikely(rx < m_lMinReconstruct))
       rx += m_lRange * m_lDelta;
-    if (rx > m_lMaxReconstruct)
+    if (unlikely(rx > m_lMaxReconstruct))
       rx -= m_lRange * m_lDelta;
 
     // Clip into the range.
-    if (rx > m_lMaxVal)
+    if (unlikely(rx > m_lMaxVal))
       rx = m_lMaxVal;
-    if (rx < 0)
+    if (unlikely(rx < 0))
       rx = 0;
     
     return rx;      
@@ -346,11 +331,11 @@ protected:
   LONG QuantizePredictionError(LONG errval) const
   {
     // Quantization of the error signal.
-    if (m_lNear > 0) {
+    if (unlikely(m_lNear > 0)) {
       if (errval > 0) {
-	errval =  (m_lNear + errval) / m_lDelta;
+        errval =  (m_lNear + errval) / m_lDelta;
       } else {
-	errval = -(m_lNear - errval) / m_lDelta;
+        errval = -(m_lNear - errval) / m_lDelta;
       }
     }
 
@@ -358,9 +343,9 @@ protected:
     // A.9 is buggy since it does not allow negative errors.
     // Instead, map into the range of 
     // (range + 1) / 2 - range .. (range + 1) / 2 - 1
-    if (errval < m_lMinErr)
+    if (unlikely(errval < m_lMinErr))
       errval += m_lRange;
-    if (errval >= m_lMaxErr)
+    if (unlikely(errval >= m_lMaxErr))
       errval -= m_lRange;
       
     return errval;
@@ -371,13 +356,13 @@ protected:
   {
     UBYTE k;
 
-    for(k = 0;(m_lN[context] << k) < m_lA[context] && k < 32;k++) {
+    for(k = 0;(m_lN[context] << k) < m_lA[context] && k < 24;k++) {
     }
 
-    if (k == 32) {
+    if (unlikely(k == 24)) {
       JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombParameter",
-	       "Golomb coding parameter of JPEG LS stream run out of bounds, "
-	       "synchronization lost");
+               "Golomb coding parameter of JPEG LS stream run out of bounds, "
+               "synchronization lost");
       return 0;
     }
     
@@ -402,7 +387,6 @@ protected:
   //
   // Map the error to a positive symbol using the golomb parameter and the
   // context information.
-  // The flag "shifted" describes whether a shifted encoding will be used.
   // By default, the output will be ordered as 0,-1,1,-2,2,-3,3. If
   // offset == +1, the order will be -1,0,-2,1,-3,...
   // If offset == -1, the order will be 0,1,-1,2,-2,...
@@ -426,13 +410,13 @@ protected:
       errval = merr >> 1;
     }
 
-    if (offset > 0)
-      errval = -(errval + 1);
-
-    if (offset < 0)
-      errval = -errval;
-
-    return errval;
+    if (offset > 0) {
+      return -(errval + 1);
+    } else if (offset < 0) {
+      return -errval;
+    } else {
+      return errval;
+    }
   }
   //
   // Encode the mapped error using the golomb code k.
@@ -441,15 +425,24 @@ protected:
   {
     LONG unary = errval >> k;
     
-    if (unary < limit) {
+    if (likely(unary < limit)) {
       // Unary part
-      if (unary) 
-	m_Stream.Put(unary,0);
+      if (likely(unary)) {
+        if (unlikely(unary > 32)) {
+          m_Stream.Put<32>(0);
+          unary -= 32;
+        }
+        m_Stream.Put(unary,0);
+      }
       m_Stream.Put<1>(1);
       // binary part.
       if (k)
-	m_Stream.Put(k,errval);
+        m_Stream.Put(k,errval);
     } else {
+      if (unlikely(limit > 32)) {
+        m_Stream.Put<32>(0);
+        limit -= 32;
+      }
       m_Stream.Put(limit,0);
       m_Stream.Put<1>(1);
       m_Stream.Put(m_lQbpp,errval - 1);
@@ -459,22 +452,35 @@ protected:
   // Decode a mapped error given the golomb parameter and the limit.
   LONG GolombDecode(UBYTE k,LONG limit)
   {
-    UBYTE u = 0;
-
-    while(m_Stream.Get<1>() == 0 && --limit)
-      u++;
-    
-    if (limit == 0) {
-      if (m_Stream.Get<1>() == 0) {
-	JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombDecode","found invalid Golomb code");
-	return 0;
+    UBYTE u  = 0;
+    UWORD in;
+ 
+    //
+    // Find number of leading zeros by reading them in groups of 8 bits
+    // if possible.
+    do {
+      in = m_Stream.PeekWord();
+      // Count leading zeros.
+      in = m_ucLeadingZeros[in >> 8];
+      u += in;
+      // Can be at most "limit" zeros, the encoder writes a one after at most "limit" zeros.
+      // If not, we're pretty much out of sync.
+      if (unlikely(u > limit)) {
+        JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombDecode","found invalid Golomb code");
+        return 0;
       }
-      return m_Stream.Get(m_lQbpp) + 1;
-    } else if (k) {
-      return m_Stream.Get(k) | (u << k);
-    } else {
-      return u;
-    }
+      if (likely(in < 8)) {
+        m_Stream.SkipBits(in+1);
+        if (unlikely(u == limit)) {
+          return m_Stream.Get(m_lQbpp) + 1;
+        } else if (k) {
+          return m_Stream.Get(k) | (u << k);
+        } else {
+          return u;
+        }
+      }
+      m_Stream.SkipBits(8);
+    } while(true);
   }
   //
   // Update the state information given the context and the unmapped error value.
@@ -483,28 +489,28 @@ protected:
     m_lB[context] += errval * m_lDelta;
     m_lA[context] += (errval >= 0)?(errval):(-errval);
     
-    if (m_lN[context] >= m_lReset) {
+    if (unlikely(m_lN[context] >= m_lReset)) {
       m_lA[context] >>= 1;
       if (m_lB[context] >= 0)
-	m_lB[context] >>= 1;
+        m_lB[context] >>= 1;
       else
-	m_lB[context]   = -((1 - m_lB[context]) >> 1);
+        m_lB[context]   = -((1 - m_lB[context]) >> 1);
       m_lN[context] >>= 1;
     }
     m_lN[context]++;
     
-    if (m_lB[context] <= -m_lN[context]) {
+    if (unlikely(m_lB[context] <= -m_lN[context])) {
       m_lB[context] += m_lN[context];
       if (m_lC[context] > -128)
-	m_lC[context]--;
+        m_lC[context]--;
       if (m_lB[context] <= -m_lN[context]) 
-	m_lB[context] = -m_lN[context] + 1;
-    } else if (m_lB[context] > 0) {
+        m_lB[context] = -m_lN[context] + 1;
+    } else if (unlikely(m_lB[context] > 0)) {
       m_lB[context] -= m_lN[context];
       if (m_lC[context] < 127)
-	m_lC[context]++;
+        m_lC[context]++;
       if (m_lB[context] > 0)
-	m_lB[context] = 0;
+        m_lB[context] = 0;
     }
   }
   //
@@ -516,15 +522,15 @@ protected:
       m_Stream.Put<1>(1);
       runcnt -= 1 << m_lJ[runindex];
       if (runindex < 31)
-	runindex++;
+        runindex++;
     }
     if (end) {
       if (runcnt > 0) 
-	m_Stream.Put<1>(1); // decoder will detect an end of line.
+        m_Stream.Put<1>(1); // decoder will detect an end of line.
     } else {
       m_Stream.Put<1>(0);
       if (m_lJ[runindex])
-	m_Stream.Put(m_lJ[runindex],runcnt);
+        m_Stream.Put(m_lJ[runindex],runcnt);
       // Reduction of the run index happens later.
     }
   }
@@ -539,11 +545,11 @@ protected:
       run += (1 << m_lJ[runindex]);
       // Can the run be completed?
       if (run <= length && runindex < 31) 
-	runindex++;
+        runindex++;
       //
       // If the run reaches the end of the line, do not get more bits.
       if (run >= length) {
-	return length;
+        return length;
       }
     } 
 
@@ -555,7 +561,7 @@ protected:
       
     if (run > length) {
       JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::DecodeRun",
-	       "found run across the end of the line, trimming it");
+               "found run across the end of the line, trimming it");
       run = length;
     }
 
@@ -589,7 +595,14 @@ protected:
       temp = m_lA[0];
     }
     
-    for(k = 0;(m_lN[rtype] << k) < temp;k++) {
+    for(k = 0;(m_lN[rtype] << k) < temp && k < 24;k++) {
+    } 
+
+    if (k == 24) {
+      JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombParameter",
+               "Golomb coding parameter of JPEG LS stream run out of bounds, "
+               "synchronization lost");
+      return 0;
     }
 
     return k;
@@ -606,13 +619,15 @@ protected:
       m_lA[rtype] +=  errval - rtype;
     }
 
-    if (m_lN[rtype] >= m_lReset) {
+    if (unlikely(m_lN[rtype] >= m_lReset)) {
       m_lA[rtype]  >>= 1;
       m_lB[rtype]  >>= 1;
       m_lN[rtype]  >>= 1;
     }
     m_lN[rtype]++;
   }
+  //
+#endif
   //
   // Collect component information and install the component dimensions.
   virtual void FindComponentDimensions(void);
@@ -639,10 +654,10 @@ public:
   virtual void WriteFrameType(class ByteStream *io);
   //
   // Fill in the tables for decoding and decoding parameters in general.
-  virtual void StartParseScan(class ByteStream *io,class BufferCtrl *ctrl);
+  virtual void StartParseScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl);
   //
   // Write the default tables for encoding
-  virtual void StartWriteScan(class ByteStream *io,class BufferCtrl *ctrl);
+  virtual void StartWriteScan(class ByteStream *io,class Checksum *chk,class BufferCtrl *ctrl);
   //
   // Start the measurement run for the optimized
   // huffman encoder.

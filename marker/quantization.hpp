@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.hpp,v 1.6 2012-07-26 19:17:35 thor Exp $
+** $Id: quantization.hpp,v 1.14 2015/05/22 09:55:29 thor Exp $
 **
 */
 
@@ -81,7 +61,22 @@ public:
   //
   // Initialize the quantization table to the standard example
   // tables for quality q, q=0...100
-  void InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortrafo);
+  // If "addresidual" is set, additional quantization tables for 
+  // residual coding are added into the legacy quantization matrix.
+  // If "foresidual" is set, the quantization table is for the residual
+  // codestream, using the hdrquality parameter (with known ldr parameters)
+  // but injected into the residual codestream.
+  // If "rct" is set, the residual color transformation is the RCT which
+  // creates one additional bit of precision for lossless. In lossy modes,
+  // this bit can be stripped off.
+  // The table selector argument specifies which of the build-in
+  // quantization table to use. CUSTOM is then a pointer to a custom
+  // table if the table selector is custom.
+  void InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortrafo,
+                         bool addresidual,bool forresidual,bool rct,
+                         LONG tableselector,
+                         const LONG customluma[64],
+                         const LONG customchroma[64]);
   //
   const UWORD *QuantizationTable(UBYTE idx) const
   {

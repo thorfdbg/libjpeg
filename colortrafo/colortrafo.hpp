@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,9 +24,11 @@ the committee itself.
 
 *************************************************************************/
 /*
-** This file provides the transformation from RGB to YCbCr
+** This file provides the transformation from RGB to YCbCr for
+** the integer coding modes. Floating point coding modes (profiles A and B)
+** are handled by the floattrafo.
 **
-** $Id: colortrafo.hpp,v 1.7 2012-07-14 12:07:35 thor Exp $
+** $Id: colortrafo.hpp,v 1.37 2014/12/30 13:29:35 thor Exp $
 **
 */
 
@@ -57,6 +39,11 @@ the committee itself.
 #include "tools/environment.hpp"
 #include "tools/rectangle.hpp"
 #include "interface/imagebitmap.hpp"
+#include "std/string.hpp"
+///
+
+/// Forwards
+class ParametricToneMappingBox;
 ///
 
 /// Class ColorTrafo
@@ -66,77 +53,87 @@ class ColorTrafo : public JKeeper {
 public:
   // Number of bits preshifted for the color-transformed channels
   enum {
-    COLOR_BITS = 4
+    COLOR_BITS = 4,
+    FIX_BITS   = 13
   }; 
   //
+  // Flags for the various color transformations.
+  enum OutputFlags {
+    ClampFlag  = 1,   // Clamp to range (instead of wrap-around)
+    Float      = 32,  // set in case the output should be converted to IEEE float
+    Extended   = 64,  // should always be set unless no merging spec box is there.
+    Residual   = 128  // set if there is a residual
+  };
+  //
+  // A buffer consists of four pointer to 8x8 blocks of data, ordered
+  // in R,G,B,alpha or Y,Cb,Cr,Alpha
+  typedef LONG *Buffer[4];
+  typedef LONG Block[64];
+  //
 protected:
-  // The output data. Note that these are kept here only for one block
-  // as this is all what is required for the DCT.
-  LONG m_lY[64];
-  LONG m_lCb[64];
-  LONG m_lCr[64];
-  LONG m_lA[64]; // additional or alpha.
   //
-  // Pointer to the above array.
-  LONG *m_ppBuffer[4];
+  // DC-Shift in the legacy domain before applying the LUT.
+  LONG  m_lDCShift;
   //
-  // Encoding and decoding tone mapping lookup tables.
-  // These tables are only populated when required.
+  // Maximum value in the legacy domain before applying the LUT.
+  LONG  m_lMax;
   //
-  // The decoding LUT that maps LDR to HDR.
-  const UWORD *m_pusDecodingLUT[4];
+  // DC-Shift in the residual domain before applying the LUT
+  LONG  m_lRDCShift;
   //
-  // The encoding LUT that maps HDR to LDR.
-  const UWORD *m_pusEncodingLUT[4];
+  // Maximum value in the residual domain before applying the LUT.
+  LONG  m_lRMax;
+  // 
+  // DC-shift in the spatial domain.
+  LONG m_lOutDCShift;
+  //
+  // Maximum value in the output (spatial, image) domain.
+  LONG  m_lOutMax;
   //
 public:
-  ColorTrafo(class Environ *env);
   //
-  virtual ~ColorTrafo(void);
+  // Construct a color transformer. Arguments are dcshift and maximum in the legacy domain,
+  // dcshift and maximum in the residual domain, both before appyling L and R lut, plus
+  // maximum in the image domain.
+  ColorTrafo(class Environ *env,LONG dcshift,LONG max,LONG rdcshift,LONG rmax,LONG outshift,LONG outmax)
+    : JKeeper(env), m_lDCShift(dcshift), m_lMax(max), 
+      m_lRDCShift(rdcshift), m_lRMax(rmax), m_lOutDCShift(outshift), m_lOutMax(outmax)
+  { }
+  //
+  virtual ~ColorTrafo(void)
+  { }
   //
   // Transform a block from RGB to YCbCr. Input are the three image bitmaps
   // already clipped to the rectangle to transform, the coordinate rectangle to use
-  // and the level shift.
-  // The rightshift is performed on the sample data before entering the color transformation
-  // to allow an adjustment of the bit depth. Residual coding addresses then potentially
-  // the errors created by this shift.
+  // and the level shift. This call computes a LDR image from the given input data
+  // and moves that into the target buffer. Shift and max values are the clamping
+  // of the LDR data.
   virtual void RGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
-			 LONG dcshift,LONG max) = 0;
+                         Buffer target) = 0;
+  //
+  // In case the user already provided a tone-mapped version of the image, this call already
+  // takes the LDR version of the image, performs no tone-mapping but only a color
+  // decorrelation transformation and injects it as LDR image.
+  virtual void LDRRGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
+                         Buffer target) = 0;
+  //
+  // Buffer the original data unaltered. Required for residual coding, for some modes of
+  // it at least.
+  virtual void RGB2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
+                       Buffer target) = 0;
+  //
+  // Compute the residual from the original image and the decoded LDR image, place result in
+  // the output buffer. This depends rather on the coding model.
+  virtual void RGB2Residual(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
+                            Buffer reconstructed,Buffer residual) = 0;
   //
   // Inverse transform a block from YCbCr to RGB, incuding a clipping operation and a dc level
   // shift.
   virtual void YCbCr2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *dest,
-			 LONG dcshift,LONG max) = 0;
-  //
-  // Return the input buffer or output buffer of the data as a [4][64] array.
-  LONG *const *BufferOf(void) const
-  {
-    return m_ppBuffer;
-  }
-  //
-  // Return the number of fractional bits this color transformation requires.
-  virtual UBYTE FractionalBitsOf(void) const = 0;
+                         Buffer source,Buffer residual) = 0;
   //
   // Return the external pixel type of this trafo.
   virtual UBYTE PixelTypeOf(void) const = 0;
-  //
-  // Define the encoding LUTs.
-  void DefineEncodingTables(const UWORD *encoding[4])
-  {
-    int i;
-    for(i = 0;i < 4;i++) {
-      m_pusEncodingLUT[i] = encoding[i];
-    }
-  }
-  //
-  // Define the decoding LUTs.
-  void DefineDecodingTables(const UWORD *decoding[4])
-  {
-    int i;
-    for(i = 0;i < 4;i++) {
-      m_pusDecodingLUT[i] = decoding[i];
-    }
-  }
 };
 ///
 

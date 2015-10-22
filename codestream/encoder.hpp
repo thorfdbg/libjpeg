@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** This class parses the markers and holds the decoder together.
 **
-** $Id: encoder.hpp,v 1.16 2012-06-02 10:27:13 thor Exp $
+** $Id: encoder.hpp,v 1.25 2015/03/24 09:45:31 thor Exp $
 **
 */
 
@@ -79,8 +59,16 @@ class Encoder : public JKeeper {
   // The image containing all the data
   class Image        *m_pImage;
   //
-  // Side information.
-  class Tables       *m_pTables;
+  // Create from a set of parameters the proper scan type.
+  // This fills in the scan type of the base image and the residual image,
+  // the number of refinement scans in the LDR and HDR domain, the
+  // frame precision (excluding hidden/refinement bits) in the base and extension layer
+  // and the number of additional precision bits R_b in the spatial domain.
+  void FindScanTypes(const struct JPG_TagItem *tags,LONG frametype,UBYTE defaultdepth,
+                     ScanType &scantype,ScanType &restype,
+                     UBYTE &hiddenbits,UBYTE &riddenbits,
+                     UBYTE &ldrprecision,UBYTE &hdrprecision,
+                     UBYTE &rangebits) const;
   //
 public:
   Encoder(class Environ *env);

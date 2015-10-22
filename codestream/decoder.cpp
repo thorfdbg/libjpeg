@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** This class parses the markers and holds the decoder together.
 **
-** $Id: decoder.cpp,v 1.15 2012-07-17 21:33:33 thor Exp $
+** $Id: decoder.cpp,v 1.25 2014/09/30 08:33:15 thor Exp $
 **
 */
 
@@ -63,7 +43,7 @@ the committee itself.
 /// Decoder::Decoder
 // Construct the decoder
 Decoder::Decoder(class Environ *env)
-  : JKeeper(env), m_pImage(NULL), m_pTables(NULL)
+  : JKeeper(env), m_pImage(NULL)
 {
 }
 ///
@@ -73,7 +53,6 @@ Decoder::Decoder(class Environ *env)
 Decoder::~Decoder(void)
 {
   delete m_pImage;
-  delete m_pTables;
 }
 ///
 
@@ -83,16 +62,17 @@ class Image *Decoder::ParseHeader(class ByteStream *io)
 {
   LONG marker;
 
-  if (m_pImage || m_pTables)
+  if (m_pImage)
     JPG_THROW(OBJECT_EXISTS,"Decoder::ParseHeader","stream parsing has already been started");
   
   marker = io->GetWord();
   if (marker != 0xffd8) // SOI
     JPG_THROW(MALFORMED_STREAM,"Decoder::ParseHeader","stream does not contain a JPEG file, SOI marker missing");
 
-  m_pTables = new(m_pEnviron) class Tables(m_pEnviron);
-  m_pTables->ParseTables(io);
-  m_pImage  = new(m_pEnviron) class Image(m_pTables);
+  m_pImage  = new(m_pEnviron) class Image(m_pEnviron);
+  //
+  // The checksum is not going over the headers but starts at the SOF.
+  m_pImage->TablesOf()->ParseTables(io,NULL);
   //
   // The rest is done by the image.
   return m_pImage;
@@ -103,15 +83,11 @@ class Image *Decoder::ParseHeader(class ByteStream *io)
 // Accept decoder options.
 void Decoder::ParseTags(const struct JPG_TagItem *tags)
 {
-  if (tags->GetTagData(JPGTAG_DECODER_FORCEINTEGERDCT)) {
-    if (m_pTables)
-      m_pTables->ForceIntegerCodec();
-  }
-  if (tags->GetTagData(JPGTAG_DECODER_FORCEFIXPOINTDCT)) {
-    m_pTables->ForceFixpointCodec();
-  }
-  if (tags->GetTagData(JPGTAG_IMAGE_COLORTRANSFORMATION,true) == false) {
-    m_pTables->ForceColorTrafoOff();
+  if (tags->GetTagData(JPGTAG_MATRIX_LTRAFO,JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR) == 
+      JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE) {
+    if (m_pImage) {
+      m_pImage->TablesOf()->ForceColorTrafoOff();
+    }
   }
 }
 ///

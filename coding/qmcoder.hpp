@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +28,7 @@ the committee itself.
 ** Unless the Art-Deco class which implements the MQ coder, this class
 ** implements the QM coder as required by the older JPEG specs.
 **
-** $Id: qmcoder.hpp,v 1.9 2012-07-25 14:06:55 thor Exp $
+** $Id: qmcoder.hpp,v 1.19 2014/11/16 19:05:23 thor Exp $
 **
 */
 
@@ -69,14 +49,16 @@ the committee itself.
 
 /// Forwards
 class QMCoder;
+class Checksum;
 ///
 
 /// QMContext
 // A context bin of the QM coder
+#if ACCUSOFT_CODE
 class QMContext : public JObject {
   friend class QMCoder;
   UBYTE m_ucIndex; // status in the index table
-  UBYTE m_bMPS;    // most probable symbol
+  bool  m_bMPS;    // most probable symbol
   //
 #ifdef DEBUG_QMCODER
   // The ID of the QM Coder as four characters
@@ -119,17 +101,19 @@ public:
   void Print(void)
   {
     if ((m_ucIndex >= 9  && m_ucIndex <= 13) ||
-	(m_ucIndex >= 72 && m_ucIndex <= 77) ||
-	(m_ucIndex >= 99 && m_ucIndex <= 11)) {
+        (m_ucIndex >= 72 && m_ucIndex <= 77) ||
+        (m_ucIndex >= 99 && m_ucIndex <= 11)) {
       printf("%c%c%c%c : %d(%d)\n",m_ucID[0],m_ucID[1],m_ucID[2],m_ucID[3],m_ucIndex,m_bMPS);
     }
   }
 #endif
 };
+#endif
 ///
 
 /// QMCoder
 // The coder itself.
+#if ACCUSOFT_CODE
 class QMCoder : public JObject {
   //
   // The coding interval size
@@ -154,15 +138,18 @@ class QMCoder : public JObject {
   UBYTE             m_bF;
   //
   // Count delayed 0xff.
-  UBYTE             m_ucST;
+  UWORD             m_usST;
   //
   // Count delayed 0x00 - this is not stricly required,
   // but simplifies the flushing process where trailing
   // 0x00's shall be discarded.
-  UBYTE             m_ucSZ;
+  UWORD             m_usSZ;
   //
   // The bytestream we code from or code into.
   class ByteStream *m_pIO;
+  //
+  // The checksum we keep updating.
+  class Checksum   *m_pChk;
   //
   // Qe probability estimates.
   static const UWORD Qe_Value[];
@@ -209,11 +196,17 @@ public:
     return m_pIO;
   }
   //
+  // Return the checksum.
+  class Checksum *ChecksumOf(void) const
+  {
+    return m_pChk;
+  }
+  //
   // Open for writing.
-  void OpenForWrite(class ByteStream *io);
+  void OpenForWrite(class ByteStream *io,class Checksum *chk);
   //
   // Open for reading.
-  void OpenForRead(class ByteStream *io);
+  void OpenForRead(class ByteStream *io,class Checksum *chk);
   //
 #ifndef FAST_QMCODER
   //
@@ -261,6 +254,7 @@ public:
     Uniform_State = 113
   };
 };
+#endif
 ///
 
 ///

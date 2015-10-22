@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +31,7 @@ the committee itself.
 ** downsampling filter for the hierarchical mode. This class does not
 ** implement a color transformer or a upsampling filter (in the usual sense)
 **
-** $Id: blocklineadapter.cpp,v 1.19 2012-11-17 09:26:13 thor Exp $
+** $Id: blocklineadapter.cpp,v 1.25 2015/06/03 15:37:24 thor Exp $
 **
 */
 
@@ -86,8 +66,8 @@ BlockLineAdapter::~BlockLineAdapter(void)
   if (m_ppTop) {
     for(i = 0;i < m_ucCount;i++) {
       while ((line = m_ppTop[i])) {
-	m_ppTop[i] = line->m_pNext;
-	FreeLine(line,i);
+        m_ppTop[i] = line->m_pNext;
+        FreeLine(line,i);
       }
     }
     m_pEnviron->FreeMem(m_ppTop,m_ucCount * sizeof(struct Line *));
@@ -131,30 +111,37 @@ void BlockLineAdapter::BuildCommon(void)
   if (m_pppQImage == NULL) {
     m_pppQImage = (class QuantizedRow ***)m_pEnviron->AllocMem(m_ucCount * sizeof(class QuantizedRow **));
     memset(m_pppQImage,0,m_ucCount * sizeof(class QuantizedRow **));
+
+    for(i = 0;i < m_ucCount;i++) {
+      m_pppQImage[i]             = m_ppQTop + i;
+    }
   }
 
   if (m_pppImage == NULL) {
     m_pppImage = (struct Line ***)m_pEnviron->AllocMem(m_ucCount * sizeof(struct Line **));
     memset(m_pppImage,0,m_ucCount * sizeof(struct Line **));
+    
+    for(i = 0;i < m_ucCount;i++) {
+      m_pppImage[i]              = m_ppTop  + i;
+    }
   }
 
   if (m_pulPixelsPerComponent == NULL) {
     m_pulPixelsPerComponent = (ULONG *)m_pEnviron->AllocMem(m_ucCount * sizeof(ULONG));
+    for(i = 0;i < m_ucCount;i++) {
+      class Component *comp      = m_pFrame->ComponentOf(i);
+      UBYTE subx                 = comp->SubXOf();
+      m_pulPixelsPerComponent[i] = (m_ulPixelWidth  + subx - 1) / subx;
+    }
   }
 
   if (m_pulLinesPerComponent == NULL) {
     m_pulLinesPerComponent = (ULONG *)m_pEnviron->AllocMem(m_ucCount * sizeof(ULONG));
-  }
-
-  for(i = 0;i < m_ucCount;i++) {
-    class Component *comp      = m_pFrame->ComponentOf(i);
-    UBYTE subx                 = comp->SubXOf();
-    UBYTE suby                 = comp->SubYOf();
-    m_pulPixelsPerComponent[i] = (m_ulPixelWidth  + subx - 1) / subx;
-    m_pulLinesPerComponent[i]  = (m_ulPixelHeight + suby - 1) / suby;
-    
-    m_pppQImage[i]             = m_ppQTop + i;
-    m_pppImage[i]              = m_ppTop  + i;
+    for(i = 0;i < m_ucCount;i++) {
+      class Component *comp      = m_pFrame->ComponentOf(i);
+      UBYTE suby                 = comp->SubYOf();
+      m_pulLinesPerComponent[i]  = (m_ulPixelHeight + suby - 1) / suby;
+    }
   }
 }
 ///
@@ -192,17 +179,17 @@ struct Line *BlockLineAdapter::GetNextLine(UBYTE comp)
       class QuantizedRow *qrow = *m_pppQImage[comp];
       const LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):(NULL);
       if (src) {
-	m_ppDCT[comp]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
-	//
-	// Copy now the buffer temporary buffer into the line. The line is always long enough
-	// to cover all pixels, even those outside of the range.
-	for(l = 0; l < 8;l++) {
-	  memcpy(out[l]->m_pData + (x << 3),&dst[l << 3],8 * sizeof(LONG));
-	}
+        m_ppDCT[comp]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
+        //
+        // Copy now the buffer temporary buffer into the line. The line is always long enough
+        // to cover all pixels, even those outside of the range.
+        for(l = 0; l < 8;l++) {
+          memcpy(out[l]->m_pData + (x << 3),&dst[l << 3],8 * sizeof(LONG));
+        }
       } else {
-	for(l = 0; l < 8;l++) {
-	  memset(out[l]->m_pData + (x << 3),0,8 * sizeof(LONG));
-	}
+        for(l = 0; l < 8;l++) {
+          memset(out[l]->m_pData + (x << 3),0,8 * sizeof(LONG));
+        }
       }
     } // of loop over x
     //
@@ -264,10 +251,10 @@ void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
     if (cludge) { 
       struct Line *line = m_ppTop[comp]; // replicate pixels at the edge
       for(l = 0;l < 8;l++) {
-	for(x = cludge + (maxx << 3);x < (maxx + 1) << 3;x++) {
-	  line->m_pData[x] = line->m_pData[x-1];
-	}
-	if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
+        for(x = cludge + (maxx << 3);x < (maxx + 1) << 3;x++) {
+          line->m_pData[x] = line->m_pData[x-1];
+        }
+        if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
       }
     }
     
@@ -278,14 +265,14 @@ void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
       assert(line);
       // Copy from the line into the temporary buffer.
       for(l = 0;l < 8;l++) {
-	memcpy(&src[l << 3],line->m_pData + (x << 3),8 * sizeof(LONG));
-	if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
+        memcpy(&src[l << 3],line->m_pData + (x << 3),8 * sizeof(LONG));
+        if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
       }
       //
       // Create the target if it is not already there.
       if (*m_pppQImage[comp] == NULL) {
-	*m_pppQImage[comp] = new(m_pEnviron) class QuantizedRow(m_pEnviron);
-	(*m_pppQImage[comp])->AllocateRow(m_pulPixelsPerComponent[comp]);
+        *m_pppQImage[comp] = new(m_pEnviron) class QuantizedRow(m_pEnviron);
+        (*m_pppQImage[comp])->AllocateRow(m_pulPixelsPerComponent[comp]);
       }
       LONG *dst = (*m_pppQImage[comp])->BlockAt(x)->m_Data;
       m_ppDCT[comp]->TransformBlock(src,dst,(maxval + 1) >> 1);
@@ -298,8 +285,8 @@ void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
       
       struct Line *line;
       while ((line = m_ppTop[comp])) {
-	m_ppTop[comp]  = line->m_pNext;
-	FreeLine(line,comp);
+        m_ppTop[comp]  = line->m_pNext;
+        FreeLine(line,comp);
       }
       m_pppImage[comp] = m_ppTop + comp;
     }
@@ -340,7 +327,7 @@ bool BlockLineAdapter::isNextMCULineReady(void) const
       // codedlines + comp->SubYOf() << 3 * comp->MCUHeightOf() is the number of
       // lines that must be buffered to encode the next MCU
       if (m_pulReadyLines[i] < codedlines + 8 * comp->MCUHeightOf())
-	return false;
+        return false;
     }
   }
   

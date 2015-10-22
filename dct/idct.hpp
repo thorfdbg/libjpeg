@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +27,7 @@ the committee itself.
 **
 ** Integer DCT operation plus scaled quantization.
 **
-** $Id: idct.hpp,v 1.10 2012-06-02 10:27:14 thor Exp $
+** $Id: idct.hpp,v 1.19 2015/05/09 20:09:21 thor Exp $
 **
 */
 
@@ -57,6 +37,7 @@ the committee itself.
 /// Includes
 #include "tools/environment.hpp"
 #include "dct/dct.hpp"
+#include "tools/traits.hpp"
 ///
 
 /// Forwards
@@ -67,7 +48,7 @@ struct ImageBitMap;
 /// class IDCT
 // This class implements the integer based DCT. The template parameter is the number of
 // preshifted bits coming in from the color transformer.
-template<int preshift>
+template<int preshift,typename T,bool deadzone>
 class IDCT : public DCT {
   //
   // Bit assignment
@@ -86,31 +67,24 @@ class IDCT : public DCT {
   // The quantizer tables.
   WORD  m_psQuant[64];
   //
-  // Inverse DCT filter core.
-  void InverseFilterCore(const LONG *source,LONG *d);
-  //
-  // Perform the forwards filtering
-  void ForwardFilterCore(const LONG *d,LONG *target);
-  //
-  // Inverse DCT filter core.
-  void InverseFilterCoreColor(const LONG *source,LONG *d);
-  //
-  // Perform the forwards filtering
-  void ForwardFilterCoreColor(const LONG *d,LONG *target);
-  //
   // Quantize a floating point number with a multiplier, round correctly.
   // Must remove FIX_BITS + INTER_BITS + 3
-  static inline LONG Quantize(LONG n,LONG qnt)
+  static inline LONG Quantize(LONG n,LONG qnt,bool dc)
   {
-    if (n >= 0) {
-      return   (n * QUAD(qnt) + (QUAD(1) << (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3 - 1))) >> 
-	(FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3);
+    // Use the equi-quantizer if deadzone quantization is turned
+    // off or we are quantizing the DC part.
+    if (deadzone == false || dc) {
+      return (n * QUAD(qnt) + (ULONG(-n) >> TypeTrait<LONG>::SignBit) + 
+              (QUAD(1) << (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3 - 1)))
+        >> (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3);
     } else {
-      // The -1 makes this the same rounding rule as a shift.
-      return -((-n * QUAD(qnt) - 1 + (QUAD(1) << (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3 - 1))) >> 
-	       (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3));
+      QUAD m = n >> TypeTrait<LONG>::SignBit;
+      QUAD o = m << (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3 - 2);
+      return (n * QUAD(qnt) + ((~o) & m) +
+              (QUAD(3) << (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3 - 3)))
+        >> (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3);
     }
-  }  
+  }
   //
   //
 public:

@@ -1,33 +1,13 @@
 /*************************************************************************
-** Copyright (c) 2011-2012 Accusoft                                     **
-** This program is free software, licensed under the GPLv3              **
-** see README.license for details                                       **
-**									**
-** For obtaining other licenses, contact the author at                  **
-** thor@math.tu-berlin.de                                               **
-**                                                                      **
-** Written by Thomas Richter (THOR Software)                            **
-** Sponsored by Accusoft, Tampa, FL and					**
-** the Computing Center of the University of Stuttgart                  **
-**************************************************************************
 
-This software is a complete implementation of ITU T.81 - ISO/IEC 10918,
-also known as JPEG. It implements the standard in all its variations,
-including lossless coding, hierarchical coding, arithmetic coding and
-DNL, restart markers and 12bpp coding.
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-In addition, it includes support for new proposed JPEG technologies that
-are currently under discussion in the SC29/WG1 standardization group of
-the ISO (also known as JPEG). These technologies include lossless coding
-of JPEG backwards compatible to the DCT process, and various other
-extensions.
-
-The author is a long-term member of the JPEG committee and it is hoped that
-this implementation will trigger and facilitate the future development of
-the JPEG standard, both for private use, industrial applications and within
-the committee itself.
-
-  Copyright (C) 2011-2012 Accusoft, Thomas Richter <thor@math.tu-berlin.de>
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +26,7 @@ the committee itself.
 /*
 ** This file provides the trival transformation from RGB to RGB
 **
-** $Id: trivialtrafo.cpp,v 1.7 2012-07-18 19:35:45 thor Exp $
+** $Id: trivialtrafo.cpp,v 1.17 2014/09/30 08:33:16 thor Exp $
 **
 */
 
@@ -57,16 +37,16 @@ the committee itself.
 ///
 
 /// TrivialTrafo::TrivialTrafo
-template<typename external,int count>
-TrivialTrafo<external,count>::TrivialTrafo(class Environ *env)
-  : ColorTrafo(env)
+template<typename internal,typename external,int count>
+TrivialTrafo<internal,external,count>::TrivialTrafo(class Environ *env,LONG dcshift,LONG max)
+  : ColorTrafo(env,dcshift,max,dcshift,max,dcshift,max)
 {
 }
 ///
 
 /// TrivialTrafo::~TrivialTrafo
-template<typename external,int count>
-TrivialTrafo<external,count>::~TrivialTrafo(void)
+template<typename internal,typename external,int count>
+TrivialTrafo<internal,external,count>::~TrivialTrafo(void)
 {
 }
 ///
@@ -75,9 +55,9 @@ TrivialTrafo<external,count>::~TrivialTrafo(void)
 // Transform a block from RGB to YCbCr. Input are the three image bitmaps
 // already clipped to the rectangle to transform, the coordinate rectangle to use
 // and the level shift.
-template<typename external,int count>
-void TrivialTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
-					     LONG,LONG max)
+template<typename internal,typename external,int count>
+void TrivialTrafo<internal,external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
+                                                      Buffer target)
 {
   LONG x,y;
   LONG xmin   = r.ra_MinX & 7;
@@ -85,90 +65,69 @@ void TrivialTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const stru
   LONG xmax   = r.ra_MaxX & 7;
   LONG ymax   = r.ra_MaxY & 7;
 
-  NOREF(max);
-
   if (xmax < 7 || ymax < 7 || xmin > 0 || ymin > 0) {
     switch(count) {
-    case 4:
-      memset(m_lA,0,sizeof(m_lA));
     case 3:
-      memset(m_lCr,0,sizeof(m_lCr));
-    case 2:
-      memset(m_lCb,0,sizeof(m_lCb));
+      memset(target[2],0,sizeof(Block));
+      memset(target[1],0,sizeof(Block));
     case 1:
-      memset(m_lY ,0,sizeof(m_lY));
+      memset(target[0],0,sizeof(Block));
     }
   }
   
   for(x = 1; x < count;x++) {
     if (source[0]->ibm_ucPixelType != source[x]->ibm_ucPixelType) {
       JPG_THROW(INVALID_PARAMETER,"TrivialTrafo::RGB2YCbCr",
-		"pixel types of all three components in a RGB to RGB conversion must be identical");
+                "pixel types of all three components in a RGB to RGB conversion must be identical");
     }
   }
 
   {
-    const external *rptr,*gptr,*bptr,*aptr;
+    const external *rptr,*gptr,*bptr;
     switch(count) {
-    case 4:
-      aptr = (const external *)(source[3]->ibm_pData);
     case 3:
       bptr = (const external *)(source[2]->ibm_pData);
-    case 2:
       gptr = (const external *)(source[1]->ibm_pData);
     case 1:
       rptr = (const external *)(source[0]->ibm_pData);
     }
     for(y = ymin;y <= ymax;y++) {
-      LONG *ydst,*cbdst,*crdst,*adst;
-      const external *r,*g,*b,*a;
+      internal *ydst,*cbdst,*crdst;
+      const external *r,*g,*b;
       switch(count) {
-      case 4:
-	adst    = m_lA  + xmin + (y << 3);
-	a       = aptr;
       case 3:
-	crdst   = m_lCr + xmin + (y << 3);
-	b       = bptr;
-      case 2:
-	cbdst   = m_lCb + xmin + (y << 3);
-	g       = gptr;
+        crdst   = (internal *)target[2] + xmin + (y << 3);
+        b       = bptr;
+        cbdst   = (internal *)target[1] + xmin + (y << 3);
+        g       = gptr;
       case 1:
-	ydst    = m_lY  + xmin + (y << 3);
-	r       = rptr;
+        ydst    = (internal *)target[0] + xmin + (y << 3);
+        r       = rptr;
       }
       for(x = xmin;x <= xmax;x++) { 
-	switch(count) {
-	case 4:
-	  *adst = m_pusEncodingLUT[3][*a];
-	  assert(*adst <= max);
-	  adst++;
-	  a  = (const external *)((const UBYTE *)(a) + source[3]->ibm_cBytesPerPixel);
-	case 3:
-	  *crdst = m_pusEncodingLUT[2][*b];
-	  assert(*crdst <= max);
-	  crdst++;
-	  b  = (const external *)((const UBYTE *)(b) + source[2]->ibm_cBytesPerPixel);
-	case 2:
-	  *cbdst = m_pusEncodingLUT[1][*g];
-	  assert(*cbdst <= max);
-	  cbdst++;
-	  g  = (const external *)((const UBYTE *)(g) + source[1]->ibm_cBytesPerPixel);
-	case 1:
-	  *ydst  = m_pusEncodingLUT[0][*r];
-	  assert(*ydst <= max);
-	  ydst++;
-	  r  = (const external *)((const UBYTE *)(r) + source[0]->ibm_cBytesPerPixel);
-	}
+        switch(count) {
+        case 3:
+          *crdst = *b;
+          assert(TypeTrait<external>::isFloat || *crdst <= m_lMax);
+          crdst++;
+          b  = (const external *)((const UBYTE *)(b) + source[2]->ibm_cBytesPerPixel);
+          *cbdst = *g;
+          assert(TypeTrait<external>::isFloat || *cbdst <= m_lMax);
+          cbdst++;
+          g  = (const external *)((const UBYTE *)(g) + source[1]->ibm_cBytesPerPixel);
+        case 1:
+          *ydst  = *r;
+          assert(TypeTrait<external>::isFloat || *ydst <= m_lMax);
+          ydst++;
+          r  = (const external *)((const UBYTE *)(r) + source[0]->ibm_cBytesPerPixel);
+        }
       }
       switch(count) {
-      case 4:
-	aptr  = (const external *)((const UBYTE *)(aptr) + source[3]->ibm_lBytesPerRow);
       case 3:
-	bptr  = (const external *)((const UBYTE *)(bptr) + source[2]->ibm_lBytesPerRow);
-      case 2:
-	gptr  = (const external *)((const UBYTE *)(gptr) + source[1]->ibm_lBytesPerRow);
+        bptr  = (const external *)((const UBYTE *)(bptr) + source[2]->ibm_lBytesPerRow);
+        gptr  = (const external *)((const UBYTE *)(gptr) + source[1]->ibm_lBytesPerRow);
       case 1:
-	rptr  = (const external *)((const UBYTE *)(rptr) + source[0]->ibm_lBytesPerRow);
+        rptr  = (const external *)((const UBYTE *)(rptr) + source[0]->ibm_lBytesPerRow);
       }
     }
   }
@@ -178,9 +137,9 @@ void TrivialTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const stru
 /// TrivialTrafo::YCbCr2RGB
 // Inverse transform a block from YCbCr to RGB, incuding a clipping operation and a dc level
 // shift.
-template<typename external,int count>
-void TrivialTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *dest,
-					     LONG,LONG max)
+template<typename internal,typename external,int count>
+void TrivialTrafo<internal,external,count>::YCbCr2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *dest,
+                                                      Buffer source,Buffer)
 { 
   LONG x,y;
   LONG xmin   = r.ra_MinX & 7;
@@ -188,85 +147,76 @@ void TrivialTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,const stru
   LONG xmax   = r.ra_MaxX & 7;
   LONG ymax   = r.ra_MaxY & 7;
   
-  if (max > TypeTrait<external>::Max) {
+  if (TypeTrait<external>::isFloat == false && m_lMax > TypeTrait<external>::Max) {
     JPG_THROW(OVERFLOW_PARAMETER,"TrivialTrafo::YCbCr2RGB",
-	      "RGB maximum intensity for pixel type does not fit into the type");
+              "RGB maximum intensity for pixel type does not fit into the type");
   }
   
   for(x = 1;x < count;x++) {
     if (dest[0]->ibm_ucPixelType != dest[x]->ibm_ucPixelType) {
       JPG_THROW(INVALID_PARAMETER,"TrivialTrafo::YCbCr2RGB",
-		"pixel types of all three components in a RGB to RGB conversion must be identical");
+                "pixel types of all three components in a RGB to RGB conversion must be identical");
     }
   }
 
   {
-    external *rptr,*gptr,*bptr,*aptr;
+    external *rptr,*gptr,*bptr;
     switch(count) {
-    case 4:
-      aptr = (external *)(dest[3]->ibm_pData);
     case 3:
       bptr = (external *)(dest[2]->ibm_pData);
-    case 2:
       gptr = (external *)(dest[1]->ibm_pData);
     case 1:
       rptr = (external *)(dest[0]->ibm_pData);
     }
     for(y = ymin;y <= ymax;y++) {
-      LONG *ysrc,*cbsrc,*crsrc,*asrc;
-      external *r,*g,*b,*a;
+      internal *ysrc,*cbsrc,*crsrc;
+      external *r,*g,*b;
+      
       switch(count) {
-      case 4:
-	asrc   = m_lA  + xmin + (y << 3);
-	a      = aptr;
       case 3:
-	crsrc  = m_lCr + xmin + (y << 3);
-	b      = bptr;
-      case 2:
-	cbsrc  = m_lCb + xmin + (y << 3);
-	g      = gptr;
+        crsrc  = (internal *)source[2]   + xmin + (y << 3);
+        b      = bptr;
+        cbsrc  = (internal *)source[1]   + xmin + (y << 3);
+        g      = gptr;
       case 1:
-	ysrc   = m_lY  + xmin + (y << 3);
-	r      = rptr;
+        ysrc   = (internal *)source[0]   + xmin + (y << 3);
+        r      = rptr;
       }
       for(x = xmin;x <= xmax;x++) {
-	LONG rv,gv,bv,av;
-	switch(count) {
-	case 4:
-	  av = *asrc++;
-	  if (av < 0)   av = 0;
-	  if (av > max) av = max;
-	  *a = m_pusDecodingLUT[3][av];
-	  a  = (external *)((UBYTE *)(a) + dest[3]->ibm_cBytesPerPixel);
-	case 3:
-	  bv = *crsrc++;
-	  if (bv < 0)   bv = 0;
-	  if (bv > max) bv = max;
-	  *b = m_pusDecodingLUT[2][bv];
-	  b  = (external *)((UBYTE *)(b) + dest[2]->ibm_cBytesPerPixel);
-	case 2:
-	  gv = *cbsrc++;
-	  if (gv < 0)   gv = 0;
-	  if (gv > max) gv = max;
-	  *g = m_pusDecodingLUT[1][gv];
-	  g  = (external *)((UBYTE *)(g) + dest[1]->ibm_cBytesPerPixel);
-	case 1:
-	  rv = *ysrc++;
-	  if (rv < 0)   rv = 0;
-	  if (rv > max) rv = max;
-	  *r = m_pusDecodingLUT[0][rv];
-	  r  = (external *)((UBYTE *)(r) + dest[0]->ibm_cBytesPerPixel);
-	}
+        internal rv,gv,bv;
+
+        switch(count) {
+        case 3:
+          bv = *crsrc++; 
+          if (!TypeTrait<external>::isFloat) {
+            if (bv < 0)      bv = 0;
+            if (bv > m_lMax) bv = m_lMax;
+          }
+          *b = bv;
+          b  = (external *)((UBYTE *)(b) + dest[2]->ibm_cBytesPerPixel);
+          gv = *cbsrc++;
+          if (!TypeTrait<external>::isFloat) {
+            if (gv < 0)      gv = 0;
+            if (gv > m_lMax) gv = m_lMax;
+          }
+          *g = gv;
+          g  = (external *)((UBYTE *)(g) + dest[1]->ibm_cBytesPerPixel);
+        case 1:
+          rv = *ysrc++;
+          if (!TypeTrait<external>::isFloat) {
+            if (rv < 0)      rv = 0;
+            if (rv > m_lMax) rv = m_lMax;
+          }
+          *r = rv;
+          r  = (external *)((UBYTE *)(r) + dest[0]->ibm_cBytesPerPixel);
+        }
       }
       switch(count) {
-      case 4:
-	aptr  = (external *)((UBYTE *)(aptr) + dest[3]->ibm_lBytesPerRow);
       case 3:
-	bptr  = (external *)((UBYTE *)(bptr) + dest[2]->ibm_lBytesPerRow);
-      case 2:
-	gptr  = (external *)((UBYTE *)(gptr) + dest[1]->ibm_lBytesPerRow);
+        bptr  = (external *)((UBYTE *)(bptr) + dest[2]->ibm_lBytesPerRow);
+        gptr  = (external *)((UBYTE *)(gptr) + dest[1]->ibm_lBytesPerRow);
       case 1:
-	rptr  = (external *)((UBYTE *)(rptr) + dest[0]->ibm_lBytesPerRow);
+        rptr  = (external *)((UBYTE *)(rptr) + dest[0]->ibm_lBytesPerRow);
       }
     }
   }
@@ -274,13 +224,13 @@ void TrivialTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,const stru
 ///
 
 /// Explicit instanciations
-template class TrivialTrafo<UBYTE,1>;
-template class TrivialTrafo<UWORD,1>;
-template class TrivialTrafo<UBYTE,2>;
-template class TrivialTrafo<UWORD,2>;
-template class TrivialTrafo<UBYTE,3>;
-template class TrivialTrafo<UWORD,3>;
-template class TrivialTrafo<UBYTE,4>;
-template class TrivialTrafo<UWORD,4>;
+template class TrivialTrafo<LONG,UBYTE,1>;
+template class TrivialTrafo<LONG,UWORD,1>;
+template class TrivialTrafo<LONG,LONG,1>;
+template class TrivialTrafo<LONG,UBYTE,3>;
+template class TrivialTrafo<LONG,UWORD,3>;
+template class TrivialTrafo<LONG,LONG,3>;
+template class TrivialTrafo<FLOAT,FLOAT,1>;
+template class TrivialTrafo<FLOAT,FLOAT,3>;
 ///
 
