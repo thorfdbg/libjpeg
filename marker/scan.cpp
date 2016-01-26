@@ -27,7 +27,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.110 2015/09/17 11:20:35 thor Exp $
+** $Id: scan.cpp,v 1.111 2016/01/21 13:57:49 thor Exp $
 **
 */
 
@@ -734,6 +734,7 @@ void Scan::InstallDefaults(UBYTE depth,ULONG tagoffset,const struct JPG_TagItem 
 void Scan::MakeHiddenRefinementScan(UBYTE bitposition,class Component *comp,UBYTE start,UBYTE stop)
 {
   bool colortrafo = m_pFrame->TablesOf()->hasSeparateChroma(m_pFrame->DepthOf());
+  bool residual   = false; // for a residual scan type.
   
   assert(m_pParser == NULL);
 
@@ -754,8 +755,6 @@ void Scan::MakeHiddenRefinementScan(UBYTE bitposition,class Component *comp,UBYT
   case ACResidual:
   case ResidualProgressive: 
   case ACResidualProgressive:
-  case ResidualDCT:
-  case ACResidualDCT:
     // Only one component in the scan.
     assert(stop >= start);
       
@@ -820,6 +819,8 @@ void Scan::MakeHiddenRefinementScan(UBYTE bitposition,class Component *comp,UBYT
     break;
   case Residual:
   case ResidualProgressive:
+    residual = true;
+    // runs into the following.
   case ResidualDCT:
     if (colortrafo) {
       m_ucACTable[0] = (comp && comp->IndexOf() == 0)?(0):(1);  // Luma uses a separate table.
@@ -830,24 +831,27 @@ void Scan::MakeHiddenRefinementScan(UBYTE bitposition,class Component *comp,UBYT
       m_ucDCTable[0] = 0;
       m_ucDCTable[1] = m_ucDCTable[2] = m_ucDCTable[3] = 0; // Chroma uses the same table.
     }
-    assert(start == 0 && stop == 63);
+    assert(residual == false || (start == 0 && stop == 63));
     m_pHuffman = new(m_pEnviron) HuffmanTable(m_pEnviron);
     m_pParser  = new(m_pEnviron) RefinementScan(m_pFrame,this,
                                                 start,stop,
                                                 bitposition,bitposition+1,
-                                                false,true);
+                                                false,residual);
     break;
   case ACResidual:
   case ACResidualProgressive:
+    residual = true;
+    // runs into the following.
   case ACResidualDCT:
 #if ACCUSOFT_CODE
     m_ucACTable[0] = 0;
     m_ucDCTable[0] = 0;
+    assert(residual == false || (start == 0 && stop == 63));
     m_pConditioner = new(m_pEnviron) ACTable(m_pEnviron);
     m_pParser      = new(m_pEnviron) ACRefinementScan(m_pFrame,this,
                                                       start,stop,
                                                       bitposition,bitposition+1,
-                                                      false,true);
+                                                      false,residual);
 #else
     JPG_THROW(NOT_IMPLEMENTED," Scan::MakeHiddenRefinementScan",
               "Arithmetic coding option not available in your code release, please contact Accusoft for a full version");
@@ -866,6 +870,7 @@ void Scan::MakeHiddenRefinementScan(UBYTE bitposition,class Component *comp,UBYT
 void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl *ctrl)
 {
   m_bHidden = true;
+  bool residual = false;
 
   if (m_pParser == NULL) {
     ScanType type = m_pFrame->ScanTypeOf();
@@ -895,15 +900,19 @@ void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl 
       break; 
     case Residual:
     case ResidualProgressive:
+      residual = true;
+      // Runs into the following
     case ResidualDCT:
       ParseMarker(io,ResidualProgressive);
       m_pParser  = new(m_pEnviron) RefinementScan(m_pFrame,this,
                                                   m_ucScanStart,m_ucScanStop,
                                                   m_ucLowBit,m_ucHighBit,
-                                                  false,true);
+                                                  false,residual);
       break;
     case ACResidual:
     case ACResidualProgressive:
+      residual = true;
+      // Runs into the following
     case ACResidualDCT:
 #if ACCUSOFT_CODE
       ParseMarker(io,ACResidualProgressive);

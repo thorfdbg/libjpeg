@@ -28,7 +28,7 @@
 ** is defined by parameters, not by actual providing the table explicitly
 ** as a LUT.
 **
-** $Id: parametrictonemappingbox.cpp,v 1.44 2015/09/21 09:41:43 thor Exp $
+** $Id: parametrictonemappingbox.cpp,v 1.45 2015/10/28 08:45:24 thor Exp $
 **
 */
 
@@ -220,14 +220,14 @@ DOUBLE ParametricToneMappingBox::TableValue(DOUBLE v) const
     break;
   case Logarithmic:
     if (m_fP1 > 0.0) {
-      if (v > 0.0) {
+      if (v > 0.0 || (m_fP3 > 0.0 && v >= 0.0)) {
         w = log(pow(m_fP1 * v,double(m_fP2)) + m_fP3)+m_fP4;
       } else {
         w = -HUGE_VAL;
       }
       assert(!isnan(w));
     } else {
-      if (v > 0.0) {
+      if (v > 0.0 || (m_fP3 > 0.0 && v >= 0.0)) {
         w = -log(pow(-m_fP1 * v,double(m_fP2)) + m_fP3)+m_fP4;
       } else {
         w = HUGE_VAL;

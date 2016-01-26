@@ -27,7 +27,7 @@
 ** This box keeps all the information for opacity coding, the alpha mode
 ** and the matte color.
 **
-** $Id: alphabox.cpp,v 1.2 2015/03/13 15:14:06 thor Exp $
+** $Id: alphabox.cpp,v 1.3 2016/01/22 10:09:54 thor Exp $
 **
 */
 
@@ -54,7 +54,7 @@ bool AlphaBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
   mode1 = stream->Get();
   mode2 = stream->Get();
 
-  if ((mode1 >> 4) >= MatteRemoval)
+  if ((mode1 >> 4) > MatteRemoval)
     JPG_THROW(MALFORMED_STREAM,"AlphaBox::ParseBoxContent",
               "Malformed JPEG stream, the alpha composition method is invalid");
 

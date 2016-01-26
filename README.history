@@ -363,3 +363,21 @@ color transformer factory, and the (non-standardized, proprietary) residual
 refinement arithmetic coding scan mode did not work correctly by depending on a non-
 existing context.
 
+-------------------------------------------------------------------------------------
+
+Release 1.50:
+
+This release fixes encoding of ISO/IEC 18477-8 if the IDCT was selected as
+transformation in the extension layer and refinement scans were added, i.e.
+the command line options -rl -rR 4 created invalid codestreams. Previous
+releases used the wrong type of refinement scan (dct bypass refinement instead
+of regular refinement) and hence broke reconstruction. Furthermore, previous
+releases no longer allowed near lossless coding with DCT bypass. Instead, regular
+DCT coding conforming to ISO/IEC 18477-7 was used. To enable the near-lossless
+DCT bypass mode, use the new option "-ro" now.
+
+Profile B encoding could potentially create codestreams that run into
+clipping of the extension channel; this always happens if the denominator is
+larger than 1, and has to happen according to Annex C of ISO/IEC 18477-3.
+This release avoids this issue by adjusting the exposure value such that
+the denominator always remains smaller than 1.

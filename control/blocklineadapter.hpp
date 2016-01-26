@@ -31,7 +31,7 @@
 ** downsampling filter for the hierarchical mode. This class does not
 ** implement a color transformer or a upsampling filter (in the usual sense)
 **
-** $Id: blocklineadapter.hpp,v 1.21 2014/09/30 12:38:49 thor Exp $
+** $Id: blocklineadapter.hpp,v 1.22 2016/01/06 14:43:23 thor Exp $
 **
 */
 
@@ -64,9 +64,6 @@ class BlockLineAdapter : public BlockBuffer, public LineAdapter {
   // Lines buffered here.
   struct Line         **m_ppTop;
   // 
-  // Lines no longer required and ready for recycling.
-  struct Line         **m_ppFree;
-  //
   // The current (worked on) line of blocks.
   class QuantizedRow ***m_pppQImage;
   //
@@ -75,15 +72,8 @@ class BlockLineAdapter : public BlockBuffer, public LineAdapter {
   // scan.
   struct Line        ***m_pppImage;
   //
-  // The Y position of the line pointed to by the above.
-  ULONG                *m_pulImageLine;
-  //
   // The number of lines already pushed into the image.
   ULONG                *m_pulReadyLines;
-  //
-  // The number of pixels allocated per component. Required for
-  // memory management purposes.
-  ULONG                *m_pulPixelsPerLine;
   //
   // The nominal number of pixels per component. May be smaller
   // than the above, but counts the official number of samples

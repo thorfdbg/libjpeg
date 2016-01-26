@@ -27,7 +27,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.185 2015/10/18 14:05:27 thor Exp $
+** $Id: tables.cpp,v 1.189 2016/01/22 12:15:16 thor Exp $
 **
 */
 
@@ -167,7 +167,6 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
   ULONG rtrafo     = tags->GetTagData(JPGTAG_MATRIX_RTRAFO,colortrafo);
   bool residual    = (frametype & JPGFLAG_RESIDUAL_CODING)?true:false;
   LONG resflags    = tags->GetTagData(JPGTAG_RESIDUAL_FRAMETYPE,JPGFLAG_RESIDUAL);
-  bool isfloat     = tags->GetTagData(JPGTAG_IMAGE_IS_FLOAT,false)?true:false;
   bool losslessdct = tags->GetTagData(JPGTAG_IMAGE_LOSSLESSDCT,false)?true:false;
   ULONG restart    = tags->GetTagData(JPGTAG_IMAGE_RESTART_INTERVAL);
   LONG maxerr      = tags->GetTagData(JPGTAG_IMAGE_ERRORBOUND,0);
@@ -223,11 +222,6 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
   if (hdrquality != MAX_ULONG && hdrquality > 100)
     JPG_THROW(OVERFLOW_PARAMETER,"Tables::InstallDefaultTables",
               "quality of the extensions layer can be at most 100");
-
-  if (isfloat && !residual) {
-    JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-              "Coding of floating point parameters requires enabling residual coding");
-  }
 
   if (maxerr < 0 || maxerr > MAX_UBYTE)
     JPG_THROW(OVERFLOW_PARAMETER,"Tables::InstallDefaultTables",
@@ -486,6 +480,7 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
   bool isoc         = tags->GetTagData(JPGTAG_IMAGE_OUTPUT_CONVERSION,isfloat)?true:false;
   bool dodct        = true;  
   bool clipping     = true;
+  bool profiled     = true; // set if it may be even profile D (more restricted)
   //
   // We do have either residual bits or hidden bits and thus need a specs box.
   // For the alpha codestream, this is a separate superbox.
@@ -496,6 +491,10 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
   // the depth must be one. This should be ensured by the image.
   assert(merger && (m_pMaster == NULL || depth == 1));
   //
+  // If there is any residual information, it is surely not profile D.
+  if (residual || hiddenresidualbits > 0)
+    profiled = false;
+  //
   // Insert elementary flags and settings into the mergingspecbox/alphamergingspecbox.
   merger->DefineHiddenBits(hiddenbits); 
   merger->DefineHiddenResidualBits(hiddenresidualbits);
@@ -504,10 +503,12 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
   switch(resflags & 7) {
   case JPGFLAG_RESIDUAL:
   case JPGFLAG_RESIDUALPROGRESSIVE:
-  case JPGFLAG_RESIDUALDCT:
     dodct    = false;
+    // run into the following.
+  case JPGFLAG_RESIDUALDCT:
     dopart8  = true;
     clipping = false;
+    profiled = false;
     break;
   }
   //
@@ -576,6 +577,7 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
           JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSetting",
                     "part 8 does not allow the usage of a residual non-linear point transformation");
         }
+        profiled = false;
         break;
       default:
         JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
@@ -620,6 +622,8 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
                 "Free form color transformations are only available for three-component images");
     }
+    // Not in profile D
+    profiled = false;
   }
   //
   // Define the DCT process. This is only valid in part 8 or if we are currently defining the part-9 
@@ -697,9 +701,6 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
         if (dopart8)
           JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
                     "Part 8 does not support the secondary non-linearity");
-        if (isfloat)
-          JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-                    "Part 7 profile C does not support the secondary non-linearity");
         if (jtag->ti_Data.ti_lData != JPGFLAG_TONEMAPPING_LINEAR)
           JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
                     "Part 9 and part 7 profile C only supports linear transformations as secondary non-linearity");
@@ -796,11 +797,11 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
     if (dopart8) {
       profile->addCompatibility(FileTypeBox::XT_LS);
     } else if (isoc) {
-      if (hdrquality > 0) { // We do have residual scans.
-        profile->addCompatibility(FileTypeBox::XT_HDR_C);
-      } else {
+      if (profiled) {
         // Refinement only
         profile->addCompatibility(FileTypeBox::XT_HDR_D);
+      } else { // We do have residual scans.
+        profile->addCompatibility(FileTypeBox::XT_HDR_C);
       }
     } else {
       // Integer profile.

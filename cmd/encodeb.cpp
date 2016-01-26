@@ -26,7 +26,7 @@
 /*
 ** Parameter definition and encoding for profile B.
 **
-** $Id: encodeb.cpp,v 1.31 2015/09/22 08:29:30 thor Exp $
+** $Id: encodeb.cpp,v 1.38 2016/01/26 13:25:18 thor Exp $
 **
 */
 

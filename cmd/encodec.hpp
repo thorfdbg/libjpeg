@@ -26,7 +26,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.hpp,v 1.12 2015/05/22 09:55:28 thor Exp $
+** $Id: encodec.hpp,v 1.14 2016/01/22 12:15:13 thor Exp $
 **
 */
 
@@ -47,16 +47,16 @@ extern void EncodeC(const char *source,const char *ldrsource,
                     bool rsequential,bool rprogressive,bool raccoding,
                     bool dconly,UBYTE levels,bool pyramidal,bool writednl,UWORD restart,
                     double gamma,
-                    int lsmode,bool noiseshaping,bool serms,bool losslessdct,
+                    int lsmode,bool noiseshaping,bool serms,bool losslessdct,bool dctbypass,
                     bool openloop,bool deadzone,bool xyz,bool cxyz,
                     int hiddenbits,int riddenbits,int resprec,bool separate,
-                    bool median,bool noclamp,
+                    bool median,int smooth,bool noclamp,
                     const char *sub,const char *ressub,
                     const char *alpha,int alphamode,int matte_r,int matte_g,int matte_b,
                     bool alpharesiduals,int alphaquality,int alphahdrquality,
                     int alphatt,int residualalphatt,
                     int ahiddenbits,int ariddenbits,int aresprec,
-                    bool aopenloop,bool adeadzone,bool aserms);
+                    bool aopenloop,bool adeadzone,bool aserms,bool abypass);
 //
 // Provide a useful default for splitting the quality between LDR and HDR.
 extern void SplitQualityC(int totalquality,bool residuals,int &ldrquality,int &hdrquality);

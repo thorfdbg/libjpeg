@@ -46,7 +46,7 @@
 #** Configuration script for the jpeg project,
 #** THOR Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.7 2013/06/07 06:36:46 thor Exp $
+#** $Id: configure.in,v 1.10 2016/01/26 13:31:55 thor Exp $
 #**
 #** In this module: autoconf script for libjpeg
 #**********************************************************************************/
@@ -65,8 +65,8 @@ LDFLAGS="$machine_option $LDFLAGS"
 AC_SUBST(BITSIZE,${machine_option})
 #
 # Checks for programs.
-AC_PROG_CXX([g++-4.7 g++-4.4 g++-4.3 g++-4.2 g++-4.1 g++-4.0 g++-3.4 g++-3.3 g++-3.2 g++ icc c++ gpp cxx cc++])
-AC_PROG_CC
+AC_PROG_CXX([g++-4.9 g++-4.7 g++-4.4 g++-4.3 g++-4.2 g++-4.1 g++-4.0 g++-3.4 g++-3.3 g++-3.2 g++ clang++ icc c++ gpp cxx cc++])
+AC_PROG_CC([gcc-4.9 gcc-4.7 gcc-4.4 gcc-4.3 gcc-4.2 gcc-4.1 gcc-4.0 gcc-3.4 gcc-3.3 gcc-3.2 gcc clang icc cc])
 AC_PROG_CC_STDC
 AC_C_BIGENDIAN([AC_DEFINE(JPG_BIG_ENDIAN,[1],[Define to 1 for big endian])],[AC_DEFINE(JPG_LIL_ENDIAN,[1],[Define to 1 for little endian])])
 #
@@ -74,7 +74,7 @@ AC_C_BIGENDIAN([AC_DEFINE(JPG_BIG_ENDIAN,[1],[Define to 1 for big endian])],[AC_
 # or a generic compiler
 if test "$ac_compiler_gnu" = "yes"; then
 # Define a couple of options concerning the compiler
-  ac_cccmd=`echo ${CC} | cut -f 1 -d ' '`
+  ac_cccmd=`echo ${CC} | cut -f 1 -d ' ' | cut -f 1 -d '-'`
   if test "$ac_cccmd" = "icpc"; then
      ac_cccmd="icc"
   fi

@@ -27,7 +27,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.124 2015/03/16 15:14:41 thor Exp $
+** $Id: frame.cpp,v 1.125 2016/01/21 13:57:49 thor Exp $
 **
 */
 
@@ -697,8 +697,6 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     case ACResidual:
     case ResidualProgressive:
     case ACResidualProgressive:
-    case ResidualDCT:
-    case ACResidualDCT:
       // Create hidden refinement scans for residual scans.
       {
         UBYTE hiddenbits;

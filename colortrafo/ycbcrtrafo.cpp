@@ -26,7 +26,7 @@
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: ycbcrtrafo.cpp,v 1.70 2015/09/17 11:20:24 thor Exp $
+** $Id: ycbcrtrafo.cpp,v 1.71 2016/01/06 14:43:23 thor Exp $
 **
 */
 
@@ -354,6 +354,10 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
         case 1:
           residual[0][x] = m_lRDCShift;
         }
+        break;
+      case MergingSpecBox::Zero:
+        // No transformation, this should not be called.
+        assert(!"Attempt to compute a residual that is supposed to be absent");
         break;
       }
     }

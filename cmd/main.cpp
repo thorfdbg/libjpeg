@@ -29,7 +29,7 @@
 ** It is here to serve as an entry point for the command line image
 ** compressor.
 **
-** $Id: main.cpp,v 1.202 2015/10/18 14:05:27 thor Exp $
+** $Id: main.cpp,v 1.208 2016/01/22 12:37:41 thor Exp $
 **
 */
 
@@ -173,7 +173,7 @@ void PrintLicense(void)
 // Print the usage of the program and exit
 void PrintUsage(const char *progname)
 {    
-  fprintf(stderr,"Usage: %s [options] source target\n"
+  printf("Usage: %s [options] source target\n"
           "default is to decode the jpeg input and write a ppm output\n"
           "use -q [1..100] or -p to enforce encoding\n\n"
           "-q quality : selects the encoding mode and defines the quality of the base image\n"
@@ -187,6 +187,8 @@ void PrintUsage(const char *progname)
           "             image.\n"
           "-rl        : enforce a int-to-int lossless DCT in the residual domain\n"
           "             for lossless coding enabled by -Q 100\n"
+          "-ro        : disable the DCT in the residual domain, quantize spatially for\n"
+          "             near-lossless coding\n"
           "-ldr file  : specifies a separate file containing the base layer\n"
           "             for encoding.\n"
           "-R bits    : specify refinement bits for the base images.\n"
@@ -210,6 +212,9 @@ void PrintUsage(const char *progname)
           "             for constructing the inverse TMO of profile C.\n"
           "-ct        : use the center of mass instead of the median\n"
           "             for constructing the inverse TMO of profile C.\n"
+          "-sm iter   : use <iter> iterations to smooth out the histogram for\n"
+          "             inverse-TMO based algorithms. Default is not to smooth\n"
+          "             the histogram.\n"
           "-ncl       : disable clamping of out-of-gamut colors.\n"
           "             this is automatically enabled for lossless.\n"
 #if ACCUSOFT_CODE
@@ -235,9 +240,11 @@ void PrintUsage(const char *progname)
 #endif
           "-g gamma   : define the exponent for the gamma for the LDR domain, or rather, for\n"
           "             mapping HDR to LDR. A suggested value is 2.4 for mapping scRGB to sRBG.\n"
-          "             This option is only used if -ldr is missing to generate an LDR image\n"
-          "             from the HDR input. Use -g 0 for an automatic tonemapping.\n"
-          "             setting gamma to zero enables an automatic tone mapping\n"
+          "             This option controls the base-nonlinearity that generates the\n"
+          "             HDR pre-cursor image from the LDR image. It is also used in the\n"
+          "             absense of -ldr (i.e. no LDR image) to tonemap the HDR input image.\n"
+          "             Use -g 0 to use an approximate inverse TMO as base-nonlinearity, and\n"
+          "             for tonemapping with the Reinhard operator if the LDR image is missing.\n"
           "-gf file   : define the inverse one-point L-nonlinearity on decoding from a file\n"
           "             this file contains one (ASCII encoded) digit per line, 256*2^h lines\n"
           "             in total, where h is the number of refinement bits. Each line contains\n"
@@ -284,6 +291,7 @@ void PrintUsage(const char *progname)
           "-aol       : enable open loop coding for the alpha channel\n"
           "-adz       : enable the deadzone quantizer for the alpha channel\n"
           "-all       : enable lossless DCT for alpha coding\n"
+          "-alo       : disable the DCT in the residual alpha channel, quantize spatially.\n"
           "-aq qu     : specify a quality for the alpha base channel (usually the only one)\n"
           "-aQ qu     : specify a quality for the alpha extension layer\n"
           "-aqt n     : specify the quantization table for the alpha channel\n"
@@ -342,7 +350,9 @@ int main(int argc,char **argv)
   bool raccoding    = false;
   bool serms        = false;
   bool aserms       = false;
+  bool abypass      = false;
   bool losslessdct  = false;
+  bool dctbypass    = false;
   bool openloop     = false;
   bool deadzone     = false;
   bool aopenloop    = false;
@@ -351,6 +361,7 @@ int main(int argc,char **argv)
   bool cxyz         = false;
   bool separate     = false;
   bool noclamp      = false;
+  bool setprofile   = false;
   bool median       = true;
   int splitquality  = -1;
   int profile       = 2;    // profile C.
@@ -369,6 +380,7 @@ int main(int argc,char **argv)
   int residualtt        = 0;
   int alphatt           = 0;
   int residualalphatt   = 0;
+  int smooth            = 0; // histogram smoothing
 
   PrintLicense();
   fflush(stdout);
@@ -382,6 +394,7 @@ int main(int argc,char **argv)
       splitquality = ParseInt(argc,argv);
     } else if (!strcmp(argv[1],"-profile")) {
       const char *s = ParseString(argc,argv);
+      setprofile    = true;
       if (!strcmp(s,"a") || !strcmp(s,"A")) {
         profile = 0;
       } else if (!strcmp(s,"b") || !strcmp(s,"B")) {
@@ -389,7 +402,7 @@ int main(int argc,char **argv)
       } else if (!strcmp(s,"c") || !strcmp(s,"C")) {
         profile = 2;
       } else if (!strcmp(s,"d") || !strcmp(s,"D")) {
-        profile = 2; // yes, no typo. Handled by the same encoder configuration.
+        profile = 4;
       } else {
         fprintf(stderr,"unknown profile definition %s, only profiles a,b,c and d exist",
                 s);
@@ -405,6 +418,8 @@ int main(int argc,char **argv)
       median = false;
       argv++;
       argc--;
+    } else if (!strcmp(argv[1],"-sm")) {
+      smooth = ParseInt(argc,argv);
     } else if (!strcmp(argv[1],"-z")) {
       restart = ParseInt(argc,argv);
     } else if (!strcmp(argv[1],"-r")) {
@@ -458,6 +473,10 @@ int main(int argc,char **argv)
       aserms = true;
       argv++;
       argc--;
+    } else if (!strcmp(argv[1],"-alo")) {
+      abypass = true;
+      argv++;
+      argc--;
     }
 #if ACCUSOFT_CODE
     else if (!strcmp(argv[1],"-p")) {
@@ -505,6 +524,10 @@ int main(int argc,char **argv)
       argc--;
     } else if (!strcmp(argv[1],"-rl")) {
       losslessdct = true;
+      argv++;
+      argc--;
+    } else if (!strcmp(argv[1],"-ro")) {
+      dctbypass = true;
       argv++;
       argc--;
     } else if (!strcmp(argv[1],"-xyz")) {
@@ -602,6 +625,7 @@ int main(int argc,char **argv)
     case 1:
       break;
     case 2:
+    case 4:
       SplitQualityC(splitquality,residuals,quality,hdrquality);
       break;
     }
@@ -637,18 +661,21 @@ int main(int argc,char **argv)
       fprintf(stderr,"**** Profile B encoding not supported due to patented IPRs.\n");
       break;
     case 2:
+    case 4:
+      if (setprofile && ((residuals == false && hiddenbits == false && profile != 4) || profile == 2))
+        residuals = true;
       EncodeC(argv[1],ldrsource,argv[2],lsource,quality,hdrquality,
               tabletype,residualtt,maxerror,colortrafo,
               lossless,progressive,
               residuals,optimize,accoding,rsequential,rprogressive,raccoding,
               dconly,levels,pyramidal,writednl,restart,
-              gamma,lsmode,noiseshaping,serms,losslessdct,openloop,deadzone,xyz,cxyz,
-              hiddenbits,riddenbits,resprec,separate,median,noclamp,
+              gamma,lsmode,noiseshaping,serms,losslessdct,dctbypass,openloop,deadzone,xyz,cxyz,
+              hiddenbits,riddenbits,resprec,separate,median,smooth,noclamp,
               sub,ressub,
               alpha,alphamode,matte_r,matte_g,matte_b,
               alpharesiduals,alphaquality,alphahdrquality,
               alphatt,residualalphatt,
-              ahiddenbits,ariddenbits,aresprec,aopenloop,adeadzone,aserms);
+              ahiddenbits,ariddenbits,aresprec,aopenloop,adeadzone,aserms,abypass);
       break;
     }
   }

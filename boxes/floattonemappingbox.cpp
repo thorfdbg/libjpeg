@@ -28,7 +28,7 @@
 ** R and L transformations. This is the version that takes floating
 ** point values.
 **
-** $Id: floattonemappingbox.cpp,v 1.5 2015/09/17 14:10:50 thor Exp $
+** $Id: floattonemappingbox.cpp,v 1.6 2015/10/29 08:07:50 thor Exp $
 **
 */
 
@@ -352,6 +352,8 @@ const FLOAT *FloatToneMappingBox::UpscaleTable(UBYTE inputbits,UBYTE outputbits,
   // This should have outfract = 0 and output bits = 0 as it can only apply for S.
   assert(outfract == 0 && outputbits == 0);
   assert(m_pfTable);
+  NOREF(outfract);
+  NOREF(outputbits);
 
   // Check whether the number of table entries fits to the non-interpolated version of the table.
   if (inputbits > 16 || (1UL << inputbits) != m_ulTableEntries)

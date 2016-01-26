@@ -1,18 +1,18 @@
-This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-plus a library that can be used to encode and decode JPEG streams. 
-It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-towards intermediate, high-dynamic-range lossy and lossless coding
-of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8/-9 
-encoding.
+This project implements a complete(!) JPEG (Rec. ITU-T T.81 | ISO/IEC
+10918-1) codec, plus a library that can be used to encode and decode
+JPEG streams.  It also implements ISO/IEC 18477 aka JPEG XT which is
+an extension towards intermediate, high-dynamic-range lossy and
+lossless coding of JPEG. In specific, it supports ISO/IEC
+18477-3/-6/-7/-8/-9 encoding.
 
 --------------------------------------------------------------------------
 
 Unlike many other implementations, libjpeg also implements:
 
 - 12 bpp image coding for the lossy DCT process,
-- the predictive lossless mode of 10918-1,
-- the hierarchical process of 10918-1,
-- the arithmetic coding option of 10918-1,
+- the predictive lossless mode of Rec. ITU-T T.81 | ISO/IEC 10918-1,
+- the hierarchical process of Rec. ITU-T T.81 | ISO/IEC 10918-1,
+- the arithmetic coding option of Rec. ITU-T T.81 | ISO/IEC 10918-1,
 - coding of up to 256 component images
 - upsampling of images for all factors from 1x1 to 4x4
 
@@ -24,7 +24,7 @@ sequential and progressive mode in 8bpp.
 In addition, this codec provides methods to encode images
 
 - with a bit depth between 8 and 16 bits per sample, fully backwards
-  compatible to ISO/IEC 10918 baseline coding.
+  compatible to Rec. ITU-T T.81 | ISO/IEC 10918 baseline coding.
 
 - consisting of floating point samples, specifically images with 
   high dynamic range.
@@ -101,14 +101,15 @@ profiles a or b do not require them.
 
 The following options exist for lossless coding integer:
 
-predictive 10918-1 coding. Note, however, that not many implementations
-are capable of decoding such stream, thus this is probably not a good option
-for all-day purposes.
+predictive Rec. ITU-T T.81 | ISO/IEC 10918-1 coding. Note, however,
+that not many implementations are capable of decoding such stream,
+thus this is probably not a good option for all-day purposes.
 
 $ jpeg -p -c infile.ppm out.jpg
 
-While the result is a valid 10918-1 stream, most other implementations will
-hick up and break, thus it is not advisable to use it.
+While the result is a valid Rec. ITU-T T.81 | ISO/IEC 10918-1 stream,
+most other implementations will hick up and break, thus it is not
+advisable to use it.
 
 A second option for lossless coding is residual coding within profile c:
 
@@ -134,8 +135,9 @@ $ jpeg -l -q 100 -c infile.ppm out.jpg
 Refinement scans can be used to increase the sample precision to up to 12
 bits. The "-c" command line option disables the lossy color transformation.
 
-Additionally, this implementation also supports JPEG LS, which is outside of
-10918 and 18477. For that, use the command line option -ls:
+Additionally, this implementation also supports JPEG LS, which is
+outside of Rec. ITU-T T.81 | ISO/IEC 10918-1 and ISO/IEC 18477. For
+that, use the command line option -ls:
 
 $ jpeg -ls -c infile.ppm out.jpg
 
@@ -215,13 +217,14 @@ Starting with release 1.30, libjpeg will include a couple of optimization
 parameters to improve the performance of JPEG and JPEG XT. In this
 release, the following additional command line switches are available:
 
--qt <n> : Selects a different quantization table. The default table, also
-enabled by -qt 0, is the one in the legacy JPEG standard (ITU T.81 | ISO/IEC
-10918-1). -qt 1 is the "flat" table for PSNR-optimal performance. It is not
-recommended for real-life usage as its visual performance is non-ideal, it
-just generates "nice numbers". -qt 2 is MS-SSIM ideal, but similarly, not
-necessarily a good recommendation for all-day use. -qt 3 is a good 
-compromize and usually works better than -qt 0.
+-qt <n> : Selects a different quantization table. The default table,
+also enabled by -qt 0, is the one in the legacy JPEG standard
+(Rec. ITU-T T.81 | ISO/IEC 10918-1). -qt 1 is the "flat" table for
+PSNR-optimal performance. It is not recommended for real-life usage as
+its visual performance is non-ideal, it just generates "nice
+numbers". -qt 2 is MS-SSIM ideal, but similarly, not necessarily a
+good recommendation for all-day use. -qt 3 is a good compromize and
+usually works better than -qt 0.
 
 -dz : This option enables a deadzone quantizer that shifts the buckets
 by 1/8th of their size to the outside. This is (almost) the ideal choice
@@ -258,6 +261,25 @@ command line.
 
 --------------------------------------------------------------------------
 
+Release 1.50:
+
+This release fixes encoding of ISO/IEC 18477-8 if the IDCT was selected as
+transformation in the extension layer and refinement scans were added, i.e.
+the command line options -rl -rR 4 created invalid codestreams. Previous
+releases used the wrong type of refinement scan (dct bypass refinement instead
+of regular refinement) and hence broke reconstruction. Furthermore, previous
+releases no longer allowed near lossless coding with DCT bypass. Instead, regular
+DCT coding conforming to ISO/IEC 18477-7 was used. To enable the near-lossless
+DCT bypass mode, use the new option "-ro" now.
+
+Profile B encoding could potentially create codestreams that run into
+clipping of the extension channel; this always happens if the denominator is
+larger than 1, and has to happen according to Annex C of ISO/IEC 18477-3.
+This release avoids this issue by adjusting the exposure value such that
+the denominator always remains smaller than 1.
+
+--------------------------------------------------------------------------
+
 This project is released under the terms of a BSD type or under a GPL license, 
 depending on the distribution channel. The source code may be obtained under 
 other license conditions, for requests and inquiries, please contact me at 
@@ -266,6 +288,6 @@ thor@math.tu-berlin.de.
 Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart for sponsoring this project.
 
-Thomas Richter, September 2015
+Thomas Richter, January 2016
 
 -------------------------------------------------------------------------------------

@@ -28,7 +28,7 @@
 ** Represents the scan including the scan header for the
 ** arithmetic coding procedure.
 **
-** $Id: acsequentialscan.hpp,v 1.36 2015/02/25 16:09:41 thor Exp $
+** $Id: acsequentialscan.hpp,v 1.37 2016/01/26 13:25:18 thor Exp $
 **
 */
 
@@ -69,9 +69,6 @@ class ACSequentialScan : public EntropyParser {
   // Last difference value, required for selecting the
   // AC coding context.
   LONG                     m_lDiff[4];
-  //
-  // Height in blocks.
-  ULONG                    m_ulHeight;
   //
   // Context information
   struct QMContextSet {

@@ -28,7 +28,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.cpp,v 1.67 2015/06/03 15:37:24 thor Exp $
+** $Id: blockbitmaprequester.cpp,v 1.68 2015/10/28 08:45:28 thor Exp $
 **
 */
 
@@ -839,7 +839,7 @@ void BlockBitmapRequester::EncodeUnsampled(const RectAngle<LONG> &region,class C
         }
         // Step One:
         // Feed now the color transformer with the residual data.
-        //if (x == 168 && y == 186)
+        //if (x == 117 && y == 34)
         //printf("gotcha");
         ctrafo->RGB2Residual(r,m_ppTempIBM,m_ppDTemp,m_ppRTemp);
         //
@@ -968,7 +968,7 @@ void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *r
       }
       //
       // Perform the color transformation now.
-      //if (x == 245 && y == 126 && m_ucCount == 1)
+      //if (x == 117 && y == 34)
       //printf("gotcha");       
       if (m_pResidualHelper) {
         for(i = rr->rr_usFirstComponent; i <= rr->rr_usLastComponent; i++) {

@@ -26,7 +26,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.cpp,v 1.32 2015/10/08 08:45:59 thor Exp $
+** $Id: encodec.cpp,v 1.35 2016/01/22 12:27:52 thor Exp $
 **
 */
 
@@ -62,15 +62,16 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
              bool residual,bool optimize,bool accoding,
              bool rsequential,bool rprogressive,bool raccoding,
              bool dconly,UBYTE levels,bool pyramidal,bool writednl,UWORD restart,double gamma,
-             int lsmode,bool noiseshaping,bool serms,bool losslessdct,
+             int lsmode,bool noiseshaping,bool serms,bool losslessdct,bool dctbypass,
              bool openloop,bool deadzone,bool xyz,bool cxyz,
-             int hiddenbits,int riddenbits,int resprec,bool separate,bool median,bool noclamp,
+             int hiddenbits,int riddenbits,int resprec,bool separate,
+             bool median,int smooth,bool noclamp,
              const char *sub,const char *ressub,
              const char *alpha,int alphamode,int matte_r,int matte_g,int matte_b,
              bool alpharesiduals,int alphaquality,int alphahdrquality,
              int alphatt,int residualalphatt,
              int ahiddenbits,int ariddenbits,int aresprec,
-             bool aopenloop,bool adeadzone,bool aserms)
+             bool aopenloop,bool adeadzone,bool aserms,bool abypass)
 { 
   struct JPG_TagItem dcscan[] = { // scan parameters for the first DCOnly scan
     JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
@@ -246,11 +247,11 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
               if (separate) {
                 BuildRGBToneMappingFromLDR(in,ldrin,width,height,prec,depth,
                                            red,green,blue,flt,big,xyz || cxyz,hiddenbits,
-                                           median,fullrange);
+                                           median,fullrange,smooth);
               } else {
                 BuildToneMappingFromLDR(in,ldrin,width,height,prec,depth,
                                         ldrtohdr,flt,big,xyz || cxyz,hiddenbits,
-                                        median,fullrange);
+                                        median,fullrange,smooth);
               }
               if (hiddenbits)
                 printf("\n"
@@ -274,7 +275,7 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
       }
       //
       if (fullrange) {
-        if (lossless || hdrquality >= 100) {
+        if (lossless || hdrquality >= 100 || dctbypass) {
           fullrange = false;
         } else {
           printf("Found overly large differentials, adding additional scaling step.\n");
@@ -337,6 +338,8 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
           residualtype  = JPGFLAG_SEQUENTIAL;
         if (rprogressive && !lossless && hdrquality < 100)
           residualtype  = JPGFLAG_PROGRESSIVE;
+        if (dctbypass)
+          residualtype  = JPGFLAG_RESIDUAL;
         if (residualtype == JPGFLAG_RESIDUAL && rprogressive)
           residualtype  = JPGFLAG_RESIDUALPROGRESSIVE;
         if (raccoding)
@@ -356,9 +359,11 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
           } else {
             arestype = JPGFLAG_RESIDUAL;
           }
-          if (raccoding)
-            residualtype |= JPGFLAG_ARITHMETIC;
+        } else if (abypass) {
+          arestype = JPGFLAG_RESIDUAL;
         }
+        if (raccoding)
+          arestype |= JPGFLAG_ARITHMETIC;
         
         {                 
           int ok = 1;

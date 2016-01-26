@@ -27,7 +27,7 @@
 ** A couple of generic TMO related functions: Estimate TMO from LDR and HDR
 ** image pair, build a gamma mapping.
 **
-** $Id: tmo.cpp,v 1.12 2015/10/22 12:45:23 thor Exp $
+** $Id: tmo.cpp,v 1.17 2015/11/17 15:34:43 thor Exp $
 **
 */
 
@@ -37,6 +37,10 @@
 #include "std/stdlib.hpp"
 #include "std/string.hpp"
 #include "std/math.hpp"
+///
+
+/// Defines
+//#define SAVE_ITMO
 ///
 
 /// InvertTable
@@ -159,14 +163,34 @@ void InvertTable(UWORD input[65536],UWORD output[65536],UBYTE inbits,UBYTE outbi
 }
 ///
 
+/// SaveHistogram
+#ifdef SAVE_ITMO
+static void save_histogram(const char *filename,double hist[256])
+{
+  FILE *out = fopen(filename,"w");
+  if (out) {
+    for(int i = 0;i < 256;i++) {
+      if (hist[i] >= 0.0) {
+        fprintf(out,"%d\t%g\n",i,hist[i]);
+      }
+    }
+    fclose(out);
+  }
+}
+#endif
+///
+
 /// BuildIntermediateTable
 // Build an intermediate table from a histogram.
 void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
                             UWORD ldrtohdr[65536],int hiddenbits,
-                            bool median,bool &fullrange,bool flt)
+                            bool median,bool &fullrange,bool flt,
+                            int smooth)
 {     
   int i,j,k;
   double intermed[256];
+  LONG absmin = hdrcnt;
+  LONG absmax = 0;
   //
   // For each LDR value (first index), find a suitable
   // HDR value to map to. 
@@ -184,6 +208,10 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
       }
     }
     if (count > 0) {
+      if (max > absmax)
+        absmax = max;
+      if (min < absmin)
+        absmin = min;
       if (max - min > (hdrcnt >> 1)) {
         fullrange   = true;
         intermed[i] = (max - min) >> 1;
@@ -197,11 +225,11 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
           }
           intermed[i] = j;
         } else {
-          int total = 0;
-          double sum = 0.0;
+          double total = 0.0;
+          double sum   = 0.0;
           for(j = 0;j < hdrcnt;j++) {
-            sum   += hists[i+offs][j] * j;
-            total += hists[i+offs][j];
+            sum   += double(hists[i+offs][j]) * j;
+            total += double(hists[i+offs][j]);
           }
           intermed[i] = sum / total;
         }
@@ -211,9 +239,18 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
     }
   }
   //
+#ifdef SAVE_ITMO
+  save_histogram("histogram.plot",intermed);
+#endif
+  //
   // Fill in "holes" in the intermediate map.
-  double cur = 0.0;
+  if (absmin == hdrcnt)
+    absmin = 0;
+  if (absmax == 0)
+    absmax = hdrcnt;
+  double cur = absmin;
   double nex = 0.0;
+  int v = 0;
   for(i = 0;i < 256;i++) {
     if (intermed[i] < 0.0) {
       // Find the next filled slot.
@@ -224,14 +261,20 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
         }
       }
       if (j == 256)
-        nex = hdrcnt;
+        nex = absmax;
       // Use a linear interpolation to fill the gaps.
       for(k = i;k < j;k++) {
-        intermed[i] = double(k - i)/double(j - i) * (nex - cur) + cur;
+        intermed[i] = double(k - v)/double(j - v) * (nex - cur) + cur;
       }
+    } else {
       cur = intermed[i];
+      v   = i;
     }
   }
+  //
+#ifdef SAVE_ITMO
+  save_histogram("histogram-filled.plot",intermed);
+#endif
   //
   // Make the map monotonical. First find the minimum.
   double min = hdrcnt;
@@ -277,29 +320,24 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
     }
   }
   //
-  // Now smoothen the values, outwards in. 
-#if WRITE_INV_TMO
-  {
-    FILE *file = fopen("hist.plot","w");
-    for(i = 0;i < 256;i++) {
-      fprintf(file,"%d\t%g\n",i,intermed[i]);
-    }
-    fclose(file);
-  }
+#ifdef SAVE_ITMO
+  save_histogram("histogram-monotonic.plot",intermed);
 #endif
   //
-  //
-#ifdef SAVE_LUT
-  {
-    FILE *fp = fopen("lut.plot","w");
-    if (fp) {
-      for(i = 0;i< 256;i++) {
-        fprintf(fp,"%d\t%g\n",i,intermed[i]);
-      }
-      fclose(fp);
+  // Now smoothen the values, outwards in.
+  for(i = 0;i < smooth;i++) {
+    for(j = 1;j < 255;j+=2) {
+      intermed[j] = 0.25 * intermed[j-1] + 0.5 * intermed[j] + 0.25 * intermed[j+1];
+    }
+    for(j = 2;j < 255;j+=2) {
+      intermed[j] = 0.25 * intermed[j-1] + 0.5 * intermed[j] + 0.25 * intermed[j+1];
     }
   }
+  //
+#ifdef SAVE_ITMO
+  save_histogram("histogram-smooth.plot",intermed);
 #endif
+
   // Use a very simple interpolation to fill in the final
   // output map. Note that this might expand the output by "hiddenbits".
   for(i = 0;i < (256 << hiddenbits);i++) {
@@ -330,14 +368,15 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
 // a floating point table. This requires floating point input.
 void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int count,
                              FLOAT ldrtohdr[256],
-                             bool bigendian,bool median,bool fullrange)
+                             bool bigendian,bool median,bool fullrange,
+                             int smooth)
 {
   int i;
   UWORD tmp[65536];
   DOUBLE scale;
   //
   // Call the generic function. This returns half-float values we still have to cast to float.
-  BuildToneMappingFromLDR(in,ldrin,w,h,16,count,tmp,true,bigendian,false,0,median,fullrange);
+  BuildToneMappingFromLDR(in,ldrin,w,h,16,count,tmp,true,bigendian,false,0,median,fullrange,smooth);
   //
   // Potentially scale the map so we avoid clamping. This is necessary because the output
   // of this map goes into the 2nd base trafo, which implies input clamping. Profile A can
@@ -357,7 +396,8 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int count,
 // Build an inverse tone mapping from a hdr/ldr image pair
 void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int count,
                              UWORD ldrtohdr[65536],bool flt,
-                             bool bigendian,bool xyz,int hiddenbits,bool median,bool &fullrange)
+                             bool bigendian,bool xyz,int hiddenbits,bool median,bool &fullrange,
+                             int smooth)
 {
   long hpos  = ftell(in);
   long lpos  = ftell(ldrin);
@@ -411,7 +451,7 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int coun
       }
       //
       // Build tables for each component.
-      BuildIntermediateTable(hists,0,hdrcnt,ldrtohdr,hiddenbits,median,fullrange,flt);
+      BuildIntermediateTable(hists,0,hdrcnt,ldrtohdr,hiddenbits,median,fullrange,flt,smooth);
       //
       // Release the temporary storage for the histogram.
       for(i = 0;i < 256;i++) {
@@ -434,7 +474,7 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int coun
 void BuildRGBToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int count,
                                 UWORD red[65536],UWORD green[65536],UWORD blue[65536],
                                 bool flt,bool bigendian,bool xyz,int hiddenbits,
-                                bool median,bool &fullrange)
+                                bool median,bool &fullrange,int smooth)
 {
   long hpos  = ftell(in);
   long lpos  = ftell(ldrin);
@@ -478,9 +518,9 @@ void BuildRGBToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int c
       }
       //
       // Build tables for each component.
-      BuildIntermediateTable(hists,0 << 8,hdrcnt,red  ,hiddenbits,median,fullrange,flt);
-      BuildIntermediateTable(hists,1 << 8,hdrcnt,green,hiddenbits,median,fullrange,flt);
-      BuildIntermediateTable(hists,2 << 8,hdrcnt,blue ,hiddenbits,median,fullrange,flt);
+      BuildIntermediateTable(hists,0 << 8,hdrcnt,red  ,hiddenbits,median,fullrange,flt,smooth);
+      BuildIntermediateTable(hists,1 << 8,hdrcnt,green,hiddenbits,median,fullrange,flt,smooth);
+      BuildIntermediateTable(hists,2 << 8,hdrcnt,blue ,hiddenbits,median,fullrange,flt,smooth);
       //
       // Release the temporary storage for the histogram.
       for(i = 0;i < 256;i++) {

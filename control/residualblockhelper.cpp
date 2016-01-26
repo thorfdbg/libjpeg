@@ -29,7 +29,7 @@
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.cpp,v 1.64 2015/05/09 20:09:21 thor Exp $
+** $Id: residualblockhelper.cpp,v 1.65 2015/11/17 15:34:48 thor Exp $
 **
 */
 
@@ -55,6 +55,7 @@
 #ifdef SAVE_RESIDUAL
 //#define SAVE_16BIT
 #define TO_RGB
+#define SCALE 128.0
 UWORD *residual = NULL;
 ULONG res_width,res_height;
 #endif
@@ -140,9 +141,9 @@ ResidualBlockHelper::~ResidualBlockHelper(void)
           double rf = (r - 0x8000 + (b - 0x8000) * 1.40200);
           double gf = (r - 0x8000 - (b - 0x8000) * 0.7141362859 - (g - 0x8000) * 0.3441362861);
           double bf = (r - 0x8000 + (g - 0x8000) * 1.772);
-          WORD deltar = rf / 16.0;
-          WORD deltag = gf / 16.0;
-          WORD deltab = bf / 16.0;
+          WORD deltar = rf / SCALE;
+          WORD deltag = gf / SCALE;
+          WORD deltab = bf / SCALE;
 #else
           WORD deltar = r - 0x8000;
           WORD deltag = g - 0x8000;
