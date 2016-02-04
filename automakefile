@@ -1,5 +1,5 @@
 ##
-## $Id: automakefile.in,v 1.2 2012-05-20 16:17:27 thor Exp $
+## $Id: automakefile.in,v 1.2 2012/05/20 16:17:27 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -10,8 +10,8 @@
 ## The following variable defines the compiler we use
 ## for running the code.
 ##
-COMPILER_CMD	=	g++-4.4
-CC_ONLY         =       gcc -std=gnu99
+COMPILER_CMD	=	g++-4.9
+CC_ONLY         =       gcc-4.9 -std=gnu99
 SETTINGS	=	gcc
 PREFIX		=	/home/thor/bin/wavelet
 PTHREADCFLAGS	=	

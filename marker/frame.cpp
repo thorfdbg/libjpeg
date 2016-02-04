@@ -27,7 +27,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.125 2016/01/21 13:57:49 thor Exp $
+** $Id: frame.cpp,v 1.126 2016/02/03 19:20:43 thor Exp $
 **
 */
 
@@ -785,6 +785,9 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
   } else {
     // Regular scan.
     m_pTables->ParseTables(io,chk);
+    //
+    // The checksum could also come here, i.e. in the scan header.
+    chk = m_pParent->CreateChecksumWhenNeeded(chk);
     // 
     // Everything else is checksummed.
     if (chk && m_pTables->ChecksumTables()) {

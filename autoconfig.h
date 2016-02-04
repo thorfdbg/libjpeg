@@ -112,7 +112,7 @@
 /* #undef HAVE_ADDONS */
 
 /* Define to 1 if the always_inline attribute is available */
-#define HAVE_ALWAYS_INLINE 1
+/* #undef HAVE_ALWAYS_INLINE */
 
 /* Define to 1 if you have the <assert.h> header file. */
 #define HAVE_ASSERT_H 1

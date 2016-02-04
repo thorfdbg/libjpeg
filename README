@@ -280,6 +280,15 @@ the denominator always remains smaller than 1.
 
 --------------------------------------------------------------------------
 
+Release 1.51:
+
+If the JPEG-XT markers were delayed to the frame-header intead the global
+header, the previous code did not built up the necessary infrastructure
+to compute the checksum and hence could not verify the checksum in such
+a condition. The 1.51 release fixes this problem.
+
+--------------------------------------------------------------------------
+
 This project is released under the terms of a BSD type or under a GPL license, 
 depending on the distribution channel. The source code may be obtained under 
 other license conditions, for requests and inquiries, please contact me at 

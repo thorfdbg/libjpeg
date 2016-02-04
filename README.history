@@ -381,3 +381,12 @@ clipping of the extension channel; this always happens if the denominator is
 larger than 1, and has to happen according to Annex C of ISO/IEC 18477-3.
 This release avoids this issue by adjusting the exposure value such that
 the denominator always remains smaller than 1.
+
+--------------------------------------------------------------------------
+
+Release 1.51:
+
+If the JPEG-XT markers were delayed to the frame-header intead the global
+header, the previous code did not built up the necessary infrastructure
+to compute the checksum and hence could not verify the checksum in such
+a condition. The 1.51 release fixes this problem.

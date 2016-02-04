@@ -37,7 +37,7 @@
 ** This implementation requires approximately 191 shifts per row and column
 ** or 39 multiplications per row and column and 230 adds per shift and column.
 **
-** $Id: liftingdct.cpp,v 1.16 2015/05/09 20:09:21 thor Exp $
+** $Id: liftingdct.cpp,v 1.17 2016/02/04 12:43:28 thor Exp $
 **
 */
 
@@ -88,7 +88,7 @@ LiftingDCT<preshift,T,deadzone>::LiftingDCT(class Environ *env)
 }
 ///
 
-/// IDCT::~IDCT
+/// LiftingDCT::~LiftingDCT
 template<int preshift,typename T,bool deadzone>
 LiftingDCT<preshift,T,deadzone>::~LiftingDCT(void)
 {

@@ -28,7 +28,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.hpp,v 1.32 2015/03/16 14:21:19 thor Exp $
+** $Id: image.hpp,v 1.33 2016/02/03 19:20:43 thor Exp $
 **
 */
 
@@ -294,6 +294,10 @@ public:
   //
   // Return the checksum so far if we need to keep one.
   class Checksum *ChecksumOf(void) const;
+  //
+  // Create a checksum when this is the main image, and a checksum
+  // in the tables is needed.
+  class Checksum *CreateChecksumWhenNeeded(class Checksum *chk);
   //
   // Write the header and header tables up to the SOS marker.
   void WriteHeader(class ByteStream *io) const;

@@ -27,7 +27,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.hpp,v 1.64 2015/03/11 16:02:42 thor Exp $
+** $Id: frame.hpp,v 1.65 2016/02/03 19:20:43 thor Exp $
 **
 */
 
@@ -247,7 +247,8 @@ public:
                                        ULONG tagoffset,
                                        const struct JPG_TagItem *tags);
   //
-  // Start parsing a single scan.
+  // Start parsing a single scan. Could also create a checksum
+  // in case the APP markers come late.
   class Scan *StartParseScan(class ByteStream *io,class Checksum *chk);
   //
   // Start writing a single scan. Scan parameters must have been installed before.

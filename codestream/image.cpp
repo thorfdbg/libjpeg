@@ -28,7 +28,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.69 2015/03/26 11:08:19 thor Exp $
+** $Id: image.cpp,v 1.70 2016/02/03 19:20:43 thor Exp $
 **
 */
 
@@ -649,11 +649,10 @@ class Frame *Image::StartParseFrame(class ByteStream *io)
   // already parse that off as part of ParseTrailer().
   if (m_bReceivedFrameHeader == false) {
     assert(m_pTables);
-    if (m_pTables->ResidualSpecsOf() || m_pTables->AlphaSpecsOf()) {
-      if (m_pChecksum == NULL)
-        m_pChecksum = new(m_pEnviron) class Checksum();
-    }
     m_pCurrent = ParseFrameHeader(io);
+    // Create the checksum if it is needed.
+    CreateChecksumWhenNeeded(m_pChecksum);
+    //
     // Is now there.
     m_bReceivedFrameHeader = true;
   }
@@ -992,6 +991,22 @@ class Checksum *Image::ChecksumOf(void) const
 }
 ///
 
+/// Image::CreateChecksumWhenNeeded
+// Create a checksum when this is the main image, and a checksum
+// in the tables is needed.
+class Checksum *Image::CreateChecksumWhenNeeded(class Checksum *chk)
+{
+  // This only applies to the main image.
+  if (chk == NULL && m_pParent == NULL && m_pMaster == NULL) {
+    if (m_pTables->ResidualSpecsOf() || m_pTables->AlphaSpecsOf()) {
+      if (m_pChecksum == NULL)
+        chk = m_pChecksum = new(m_pEnviron) class Checksum();
+    }
+  }
+  return chk;
+}
+///
+
 /// Image::OutputStreamOf
 // Return the output stream data should go to. This might be the
 // residual stream if the current frame is the residual frame.
@@ -1323,7 +1338,7 @@ class Frame *Image::ParseAlphaChannel(class DataBox *box)
     }
     // Start parsing its header.
     // And parse the tables following the SOI.
-    // This is the residual stream. It is not checksummed.
+    // This is the alpha stream. It is not checksummed.
     m_pAlphaChannel->TablesOf()->ParseTables(sio,NULL);
     //
     // And start the parsing of the frame header so
