@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This file provides a simple TMO that provides fine quality and natural
 ** look in most cases. It is mostly a global Reinhard operator:
@@ -52,7 +27,7 @@
 // Photoreceptor Physiology.  IEEE Transactions on Visualization and
 // Computer Graphics (2004).
 void BuildToneMapping_C(FILE *in,int w,int h,int depth,int count,UWORD tonemapping[65536],
-                        bool flt,bool bigendian,bool xyz,int hiddenbits)
+			bool flt,bool bigendian,bool xyz,int hiddenbits)
 {
   long pos    = ftell(in);
   int x,y,i;
@@ -75,18 +50,18 @@ void BuildToneMapping_C(FILE *in,int w,int h,int depth,int count,UWORD tonemappi
       ReadRGBTriple(in,r,g,b,y,depth,count,flt,bigendian,xyz);
 
       if (y > 0.0) {
-        double logy = log(y);
-        lav  += y;
-        llav += logy;
-        if (logy < minl)
-          minl = logy;
-        if (logy > maxl)
-          maxl = logy;
-        if (y < miny)
-          miny = y;
-        if (y > maxy)
-          maxy = y;
-        cnt++;
+	double logy = log(y);
+	lav  += y;
+	llav += logy;
+	if (logy < minl)
+	  minl = logy;
+	if (logy > maxl)
+	  maxl = logy;
+	if (y < miny)
+	  miny = y;
+	if (y > maxy)
+	  maxy = y;
+	cnt++;
       }
     }
   }

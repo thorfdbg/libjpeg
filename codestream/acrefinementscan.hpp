@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 **
 ** Represents the scan including the scan header for the
@@ -75,21 +50,21 @@ class ACRefinementScan : public EntropyParser {
 #ifdef DEBUG_QMCODER  
       void Init(int i)
       {
-        char string[5] = "s000";
-        string[2] = (i / 10) + '0';
-        string[3] = (i % 10) + '0';
-        S0.Init(string);
-        string[1] = 'e';
-        SE.Init(string);
-        string[2] = 'c';
-        SC.Init(string);
+	char string[5] = "s000";
+	string[2] = (i / 10) + '0';
+	string[3] = (i % 10) + '0';
+	S0.Init(string);
+	string[1] = 'e';
+	SE.Init(string);
+	string[2] = 'c';
+	SC.Init(string);
       }
 #else
       void Init(void)
       {
-        S0.Init();
-        SE.Init();
-        SC.Init();
+	S0.Init();
+	SE.Init();
+	SC.Init();
       }
 #endif
       // Entry #0 is not used by regular JPEG coding,
@@ -104,9 +79,9 @@ class ACRefinementScan : public EntropyParser {
     {
       for(int i = 0;i < 64;i++) {
 #ifdef DEBUG_QMCODER
-        ACZero[i].Init(i);
+	ACZero[i].Init(i);
 #else
-        ACZero[i].Init();
+	ACZero[i].Init();
 #endif
       }
 #ifdef DEBUG_QMCODER
@@ -161,8 +136,8 @@ public:
   // Create an AC coded refinement scan. The differential flag is always
   // ignored, so is the residual flag.
   ACRefinementScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
-                   UBYTE lowbit,UBYTE highbit,
-                   bool differential = false,bool residual = false);
+		   UBYTE lowbit,UBYTE highbit,
+		   bool differential = false,bool residual = false);
   //
   ~ACRefinementScan(void);
   // 

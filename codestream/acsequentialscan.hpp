@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 **
 ** Represents the scan including the scan header for the
@@ -81,23 +56,23 @@ class ACSequentialScan : public EntropyParser {
 #ifdef DEBUG_QMCODER  
       void Init(const char *base)
       {
-        char string[5] = "Z0S0";
-        memcpy(string,base,2);
-        S0.Init(string);
-        string[3] = 'S';
-        SS.Init(string);
-        string[3] = 'P';
-        SP.Init(string);
-        string[3] = 'N';
-        SN.Init(string);
+	char string[5] = "Z0S0";
+	memcpy(string,base,2);
+	S0.Init(string);
+	string[3] = 'S';
+	SS.Init(string);
+	string[3] = 'P';
+	SP.Init(string);
+	string[3] = 'N';
+	SN.Init(string);
       }
 #else
       void Init(void)
       {
-        S0.Init();
-        SS.Init();
-        SP.Init();
-        SN.Init();
+	S0.Init();
+	SS.Init();
+	SP.Init();
+	SN.Init();
       }
 #endif
       //
@@ -111,19 +86,19 @@ class ACSequentialScan : public EntropyParser {
       // Initialize
       void Init(void)
       {
-        for(int i = 0;i < 19;i++) {
+	for(int i = 0;i < 19;i++) {
 #ifdef DEBUG_QMCODER
-          char string[5] = "X0  ";
-          string[1] = (i / 10) + '0';
-          string[2] = (i % 10) + '0';
-          X[i].Init(string);
-          string[0] = 'M';
-          M[i].Init(string);
+	  char string[5] = "X0  ";
+	  string[1] = (i / 10) + '0';
+	  string[2] = (i % 10) + '0';
+	  X[i].Init(string);
+	  string[0] = 'M';
+	  M[i].Init(string);
 #else
-          X[i].Init();
-          M[i].Init();
+	  X[i].Init();
+	  M[i].Init();
 #endif
-        }
+	}
       }
     } DCMagnitude;
     //
@@ -135,21 +110,21 @@ class ACSequentialScan : public EntropyParser {
 #ifdef DEBUG_QMCODER
       void Init(int i)
       {
-        char string[5] = "se00";
-        string[2] = (i / 10) + '0';
-        string[3] = (i % 10) + '0';
-        SE.Init(string);
-        string[1] = '0';
-        S0.Init(string);
-        string[1] = 'p';
-        SP.Init(string);
+	char string[5] = "se00";
+	string[2] = (i / 10) + '0';
+	string[3] = (i % 10) + '0';
+	SE.Init(string);
+	string[1] = '0';
+	S0.Init(string);
+	string[1] = 'p';
+	SP.Init(string);
       }
 #else
       void Init(void)
       {
-        SE.Init();
-        S0.Init();
-        SP.Init();
+	SE.Init();
+	S0.Init();
+	SP.Init();
       }
 #endif
     } ACZero[63];
@@ -163,23 +138,23 @@ class ACSequentialScan : public EntropyParser {
 #ifdef DEBUG_QMCODER
       void Init(bool hi) 
       {
-        for(int i = 0;i < 18;i++) {
-          char string[5] = "xl00";
-          string[1] = (hi)?('h'):('l');
-          string[2] = (i / 10) + '0';
-          string[3] = (i % 10) + '0';
-          X[i].Init(string);
-          string[0] = 'm';
-          M[i].Init(string);
-        }
+	for(int i = 0;i < 18;i++) {
+	  char string[5] = "xl00";
+	  string[1] = (hi)?('h'):('l');
+	  string[2] = (i / 10) + '0';
+	  string[3] = (i % 10) + '0';
+	  X[i].Init(string);
+	  string[0] = 'm';
+	  M[i].Init(string);
+	}
       }
 #else
       void Init(void)
       {
-        for(int i = 0;i < 18;i++) {
-          X[i].Init();
-          M[i].Init();
-        }
+	for(int i = 0;i < 18;i++) {
+	  X[i].Init();
+	  M[i].Init();
+	}
       }
 #endif
     } ACMagnitudeLow,ACMagnitudeHigh; // Exists only twice.
@@ -207,9 +182,9 @@ class ACSequentialScan : public EntropyParser {
       DCMagnitude.Init();
       for(int i = 0;i < 63;i++) {
 #ifdef DEBUG_QMCODER
-        ACZero[i].Init(i);
+	ACZero[i].Init(i);
 #else
-        ACZero[i].Init();
+	ACZero[i].Init();
 #endif
       }
 #ifdef DEBUG_QMCODER
@@ -277,15 +252,15 @@ protected:
   //
   // Encode a single block
   void EncodeBlock(const LONG *block,
-                   LONG &prevdc,LONG &prevdiff,
-                   UBYTE small,UBYTE large,UBYTE blockup,
-                   UBYTE dctable,UBYTE actable);
+		   LONG &prevdc,LONG &prevdiff,
+		   UBYTE small,UBYTE large,UBYTE blockup,
+		   UBYTE dctable,UBYTE actable);
   //
   // Decode a single block.
   void DecodeBlock(LONG *block,
-                   LONG &prevdc,LONG &prevdiff,
-                   UBYTE small,UBYTE large,UBYTE blockup,
-                   UBYTE dctable,UBYTE actable);
+		   LONG &prevdc,LONG &prevdiff,
+		   UBYTE small,UBYTE large,UBYTE blockup,
+		   UBYTE dctable,UBYTE actable);
   //
 #endif
   //
@@ -305,8 +280,8 @@ public:
   // Create an arithmetically coded sequential scan. The highbit is always
   // ignored as this setting only exists for progressive refinement scans.
   ACSequentialScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
-                   UBYTE lowbit,UBYTE highbit,
-                   bool differential = false,bool residual = false,bool largerange = false);
+		   UBYTE lowbit,UBYTE highbit,
+		   bool differential = false,bool residual = false,bool largerange = false);
   //
   ~ACSequentialScan(void);
   // 

@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This box keeps an inverse tone mapping curve, however, this box here
 ** is defined by parameters, not by actual providing the table explicitly
@@ -74,7 +49,7 @@ bool ParametricToneMappingBox::ParseBoxContent(class ByteStream *stream,UQUAD bo
 
   if (boxsize != 2 + 4 * 4)
     JPG_THROW(MALFORMED_STREAM,"ParametricToneMappingBox::ParseBoxContent",
-              "Malformed JPEG file, CURV box size is invalid");
+	      "Malformed JPEG file, CURV box size is invalid");
 
   
   m              = stream->Get();
@@ -93,14 +68,14 @@ bool ParametricToneMappingBox::ParseBoxContent(class ByteStream *stream,UQUAD bo
     break;
   default:
     JPG_THROW(MALFORMED_STREAM,"ParametricToneMappingBox::ParseBoxContent",
-              "Malformed JPEG file, curve type in CURV box is invalid");
+	      "Malformed JPEG file, curve type in CURV box is invalid");
   }
 
   m     = stream->Get();
   // The lower nibble must be zero.
   if (m & 0x0f)
     JPG_THROW(MALFORMED_STREAM,"ParametricToneMappingBox::ParseBoxContent",
-              "Malformed JPEG file, the r parameter of the CURV box must be zero");
+	      "Malformed JPEG file, the r parameter of the CURV box must be zero");
   //
   // The upper nibble decodes to the rounding parameter.
   switch(m >> 4) {
@@ -110,7 +85,7 @@ bool ParametricToneMappingBox::ParseBoxContent(class ByteStream *stream,UQUAD bo
     break;
   default:
     JPG_THROW(MALFORMED_STREAM,"ParametricToneMappingBox::ParseBoxcontent",
-              "Malformed JPEG file, rounding parameter e must be zero or one");
+	      "Malformed JPEG file, rounding parameter e must be zero or one");
   }
   //
   // Decode the parameters.
@@ -207,7 +182,7 @@ DOUBLE ParametricToneMappingBox::TableValue(DOUBLE v) const
       w = v * (m_fP2 - m_fP1) + m_fP1;
     } else {
       JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::TableValue",
-                "Parametric tone mapping definition is invalid, linear slope must be non-negative.");
+		"Parametric tone mapping definition is invalid, linear slope must be non-negative.");
     }
     break;
   case Exponential:
@@ -215,22 +190,22 @@ DOUBLE ParametricToneMappingBox::TableValue(DOUBLE v) const
       w = m_fP3 * exp(v * (m_fP2 - m_fP1) + m_fP1) + m_fP4;
     } else {
       JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::TableValue",
-                "Parametric tone mapping definition is invalid, exponent slope must be strictly positive.");
+		"Parametric tone mapping definition is invalid, exponent slope must be strictly positive.");
     }
     break;
   case Logarithmic:
     if (m_fP1 > 0.0) {
       if (v > 0.0 || (m_fP3 > 0.0 && v >= 0.0)) {
-        w = log(pow(m_fP1 * v,double(m_fP2)) + m_fP3)+m_fP4;
+	w = log(pow(m_fP1 * v,double(m_fP2)) + m_fP3)+m_fP4;
       } else {
-        w = -HUGE_VAL;
+	w = -HUGE_VAL;
       }
       assert(!isnan(w));
     } else {
       if (v > 0.0 || (m_fP3 > 0.0 && v >= 0.0)) {
-        w = -log(pow(-m_fP1 * v,double(m_fP2)) + m_fP3)+m_fP4;
+	w = -log(pow(-m_fP1 * v,double(m_fP2)) + m_fP3)+m_fP4;
       } else {
-        w = HUGE_VAL;
+	w = HUGE_VAL;
       }
       assert(!isnan(w));
     }
@@ -266,11 +241,11 @@ DOUBLE ParametricToneMappingBox::InverseTableValue(DOUBLE v) const
   switch(m_Type) {
   case Zero:
     JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::InverseTableValue",
-              "Tried to build the inverse of the zero tone mapping marker - inverse does not exist");
+	      "Tried to build the inverse of the zero tone mapping marker - inverse does not exist");
     break;
   case Constant:  
     JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::InverseTableValue",
-              "Tried to build the inverse of the constant tone mapping marker - inverse does not exist");
+	      "Tried to build the inverse of the constant tone mapping marker - inverse does not exist");
     break;
   case Identity:
     w = v;
@@ -287,23 +262,23 @@ DOUBLE ParametricToneMappingBox::InverseTableValue(DOUBLE v) const
       w = (v - m_fP1) / (DOUBLE(m_fP2) - m_fP1);
     } else {
       JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::InverseTableValue",
-                "Tried to build the inverse of a constant linear tone mapping - inverse does not exist");
+		"Tried to build the inverse of a constant linear tone mapping - inverse does not exist");
     }
     break;
   case Exponential:
     if (m_fP2 > m_fP1) {
       v = (v - m_fP4) / m_fP3;
       if (v > 0.0) {
-        w = (log(v) - m_fP1) / (m_fP2 - m_fP1);
+	w = (log(v) - m_fP1) / (m_fP2 - m_fP1);
       } else if (v == 0.0) {
-        return -HUGE_VAL;
+	return -HUGE_VAL;
       } else {
-        JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::InverseTableValue",
-                  "The specified exponential mapping is not invertible on the source domain.");
+	JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::InverseTableValue",
+		  "The specified exponential mapping is not invertible on the source domain.");
       }
     } else {
       JPG_THROW(INVALID_PARAMETER,"ParametricToneMappingBox::InverseTableValue",
-                "Tried to build the inverse of a constant exponential tone mapping - inverse does not exist");
+		"Tried to build the inverse of a constant exponential tone mapping - inverse does not exist");
     }
     break;
   case Logarithmic:
@@ -340,21 +315,21 @@ DOUBLE ParametricToneMappingBox::InverseTableValue(DOUBLE v) const
 // Find the table for the given number of dct, spatial and fractional bits and return
 // the table implementation, or NULL in case it does not (yet) exist.
 struct ParametricToneMappingBox::TableImpl *ParametricToneMappingBox::FindImpl(UBYTE dctbits,
-                                                                               UBYTE spatialbits,
-                                                                               UBYTE dctfract,
-                                                                               UBYTE spatialfract,
-                                                                               ULONG offset,
-                                                                               UBYTE tablebits) const
+									       UBYTE spatialbits,
+									       UBYTE dctfract,
+									       UBYTE spatialfract,
+									       ULONG offset,
+									       UBYTE tablebits) const
 {
   struct TableImpl *tab = m_pImpls;
 
   while(tab) {
     if (tab->m_ucInputBits      == dctbits && 
-        tab->m_ucOutputBits     == spatialbits && 
-        tab->m_ucInputFracts    == dctfract &&
-        tab->m_ucOutputFracts   == spatialfract &&
-        tab->m_ulInputOffset    == offset &&
-        tab->m_ucTableBits      == tablebits)
+	tab->m_ucOutputBits     == spatialbits && 
+	tab->m_ucInputFracts    == dctfract &&
+	tab->m_ucOutputFracts   == spatialfract &&
+	tab->m_ulInputOffset    == offset &&
+	tab->m_ucTableBits      == tablebits)
       return tab;
     tab = tab->m_pNext;
   }
@@ -460,8 +435,8 @@ const FLOAT *ParametricToneMappingBox::FloatTableOf(UBYTE inputbits,UBYTE output
 // shifted before the mapping is applied, and the size of the table in
 // bits.
 const LONG *ParametricToneMappingBox::ExtendedInverseScaledTableOf(UBYTE dctbits,UBYTE spatialbits,
-                                                                   UBYTE dctfract,UBYTE spatialfract,
-                                                                   ULONG offset,UBYTE tablebits)
+								   UBYTE dctfract,UBYTE spatialfract,
+								   ULONG offset,UBYTE tablebits)
 {
   struct TableImpl *impl = FindImpl(dctbits,spatialbits,dctfract,spatialfract,offset,tablebits);
   

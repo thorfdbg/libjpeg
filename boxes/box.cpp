@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This class is the abstract base class for all boxes, the generic
 ** extension mechanism for 10918-1. Boxes are used consistently for all
@@ -89,7 +64,7 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
   // Must include LE,CI,En,Z,LBox and TBox
   if (length <= overhead)
     JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
-              "APP11 extended box marker size is too short.");
+	      "APP11 extended box marker size is too short.");
 
   en    = stream->GetWord();      // the enumerator.
   z     = stream->GetWord() <<16; // the sequence number.
@@ -102,12 +77,12 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
   // and all other values are not valid here.
   if (lbox != 1 && lbox < 8)
     JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
-              "box length field is invalid");
+	      "box length field is invalid");
   tbox  = stream->GetWord() << 16;
   dt    = stream->GetWord();
   if (dt == ByteStream::EOF)
     JPG_THROW(UNEXPECTED_EOF,"Box::ParseBoxMarker","JPEG stream is malformed, unexpected "
-              "end of file while parsing an APP11 marker");
+	      "end of file while parsing an APP11 marker");
   tbox |= dt;
   //
   // Try to read the XLBox field if there is one.
@@ -115,17 +90,17 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
     overhead += 8;
     if (length <= overhead)
       JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
-                "APP11 extended box marker size is too short.");
+		"APP11 extended box marker size is too short.");
     lbox  = UQUAD(stream->GetWord()) << 48;
     lbox |= UQUAD(stream->GetWord()) << 32;
     lbox |= UQUAD(stream->GetWord()) << 16;
     dt    = stream->GetWord();
     if (dt == ByteStream::EOF)
       JPG_THROW(UNEXPECTED_EOF,"Box::ParseBoxMarker","JPEG stream is malformed, unexpected "
-                "end of file while parsing an APP11 marker");
+		"end of file while parsing an APP11 marker");
     if (lbox < 8 + 8)
       JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
-                "box length field is invalid");
+		"box length field is invalid");
     lbox |= dt;
     blen -= 8; // less payload then.
     lbox -= 8; // the box size increased by XLBox.
@@ -137,8 +112,8 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
     if (box->m_ulBoxType == tbox && box->m_usEnumerator == en) {
       // This box will fit. Check whether the box size is consistent.
       if (box->m_uqBoxSize != lbox)
-        JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
-                  "box size is not consistent accross APP11 markers");
+	JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
+		  "box size is not consistent accross APP11 markers");
       assert(box->m_pInputStream);
       break;
     }
@@ -166,7 +141,7 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
   //
   if (box->m_uqParsedBytes > box->m_uqBoxSize)
     JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is invalid, more data in the application "
-              "marker than indicated and required by the box contained within.");
+	      "marker than indicated and required by the box contained within.");
   //
   // If the box is complete, start its second level parsing.
   if (box->m_uqParsedBytes == box->m_uqBoxSize) {
@@ -345,10 +320,10 @@ void Box::WriteBoxMarkers(class Box *&boxlist,class ByteStream *target)
     // increment the enumerator to find a unique one.
     for(ebox = boxlist,en = 1;ebox != box;ebox = ebox->m_pNext) {
       if (ebox->m_ulBoxType == box->m_ulBoxType) {
-        en = ebox->m_usEnumerator + 1;
-        if (en == 0)
-          JPG_THROW(OVERFLOW_PARAMETER,"Box::WriteBoxMarkers","Cannot create JPEG stream, too many boxes of the "
-                    "same type present");
+	en = ebox->m_usEnumerator + 1;
+	if (en == 0)
+	  JPG_THROW(OVERFLOW_PARAMETER,"Box::WriteBoxMarkers","Cannot create JPEG stream, too many boxes of the "
+		    "same type present");
       }
     }
     //

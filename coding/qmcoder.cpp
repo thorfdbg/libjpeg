@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
  * The Art-Deco (MQ) decoder and encoder as specified by the jpeg2000 
  * standard, FDIS, Annex C
@@ -166,23 +141,23 @@ void QMCoder::ByteOut(void)
     if (likely(m_bF)) { 
       // Output any stacked zeros as we are writing a non-zero.
       while(m_usSZ) {
-        m_pIO->Put(0x00);
-        if (m_pChk)
-          m_pChk->Update(0x00);
-        m_usSZ--;
+	m_pIO->Put(0x00);
+	if (m_pChk)
+	  m_pChk->Update(0x00);
+	m_usSZ--;
       }
       // Output buffer non-empty, carry over into the output buffer.
       m_ucB++; // Overflow into the buffer.
       assert(m_ucB > 0);
       m_pIO->Put(m_ucB);
       if (m_pChk)
-        m_pChk->Update(m_ucB);
+	m_pChk->Update(m_ucB);
       // Byte-stuffing procedure.
       if (m_ucB == 0xff) {
-        // Stuff 0 (byte-stuffing)
-        m_pIO->Put(0x00);
-        if (m_pChk)
-          m_pChk->Update(0x00);
+	// Stuff 0 (byte-stuffing)
+	m_pIO->Put(0x00);
+	if (m_pChk)
+	  m_pChk->Update(0x00);
       }
     }
     // Collect stacked zeros into which we now overflow, so
@@ -207,20 +182,20 @@ void QMCoder::ByteOut(void)
     if (likely(m_bF)) { 
       // Buffered byte is valid.
       if (unlikely(m_ucB == 0)) {
-        // If it is a zero byte, just count the number.
-        m_usSZ++;
+	// If it is a zero byte, just count the number.
+	m_usSZ++;
       } else {
-        // Not a zero, output all the zeros collected so far.
-        while(unlikely(m_usSZ)) {
-          m_pIO->Put(0x00);
-          if (m_pChk)
-            m_pChk->Update(0x00);
-          m_usSZ--;
-        }
-        // And make room in the buffer.
-        m_pIO->Put(m_ucB);
-        if (m_pChk)
-          m_pChk->Update(m_ucB);
+	// Not a zero, output all the zeros collected so far.
+	while(unlikely(m_usSZ)) {
+	  m_pIO->Put(0x00);
+	  if (m_pChk)
+	    m_pChk->Update(0x00);
+	  m_usSZ--;
+	}
+	// And make room in the buffer.
+	m_pIO->Put(m_ucB);
+	if (m_pChk)
+	  m_pChk->Update(m_ucB);
       }
     }
     //
@@ -228,21 +203,21 @@ void QMCoder::ByteOut(void)
     // Write the buffered 0xff's now.
     if (unlikely(m_usST)) {
       while(m_usSZ) {
-        m_pIO->Put(0x00);
-        if (m_pChk)
-          m_pChk->Update(0x00);
-        m_usSZ--;
+	m_pIO->Put(0x00);
+	if (m_pChk)
+	  m_pChk->Update(0x00);
+	m_usSZ--;
       }
       //
       while(m_usST) {
-        // Byte-stuffing.
-        m_pIO->Put(0xff);
-        m_pIO->Put(0x00);
-        if (m_pChk) {
-          m_pChk->Update(0xff);
-          m_pChk->Update(0x00);
-        }
-        m_usST--;
+	// Byte-stuffing.
+	m_pIO->Put(0xff);
+	m_pIO->Put(0x00);
+	if (m_pChk) {
+	  m_pChk->Update(0xff);
+	  m_pChk->Update(0x00);
+	}
+	m_usST--;
       }
     }
     m_ucB = t;
@@ -293,8 +268,8 @@ void QMCoder::ByteIn(void)
       m_pIO->GetWord();
       m_ulC |= 0xff00; //+ would also work.
       if (m_pChk) {
-        m_pChk->Update(0xff);
-        m_pChk->Update(0x00);
+	m_pChk->Update(0xff);
+	m_pChk->Update(0x00);
       }
     } else {
       // Since the encoder drops 0x00 bytes, we need to fit
@@ -318,7 +293,7 @@ bool QMCoder::Get(class QMContext &ctxt)
   bool d; // true on lps
 
   assert(ctxt.m_ucIndex < sizeof(Qe_NextMPS));
-         
+	 
   m_ulA -= q;
   if ((m_ulC >> 16) < m_ulA) {
     // MPS case
@@ -397,9 +372,9 @@ void QMCoder::Put(class QMContext &ctxt,bool bit)
     } else {
       // Context change.
       if (m_ulA < q) {
-        // MPS/LPS exchange.
-        m_ulC += m_ulA;
-        m_ulA  = q;
+	// MPS/LPS exchange.
+	m_ulC += m_ulA;
+	m_ulA  = q;
       }
       ctxt.m_ucIndex = Qe_NextMPS[ctxt.m_ucIndex];
     }

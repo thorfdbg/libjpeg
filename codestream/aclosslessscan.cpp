@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 **
 ** Represents the scan including the scan header.
@@ -153,7 +128,7 @@ void ACLosslessScan::StartParseScan(class ByteStream *io,class Checksum *chk,cla
   NOREF(chk);
   NOREF(ctrl);
   JPG_THROW(NOT_IMPLEMENTED,"ACLosslessScan::StartParseScan",
-            "JPEG lossless not available your code release, please contact Accusoft for a full version");
+	    "JPEG lossless not available your code release, please contact Accusoft for a full version");
 #endif
 }
 ///
@@ -198,7 +173,7 @@ void ACLosslessScan::StartWriteScan(class ByteStream *io,class Checksum *chk,cla
   NOREF(chk);
   NOREF(ctrl);
   JPG_THROW(NOT_IMPLEMENTED,"ACLosslessScan::StartWriteScan",
-            "JPEG lossless not available your code release, please contact Accusoft for a full version");
+	    "JPEG lossless not available your code release, please contact Accusoft for a full version");
 #endif
 }
 ///
@@ -207,7 +182,7 @@ void ACLosslessScan::StartWriteScan(class ByteStream *io,class Checksum *chk,cla
 void ACLosslessScan::StartMeasureScan(class BufferCtrl *)
 {
   JPG_THROW(NOT_IMPLEMENTED,"ACLosslessScan::StartMeasureScan",
-            "arithmetic coding is always adaptive and does not require a measurement phase");
+	    "arithmetic coding is always adaptive and does not require a measurement phase");
 }
 ///
 
@@ -235,64 +210,64 @@ void ACLosslessScan::WriteMCU(struct Line **prev,struct Line **top)
       class PredictorBase *pred = mcupred;
       UBYTE xm = m_ucMCUWidth[c];
       do {
-        // Decode now the difference between the predicted value and
-        // the real value.
-        LONG v = pred->EncodeSample(lp,pp);
-        //
-        // Get the sign coding context.
-        struct QMContextSet::ContextZeroSet &zset = contextset.ClassifySignZero(m_plDa[c][ym-1],m_plDb[c][x],
-                                                                                m_ucSmall[c],m_ucLarge[c]);
-        // 
-        if (v) {
-          LONG sz;
-          m_Coder.Put(zset.S0,true);
-          //
-          if (v < 0) {
-            m_Coder.Put(zset.SS,true);
-            sz = -(v + 1);
-          } else {
-            m_Coder.Put(zset.SS,false);
-            sz =   v - 1;
-          }
-          //
-          if (sz >= 1) {
-            struct QMContextSet::MagnitudeSet &mset = contextset.ClassifyMagnitude(m_plDb[c][x],m_ucLarge[c]);
-            int  i = 0;
-            LONG m = 2;
-            //
-            m_Coder.Put((v > 0)?(zset.SP):(zset.SN),true);
-            //
-            while(sz >= m) {
-              m_Coder.Put(mset.X[i],true);
-              m <<= 1;
-              i++;
-            }
-            m_Coder.Put(mset.X[i],false);
-            //
-            m >>= 1;
-            while((m >>= 1)) {
-              m_Coder.Put(mset.M[i],(m & sz)?(true):(false));
-            }
-          } else {
-            m_Coder.Put((v > 0)?(zset.SP):(zset.SN),false);
-          }
-        } else {
-          m_Coder.Put(zset.S0,false);
-        }
-        //
-        // Update Da and Db.
-        // Is this a bug? 32768 does not exist, but -32768 does. 
-        // The reference streams use -32768, so let's stick to that.
-        m_plDb[c][x]    = v;
-        m_plDa[c][ym-1] = v;
-        //
-        // One pixel done. Proceed to the next in the MCU. Note that
-        // the lines have been extended such that always a complete MCU is present.
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v = pred->EncodeSample(lp,pp);
+	//
+	// Get the sign coding context.
+	struct QMContextSet::ContextZeroSet &zset = contextset.ClassifySignZero(m_plDa[c][ym-1],m_plDb[c][x],
+										m_ucSmall[c],m_ucLarge[c]);
+	// 
+	if (v) {
+	  LONG sz;
+	  m_Coder.Put(zset.S0,true);
+	  //
+	  if (v < 0) {
+	    m_Coder.Put(zset.SS,true);
+	    sz = -(v + 1);
+	  } else {
+	    m_Coder.Put(zset.SS,false);
+	    sz =   v - 1;
+	  }
+	  //
+	  if (sz >= 1) {
+	    struct QMContextSet::MagnitudeSet &mset = contextset.ClassifyMagnitude(m_plDb[c][x],m_ucLarge[c]);
+	    int  i = 0;
+	    LONG m = 2;
+	    //
+	    m_Coder.Put((v > 0)?(zset.SP):(zset.SN),true);
+	    //
+	    while(sz >= m) {
+	      m_Coder.Put(mset.X[i],true);
+	      m <<= 1;
+	      i++;
+	    }
+	    m_Coder.Put(mset.X[i],false);
+	    //
+	    m >>= 1;
+	    while((m >>= 1)) {
+	      m_Coder.Put(mset.M[i],(m & sz)?(true):(false));
+	    }
+	  } else {
+	    m_Coder.Put((v > 0)?(zset.SP):(zset.SN),false);
+	  }
+	} else {
+	  m_Coder.Put(zset.S0,false);
+	}
+	//
+	// Update Da and Db.
+	// Is this a bug? 32768 does not exist, but -32768 does. 
+	// The reference streams use -32768, so let's stick to that.
+	m_plDb[c][x]    = v;
+	m_plDa[c][ym-1] = v;
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
       } while(--xm && (lp++,pp++,x++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
     } while(--ym && (pp = line->m_pData + (x = m_ulX[c]),line = (line->m_pNext)?(line->m_pNext):(line),
-                     lp = line->m_pData + x,mcupred = mcupred->MoveDown(),true));
+		     lp = line->m_pData + x,mcupred = mcupred->MoveDown(),true));
   }
 #else
   NOREF(prev);
@@ -325,61 +300,61 @@ void ACLosslessScan::ParseMCU(struct Line **prev,struct Line **top)
       class PredictorBase *pred = mcupred;
       UBYTE xm = m_ucMCUWidth[c];
       do {
-        // Decode now the difference between the predicted value and
-        // the real value.
-        LONG v;
-        //
-        // Get the sign coding context.
-        struct QMContextSet::ContextZeroSet &zset = contextset.ClassifySignZero(m_plDa[c][ym-1],m_plDb[c][x],
-                                                                                m_ucSmall[c],m_ucLarge[c]);
-        //
-        if (m_Coder.Get(zset.S0)) {
-          LONG sz   = 0;
-          bool sign = m_Coder.Get(zset.SS); // true for negative.
-          //
-          if (m_Coder.Get((sign)?(zset.SN):(zset.SP))) {
-            struct QMContextSet::MagnitudeSet &mset = contextset.ClassifyMagnitude(m_plDb[c][x],m_ucLarge[c]);
-            int  i = 0;
-            LONG m = 2;
-            //
-            while(m_Coder.Get(mset.X[i])) {
-              m <<= 1;
-              i++;
-            }
-            //
-            m >>= 1;
-            sz  = m;
-            while((m >>= 1)) {
-              if (m_Coder.Get(mset.M[i])) {
-                sz |= m;
-              }
-            }
-          }
-          //
-          if (sign) {
-            v = -sz - 1;
-          } else {
-            v =  sz + 1;
-          }
-        } else {
-          v = 0;
-        }
-        //
-        // Use the prediction to fill in the sample.
-        lp[0] = pred->DecodeSample(v,lp,pp);
-        // Update Da and Db.
-        // Is this a bug? 32768 does not exist, but -32768 does. The streams
-        // seem to use -32768 instead.
-        m_plDb[c][x]    = v;
-        m_plDa[c][ym-1] = v;
-        //
-        // One pixel done. Proceed to the next in the MCU. Note that
-        // the lines have been extended such that always a complete MCU is present.
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v;
+	//
+	// Get the sign coding context.
+	struct QMContextSet::ContextZeroSet &zset = contextset.ClassifySignZero(m_plDa[c][ym-1],m_plDb[c][x],
+										m_ucSmall[c],m_ucLarge[c]);
+	//
+	if (m_Coder.Get(zset.S0)) {
+	  LONG sz   = 0;
+	  bool sign = m_Coder.Get(zset.SS); // true for negative.
+	  //
+	  if (m_Coder.Get((sign)?(zset.SN):(zset.SP))) {
+	    struct QMContextSet::MagnitudeSet &mset = contextset.ClassifyMagnitude(m_plDb[c][x],m_ucLarge[c]);
+	    int  i = 0;
+	    LONG m = 2;
+	    //
+	    while(m_Coder.Get(mset.X[i])) {
+	      m <<= 1;
+	      i++;
+	    }
+	    //
+	    m >>= 1;
+	    sz  = m;
+	    while((m >>= 1)) {
+	      if (m_Coder.Get(mset.M[i])) {
+		sz |= m;
+	      }
+	    }
+	  }
+	  //
+	  if (sign) {
+	    v = -sz - 1;
+	  } else {
+	    v =  sz + 1;
+	  }
+	} else {
+	  v = 0;
+	}
+	//
+	// Use the prediction to fill in the sample.
+	lp[0] = pred->DecodeSample(v,lp,pp);
+	// Update Da and Db.
+	// Is this a bug? 32768 does not exist, but -32768 does. The streams
+	// seem to use -32768 instead.
+	m_plDb[c][x]    = v;
+	m_plDa[c][ym-1] = v;
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
       } while(--xm && (lp++,pp++,x++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
     } while(--ym && (pp = line->m_pData + (x = m_ulX[c]),line = (line->m_pNext)?(line->m_pNext):(line),
-                     lp = line->m_pData + x,mcupred = mcupred->MoveDown(),true));
+		     lp = line->m_pData + x,mcupred = mcupred->MoveDown(),true));
   }
 #else
   NOREF(prev);
@@ -453,18 +428,18 @@ bool ACLosslessScan::ParseMCU(void)
     bool startofline = true;
     do {
       if (BeginReadMCU(m_Coder.ByteStreamOf())) {
-        ParseMCU(prev,top);
+	ParseMCU(prev,top);
       } else {
-        // Only if this is not due to a DNL marker that has been detected.
-        if (m_ulPixelHeight != 0 && !hasFoundDNL()) {
-          ClearMCU(top);
-        } else if (!startofline) {
-          // The problem is here that the DNL marker might have been detected, even though decoding
-          // is not yet done completely. This may be because there are still just enough bits in the
-          // AC coding engine present to run a single decode. Big Outch! Just continue decoding in
-          // this case.
-          ParseMCU(prev,top);
-        } else break;
+	// Only if this is not due to a DNL marker that has been detected.
+	if (m_ulPixelHeight != 0 && !hasFoundDNL()) {
+	  ClearMCU(top);
+	} else if (!startofline) {
+	  // The problem is here that the DNL marker might have been detected, even though decoding
+	  // is not yet done completely. This may be because there are still just enough bits in the
+	  // AC coding engine present to run a single decode. Big Outch! Just continue decoding in
+	  // this case.
+	  ParseMCU(prev,top);
+	} else break;
       }
       startofline = false;
     } while(AdvanceToTheRight());

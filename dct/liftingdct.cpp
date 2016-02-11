@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 **
 ** Inverse DCT operation plus scaled quantization.
@@ -54,29 +29,29 @@
 /// Multiplications by constants
 #define FRACT_BITS 12
 #define ROUND(x) (((x) + ((1 << FRACT_BITS) >> 1)) >> FRACT_BITS)
-                                                            //                    109876543210
-                                                            // Multiply by 403  = 000110010011
+							    //                    109876543210
+							    // Multiply by 403  = 000110010011
 #define pmul_tan1(x) (t = (x) + ((x) << 1),t = t + ((x) << 4) + (t << 7),ROUND(t))
 
-                                                            // Multiply by 1243 = 010011011011
+							    // Multiply by 1243 = 010011011011
 #define pmul_tan3(x) (t = (x) + ((x) << 1),t = t + (t << 3) + (t << 6) + ((x) << 10),ROUND(t))
 
-                                                            // Multiply by 1697 = 011010100001
+							    // Multiply by 1697 = 011010100001
 #define pmul_tan4(x) (t = (x) + ((x) << 5) + ((x) << 7) + ((x) << 9) + ((x) << 10),ROUND(t))
 
-                                                            // Multiply by 815  = 001100101111
+							    // Multiply by 815  = 001100101111
 #define pmul_tan2(x) (t = ((x) << 6) - ((x) << 4) - (x) + ((x) << 8) + ((x) << 9),ROUND(t))
 
-                                                            // Multiply by 799  = 001100011111
+							    // Multiply by 799  = 001100011111
 #define pmul_sin1(x) (t = ((x) << 5) - (x) + ((x) << 8) + ((x) << 9),ROUND(t))
 
-                                                            // Multiply by 2276 = 100011100100
+							    // Multiply by 2276 = 100011100100
 #define pmul_sin3(x) (t = ((x) << 8) - ((x) << 5) + ((x) << 2) + ((x) << 11),ROUND(t))
 
-                                                            // Multiply by 1567 = 011000011111
+							    // Multiply by 1567 = 011000011111
 #define pmul_sin2(x) (t = ((x) << 5) - (x) + ((x) << 9) + ((x) << 10),ROUND(t))
 
-                                                            // Multiply by 2896 = 101101010000
+							    // Multiply by 2896 = 101101010000
 #define pmul_sin4(x) (t = (x) + ((x) << 2),t = ((x) << 4) + (t << 6) + (t << 9),ROUND(t))
 ///
 
@@ -113,7 +88,7 @@ void LiftingDCT<preshift,T,deadzone>::DefineQuant(const UWORD *table)
 // Run the DCT on a 8x8 block on the input data, giving the output table.
 template<int preshift,typename T,bool deadzone>
 void LiftingDCT<preshift,T,deadzone>::TransformBlock(const LONG *source,LONG *target,
-                                                     LONG dcoffset)
+						     LONG dcoffset)
 { 
   LONG *dpend,*dp;
   bool dc = true;
@@ -299,7 +274,7 @@ void LiftingDCT<preshift,T,deadzone>::TransformBlock(const LONG *source,LONG *ta
 // Run the inverse DCT on an 8x8 block reconstructing the data.
 template<int preshift,typename T,bool deadzone>
 void LiftingDCT<preshift,T,deadzone>::InverseTransformBlock(LONG *target,const LONG *source,
-                                                            LONG dcoffset)
+							    LONG dcoffset)
 {
   const LONG *qp = m_plQuant;
   T t;

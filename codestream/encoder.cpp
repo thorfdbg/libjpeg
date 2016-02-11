@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This class parses the markers and holds the decoder together.
 **
@@ -67,10 +42,10 @@ Encoder::~Encoder(void)
 // frame precision (excluding hidden/refinement bits) in the base and extension layer
 // and the number of additional precision bits R_b in the spatial domain.
 void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYTE defaultdepth,
-                            ScanType &scantype,ScanType &restype,
-                            UBYTE &hiddenbits,UBYTE &riddenbits,
-                            UBYTE &ldrprecision,UBYTE &hdrprecision,
-                            UBYTE &rangebits) const
+			    ScanType &scantype,ScanType &restype,
+			    UBYTE &hiddenbits,UBYTE &riddenbits,
+			    UBYTE &ldrprecision,UBYTE &hdrprecision,
+			    UBYTE &rangebits) const
 {  
   LONG frametype   = tags->GetTagData(JPGTAG_IMAGE_FRAMETYPE);
   LONG resflags    = tags->GetTagData(JPGTAG_RESIDUAL_FRAMETYPE,defaultscan);
@@ -169,11 +144,11 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
   if (hiddenbits) {
     if (int(hiddenbits) > ldrprecision - 8)
       JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",
-                "can only hide at most the number of extra bits between "
-                "the native bit depth of the image and eight bits per pixel");
+		"can only hide at most the number of extra bits between "
+		"the native bit depth of the image and eight bits per pixel");
     if (hiddenbits + 8 > 12)
       JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",
-                "the maximum number of hidden DCT bits can be at most four");
+		"the maximum number of hidden DCT bits can be at most four");
   }
 
   if (residual || hiddenbits || riddenbits) {
@@ -182,8 +157,8 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
     case JPGFLAG_SEQUENTIAL:
     case JPGFLAG_PROGRESSIVE:
       if (ldrprecision > 8) {
-        rangebits    = ldrprecision - 8;
-        ldrprecision = 8;
+	rangebits    = ldrprecision - 8;
+	ldrprecision = 8;
       }
       break;
     }
@@ -213,7 +188,7 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
     case ACLossless:
     case JPEG_LS:
       JPG_THROW(INVALID_PARAMETER,"Encoder::FindScanTypes",
-                "the lossless scans do not create residuals, no need to code them");
+		"the lossless scans do not create residuals, no need to code them");
       break;
     case DifferentialSequential:
     case DifferentialProgressive:
@@ -224,7 +199,7 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
       // Hmm. At this time, simply disallow. There is probably a way how to fit this into
       // the highest hierarchical level, but not now.
       JPG_THROW(NOT_IMPLEMENTED,"Encoder::FindScanTypes",
-                "the hierarchical mode does not yet allow residual coding");
+		"the hierarchical mode does not yet allow residual coding");
       break;
     default:
       // Ok, try that.
@@ -244,24 +219,24 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
       // If we have bits left, and the color trafo in the residual domain is the RCT,
       // take care of its range expansion.
       {
-        ULONG rtrafo     = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE;
-        ULONG colortrafo = tags->GetTagData(JPGTAG_MATRIX_LTRAFO,
-                                            (depth > 1)?JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-                                            JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE);
-        // The internal logic will rewire the default of YCVBCR to RCT for lossless, thus do the
-        // same here.
-        if (colortrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE && depth == 3) {
-          rtrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_RCT;
-        }
-        rtrafo     = tags->GetTagData(JPGTAG_MATRIX_RTRAFO,rtrafo);
-        if (rtrafo == JPGFLAG_MATRIX_COLORTRANSFORMATION_RCT) {
-          // We have the rct in the residual path, one bit more precision please.
-          hdrprecision++;
-        }
-        
-        if (riddenbits > 8 || riddenbits >= hdrprecision)
-          JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",
-                    "too many refinement scans in the residual domain, can have at most eight with the DCT disabled");
+	ULONG rtrafo     = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE;
+	ULONG colortrafo = tags->GetTagData(JPGTAG_MATRIX_LTRAFO,
+					    (depth > 1)?JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
+					    JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE);
+	// The internal logic will rewire the default of YCVBCR to RCT for lossless, thus do the
+	// same here.
+	if (colortrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE && depth == 3) {
+	  rtrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_RCT;
+	}
+	rtrafo     = tags->GetTagData(JPGTAG_MATRIX_RTRAFO,rtrafo);
+	if (rtrafo == JPGFLAG_MATRIX_COLORTRANSFORMATION_RCT) {
+	  // We have the rct in the residual path, one bit more precision please.
+	  hdrprecision++;
+	}
+	
+	if (riddenbits > 8 || riddenbits >= hdrprecision)
+	  JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",
+		    "too many refinement scans in the residual domain, can have at most eight with the DCT disabled");
       }
       break;
     case Sequential:
@@ -271,25 +246,25 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
     case Baseline:
       hdrprecision  = tags->GetTagData(JPGTAG_RESIDUAL_PRECISION,8);
       if (hdrprecision != 8 && (hdrprecision != 12 || restype == Baseline))
-        JPG_THROW(INVALID_PARAMETER,"Encoder::FindScanTypes",
-                  "The residual image precision must be either 8 or 12 bits per component");
+	JPG_THROW(INVALID_PARAMETER,"Encoder::FindScanTypes",
+		  "The residual image precision must be either 8 or 12 bits per component");
       // Runs into the following...
     default:
       if (riddenbits > 4)
-        JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",
-                  "too many refinement scans in the residual domain, can have at most four with the DCT enabled");
+	JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",
+		  "too many refinement scans in the residual domain, can have at most four with the DCT enabled");
       hdrprecision += riddenbits;
       break;
     }
     //
     if (accoding || raccoding)
       JPG_WARN(NOT_IN_PROFILE,"Encoder::FindScanTypes",
-               "arithmetic coding is not covered by the JPEG XT standard and should not be "
-               "combined with JPEG XT coding features such as residual coding");
+	       "arithmetic coding is not covered by the JPEG XT standard and should not be "
+	       "combined with JPEG XT coding features such as residual coding");
     //
     if (riddenbits >= hdrprecision)
       JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",
-                "too many refinement scans in the residual domain");
+		"too many refinement scans in the residual domain");
   
   }
 }
@@ -343,16 +318,16 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
     JPG_THROW(OVERFLOW_PARAMETER,"Encoder::WriteHeader","the maximum error must be between 0 and 255");
 
   FindScanTypes(tags,JPGFLAG_SEQUENTIAL,depth,
-                scantype,restype,hiddenbits,riddenbits,ldrprecision,hdrprecision,rangebits);
+		scantype,restype,hiddenbits,riddenbits,ldrprecision,hdrprecision,rangebits);
   
   // Do not indicate baseline here, though it may...
   m_pImage  = new(m_pEnviron) class Image(m_pEnviron);
   m_pImage->TablesOf()->InstallDefaultTables(ldrprecision,rangebits,tags);
 
   m_pImage->InstallDefaultParameters(width,height,depth,
-                                     ldrprecision,scantype,levels,scale,
-                                     writednl,subx,suby,
-                                     0,tags);
+				     ldrprecision,scantype,levels,scale,
+				     writednl,subx,suby,
+				     0,tags);
 
   if (residual && hdrquality > 0) { 
     class Image *residualimage;
@@ -362,9 +337,9 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
     residualimage->TablesOf()->InstallDefaultTables(hdrprecision,0,tags);
  
     residualimage->InstallDefaultParameters(width,height,depth,
-                                            hdrprecision - riddenbits,restype,levels,scale,
-                                            writednl,rubx,ruby,
-                                            JPGTAG_RESIDUAL_TAGOFFSET,tags);
+					    hdrprecision - riddenbits,restype,levels,scale,
+					    writednl,rubx,ruby,
+					    JPGTAG_RESIDUAL_TAGOFFSET,tags);
   }
   
   if (alphatags) {
@@ -394,24 +369,24 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
     // First check whether the alpha channel has the same dimensions as the regular image.
     if (awidth != width || aheight != height)
       JPG_THROW(INVALID_PARAMETER,"Encoder::CreateImage",
-                "the dimensions of the alpha channel must match the dimensions of the image");
+		"the dimensions of the alpha channel must match the dimensions of the image");
 
     if (adepth != 1)
       JPG_THROW(INVALID_PARAMETER,"Encoder::CreateImage",
-                "the alpha channel may only have a single component");
+		"the alpha channel may only have a single component");
 
     FindScanTypes(alphatags,JPGFLAG_SEQUENTIAL,adepth,
-                  ascantype,arestype,ahiddenbits,ariddenbits,aldrprecision,ahdrprecision,arangebits);
+		  ascantype,arestype,ahiddenbits,ariddenbits,aldrprecision,ahdrprecision,arangebits);
     
     if (aldrprecision < 8)
       JPG_WARN(NOT_IN_PROFILE,"Encoder::CreateImage",
-               "alpha channel precisions below 8bpp are not covered by the standard");
+	       "alpha channel precisions below 8bpp are not covered by the standard");
 
     switch(ascantype) {
     case JPGFLAG_LOSSLESS:
     case JPGFLAG_JPEG_LS:
       JPG_WARN(NOT_IN_PROFILE,"Encoder::CreateImage",
-               "JPEG LS and JPEG lossless scan types for alpha channels are not covered by the standard");
+	       "JPEG LS and JPEG lossless scan types for alpha channels are not covered by the standard");
       break;
     default: // Everything else is kind of ok.
       break;
@@ -425,7 +400,7 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
     
     if (ascale)
       JPG_WARN(NOT_IN_PROFILE,"Encoder::CreateImage",
-               "hierarchical coding of the alpha channel is not covered by the standard");
+	       "hierarchical coding of the alpha channel is not covered by the standard");
     if (arestart > MAX_UWORD)
       JPG_THROW(OVERFLOW_PARAMETER,"Encoder::CreateImage","restart interval must be between 0 and 65535");
 
@@ -434,14 +409,14 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
 
     if (accoding || raccoding)
       JPG_THROW(NOT_IN_PROFILE,"Encoder::CreateImage",
-                "arithmetic coding of the alpha channel is not covered by the standard");
+		"arithmetic coding of the alpha channel is not covered by the standard");
 
     
     alphachannel = m_pImage->CreateAlphaChannel();
     alphachannel->TablesOf()->InstallDefaultTables(aldrprecision,arangebits,alphatags);
     alphachannel->InstallDefaultParameters(width,height,1,
-                                           aldrprecision,ascantype,alevels,ascale,
-                                           awritednl,NULL,NULL,0,alphatags);
+					   aldrprecision,ascantype,alevels,ascale,
+					   awritednl,NULL,NULL,0,alphatags);
 
     if (aresidual && ahdrquality > 0) { 
       class Image *aresidualimage;
@@ -451,9 +426,9 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
       aresidualimage->TablesOf()->InstallDefaultTables(ahdrprecision,0,alphatags);
  
       aresidualimage->InstallDefaultParameters(width,height,1,
-                                               ahdrprecision - ariddenbits,arestype,alevels,ascale,
-                                               awritednl,NULL,NULL,
-                                               JPGTAG_RESIDUAL_TAGOFFSET,alphatags);
+					       ahdrprecision - ariddenbits,arestype,alevels,ascale,
+					       awritednl,NULL,NULL,
+					       JPGTAG_RESIDUAL_TAGOFFSET,alphatags);
     }
   }
 

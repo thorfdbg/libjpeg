@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
@@ -117,13 +92,13 @@ protected:
   //
   // Encode a single huffman block
   void EncodeBlock(const LONG *block,
-                   class HuffmanCoder *dc,class HuffmanCoder *ac,
-                   LONG &prevdc,UWORD &skip);
+		   class HuffmanCoder *dc,class HuffmanCoder *ac,
+		   LONG &prevdc,UWORD &skip);
   //
   // Decode a single huffman block.
   void DecodeBlock(LONG *block,
-                   class HuffmanDecoder *dc,class HuffmanDecoder *ac,
-                   LONG &prevdc,UWORD &skip);
+		   class HuffmanDecoder *dc,class HuffmanDecoder *ac,
+		   LONG &prevdc,UWORD &skip);
   //
   // Flush the remaining bits out to the stream on writing.
   virtual void Flush(bool final);
@@ -133,8 +108,8 @@ protected:
   //
   // Make a block statistics measurement on the source data.
   void MeasureBlock(const LONG *block,
-                    class HuffmanStatistics *dc,class HuffmanStatistics *ac,
-                    LONG &prevdc,UWORD &skip);
+		    class HuffmanStatistics *dc,class HuffmanStatistics *ac,
+		    LONG &prevdc,UWORD &skip);
   //
   // Write the marker that indicates the frame type fitting to this scan.
   virtual void WriteFrameType(class ByteStream *io);
@@ -148,8 +123,8 @@ public:
   // Create a sequential scan. The highbit is always ignored as this is
   // a valid setting for progressive only
   SequentialScan(class Frame *frame,class Scan *scan,UBYTE start,UBYTE stop,
-                 UBYTE lowbit,UBYTE highbit,
-                 bool differential = false,bool residual = false,bool largerange = false);
+		 UBYTE lowbit,UBYTE highbit,
+		 bool differential = false,bool residual = false,bool largerange = false);
   //
   ~SequentialScan(void);
   // 

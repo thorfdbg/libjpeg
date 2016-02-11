@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 **
 ** This class pulls blocks from the frame and reconstructs from those
@@ -187,7 +162,7 @@ void BlockBitmapRequester::BuildCommon(void)
   
   if (m_pppQImage == NULL) {
     m_pppQImage   = (class QuantizedRow ***)m_pEnviron->AllocMem(sizeof(class QuantizedRow **) * 
-                                                                 m_ucCount);
+								 m_ucCount);
     for(i = 0;i < m_ucCount;i++) {
       m_pppQImage[i]        = m_ppQTop + i;
     }
@@ -195,7 +170,7 @@ void BlockBitmapRequester::BuildCommon(void)
   
   if (m_pppRImage == NULL) {
     m_pppRImage   = (class QuantizedRow ***)m_pEnviron->AllocMem(sizeof(class QuantizedRow **) * 
-                                                                 m_ucCount);
+								 m_ucCount);
     for(i = 0;i < m_ucCount;i++) {
       m_pppRImage[i]        = m_ppRTop + i;
     }
@@ -239,9 +214,9 @@ void BlockBitmapRequester::PrepareForEncoding(void)
       UBYTE sy = comp->SubYOf();
       
       if (sx > 1 || sy > 1) {
-        m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-                                                                m_ulPixelWidth,m_ulPixelHeight);
-        m_bSubsampling     = true;
+	m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
+								m_ulPixelWidth,m_ulPixelHeight);
+	m_bSubsampling     = true;
       }
     }
   }
@@ -266,9 +241,9 @@ void BlockBitmapRequester::PrepareForDecoding(void)
       UBYTE sy = comp->SubYOf();
       
       if (sx > 1 || sy > 1) {
-        m_ppUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-                                                          m_ulPixelWidth,m_ulPixelHeight);
-        m_bSubsampling   = true;
+	m_ppUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
+							  m_ulPixelWidth,m_ulPixelHeight);
+	m_bSubsampling   = true;
       }
     }
   }
@@ -287,19 +262,19 @@ void BlockBitmapRequester::SetBlockHelper(class ResidualBlockHelper *helper)
     
     if (m_ppDownsampler && m_ppResidualDownsampler == NULL) {
       m_ppResidualDownsampler = (class DownsamplerBase **)m_pEnviron->AllocMem(sizeof(class DownsamplerBase *) * 
-                                                                               m_ucCount);
+									       m_ucCount);
       memset(m_ppResidualDownsampler,0,sizeof(class DownsamplerBase *) * m_ucCount);
       
       for(i = 0;i < m_ucCount;i++) {
-        class Component *comp = residualframe->ComponentOf(i);
-        UBYTE sx = comp->SubXOf();
-        UBYTE sy = comp->SubYOf();
-        
-        if (sx > 1 || sy > 1) {
-          m_ppResidualDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-                                                                          m_ulPixelWidth,m_ulPixelHeight);
-          m_bSubsampling     = true;
-        }
+	class Component *comp = residualframe->ComponentOf(i);
+	UBYTE sx = comp->SubXOf();
+	UBYTE sy = comp->SubYOf();
+	
+	if (sx > 1 || sy > 1) {
+	  m_ppResidualDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
+									  m_ulPixelWidth,m_ulPixelHeight);
+	  m_bSubsampling     = true;
+	}
       }
     }
     
@@ -307,20 +282,20 @@ void BlockBitmapRequester::SetBlockHelper(class ResidualBlockHelper *helper)
     // The encoder also requires the upsampler.
     if ((m_ppUpsampler || m_ppDownsampler) && m_ppResidualUpsampler == NULL) {
       m_ppResidualUpsampler = (class UpsamplerBase **)m_pEnviron->AllocMem(sizeof(class UpsamplerBase *) * 
-                                                                           m_ucCount);
+									   m_ucCount);
       memset(m_ppResidualUpsampler,0,sizeof(class Upsampler *) * m_ucCount);
 
       for(i = 0;i < m_ucCount;i++) {
-        class Component *comp = residualframe->ComponentOf(i);
-        UBYTE sx = comp->SubXOf();
-        UBYTE sy = comp->SubYOf();
+	class Component *comp = residualframe->ComponentOf(i);
+	UBYTE sx = comp->SubXOf();
+	UBYTE sy = comp->SubYOf();
 
-        if (sx > 1 || sy > 1) {
-          m_ppResidualUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-                                                                    m_ulPixelWidth,m_ulPixelHeight);
-          
-          m_bSubsampling     = true;
-        }
+	if (sx > 1 || sy > 1) {
+	  m_ppResidualUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
+								    m_ulPixelWidth,m_ulPixelHeight);
+	  
+	  m_bSubsampling     = true;
+	}
       }
     }
     //
@@ -343,63 +318,63 @@ void BlockBitmapRequester::SetBlockHelper(class ResidualBlockHelper *helper)
     // downsampler acts as an image buffer.
     if (m_ppDownsampler) {
       if (m_ppUpsampler == NULL) {
-        m_ppUpsampler = (class UpsamplerBase **)m_pEnviron->AllocMem(sizeof(class UpsamplerBase *) * 
-                                                                     m_ucCount);
-        memset(m_ppUpsampler,0,sizeof(class Upsampler *) * m_ucCount);
+	m_ppUpsampler = (class UpsamplerBase **)m_pEnviron->AllocMem(sizeof(class UpsamplerBase *) * 
+								     m_ucCount);
+	memset(m_ppUpsampler,0,sizeof(class Upsampler *) * m_ucCount);
       }
       if (m_ppOriginalImage == NULL) {
-        m_ppOriginalImage = (class DownsamplerBase **)m_pEnviron->AllocMem(sizeof(class DownsamplerBase *) *
-                                                                           m_ucCount);
-        memset(m_ppOriginalImage,0,sizeof(class DownsamplerBase *) * m_ucCount);
+	m_ppOriginalImage = (class DownsamplerBase **)m_pEnviron->AllocMem(sizeof(class DownsamplerBase *) *
+									   m_ucCount);
+	memset(m_ppOriginalImage,0,sizeof(class DownsamplerBase *) * m_ucCount);
       }
 
       if (m_plOriginalColorBuffer == NULL)
-        m_plOriginalColorBuffer = (LONG *)m_pEnviron->AllocMem(m_ucCount * 64 * sizeof(LONG));
+	m_plOriginalColorBuffer = (LONG *)m_pEnviron->AllocMem(m_ucCount * 64 * sizeof(LONG));
 
       if (m_ppOriginalIBM == NULL) {
-        m_ppOriginalIBM = (struct ImageBitMap **)m_pEnviron->AllocMem(m_ucCount * sizeof(struct ImageBitMap *));
-        memset(m_ppOriginalIBM,0,m_ucCount * sizeof(struct ImageBitMap *));
+	m_ppOriginalIBM = (struct ImageBitMap **)m_pEnviron->AllocMem(m_ucCount * sizeof(struct ImageBitMap *));
+	memset(m_ppOriginalIBM,0,m_ucCount * sizeof(struct ImageBitMap *));
       }
 
       for(i = 0;i < m_ucCount;i++) {
-        class Component *comp = m_pFrame->ComponentOf(i);
-        UBYTE sx = comp->SubXOf();
-        UBYTE sy = comp->SubYOf();
-        
+	class Component *comp = m_pFrame->ComponentOf(i);
+	UBYTE sx = comp->SubXOf();
+	UBYTE sy = comp->SubYOf();
+	
 
-        if (m_ppOriginalIBM[i] == NULL) {
-          m_ppOriginalIBM[i] = new(m_pEnviron) struct ImageBitMap();
-          // Make it use the original color buffer.
-          m_ppOriginalIBM[i]->ibm_ulWidth  = 8;
-          m_ppOriginalIBM[i]->ibm_ulHeight = 8;
-          m_ppOriginalIBM[i]->ibm_cBytesPerPixel = sizeof(LONG);
-          m_ppOriginalIBM[i]->ibm_lBytesPerRow   = 8 * sizeof(LONG);
-          m_ppOriginalIBM[i]->ibm_pData          = m_plOriginalColorBuffer + i * 64;
-        }
+	if (m_ppOriginalIBM[i] == NULL) {
+	  m_ppOriginalIBM[i] = new(m_pEnviron) struct ImageBitMap();
+	  // Make it use the original color buffer.
+	  m_ppOriginalIBM[i]->ibm_ulWidth  = 8;
+	  m_ppOriginalIBM[i]->ibm_ulHeight = 8;
+	  m_ppOriginalIBM[i]->ibm_cBytesPerPixel = sizeof(LONG);
+	  m_ppOriginalIBM[i]->ibm_lBytesPerRow   = 8 * sizeof(LONG);
+	  m_ppOriginalIBM[i]->ibm_pData          = m_plOriginalColorBuffer + i * 64;
+	}
 
-        if (m_ppUpsampler[i] == NULL) {
-          // For closed loop coding, the upsampler has to upsample the reconstructed data,
-          // hence, real upsampling is needed. Otherwise, it just stores the original
-          // LDR image.
-          if (m_bOpenLoop) {
-            m_ppUpsampler[i]   = UpsamplerBase::CreateUpsampler(m_pEnviron,1,1,
-                                                                m_ulPixelWidth,m_ulPixelHeight);
-          } else {
-            m_ppUpsampler[i]   = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-                                                                m_ulPixelWidth,m_ulPixelHeight);
-          }
-        }
-        
-        if (m_ppDownsampler[i] == NULL)
-          m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-                                                                  m_ulPixelWidth,m_ulPixelHeight);
+	if (m_ppUpsampler[i] == NULL) {
+	  // For closed loop coding, the upsampler has to upsample the reconstructed data,
+	  // hence, real upsampling is needed. Otherwise, it just stores the original
+	  // LDR image.
+	  if (m_bOpenLoop) {
+	    m_ppUpsampler[i]   = UpsamplerBase::CreateUpsampler(m_pEnviron,1,1,
+								m_ulPixelWidth,m_ulPixelHeight);
+	  } else {
+	    m_ppUpsampler[i]   = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
+								m_ulPixelWidth,m_ulPixelHeight);
+	  }
+	}
+	
+	if (m_ppDownsampler[i] == NULL)
+	  m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
+								  m_ulPixelWidth,m_ulPixelHeight);
 
-        // We need to buffer the original image until the encoded image becomes available as reference.
-        // This is done here.
-        if (m_ppOriginalImage[i] == NULL) {
-          m_ppOriginalImage[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,1,1,
-                                                                    m_ulPixelWidth,m_ulPixelHeight);
-        }
+	// We need to buffer the original image until the encoded image becomes available as reference.
+	// This is done here.
+	if (m_ppOriginalImage[i] == NULL) {
+	  m_ppOriginalImage[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,1,1,
+								    m_ulPixelWidth,m_ulPixelHeight);
+	}
       }
     }
   }
@@ -426,7 +401,7 @@ void BlockBitmapRequester::ResetToStartOfImage(void)
 class ColorTrafo *BlockBitmapRequester::ColorTrafoOf(bool encoding)
 {
   return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,(m_pResidualHelper)?(m_pResidualHelper->ResidualFrameOf()):(NULL),
-                                            PixelTypeOf(),encoding);
+					    PixelTypeOf(),encoding);
 }
 ///
 
@@ -474,33 +449,33 @@ void BlockBitmapRequester::AdvanceQRows(void)
       // data and need not to be filled here by the reconstructed LDR
       // data.
       if (m_pResidualHelper && m_bOpenLoop == false) {
-        assert(m_ppUpsampler[i]);
-        // Only make larger, do not throw old stuff away.
-        if (m_ppUpsampler[i]) {
-          m_ppUpsampler[i]->ExtendBufferedRegion(blocks);
-        }
+	assert(m_ppUpsampler[i]);
+	// Only make larger, do not throw old stuff away.
+	if (m_ppUpsampler[i]) {
+	  m_ppUpsampler[i]->ExtendBufferedRegion(blocks);
+	}
       }
       //
       // Push the blocks into the DCT.
       for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-        class QuantizedRow *qr = BuildImageRow(m_pppQImage[i],m_pFrame,i);
-        for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-          LONG src[64]; // temporary buffer, the DCT requires a 8x8 block
-          LONG *dst = (qr)?(qr->BlockAt(bx)->m_Data):NULL;
-          m_ppDownsampler[i]->DownsampleRegion(bx,by,src);
-          m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
-          //
-          // Inversely reconstruct and feed into the upsampler to get the residual signal.
-          // For openloop coding, the upsampler already contains the original LDR
-          // data.
-          if (m_pResidualHelper && m_bOpenLoop == false) {
-            m_ppDCT[i]->InverseTransformBlock(src,dst,(maxval + 1) >> 1);
-            assert(m_ppUpsampler[i]);
-            m_ppUpsampler[i]->DefineRegion(bx,by,src);
-          }
-        }
-        m_ppDownsampler[i]->RemoveBlocks(by);
-        m_pppQImage[i] = &(qr->NextOf());
+	class QuantizedRow *qr = BuildImageRow(m_pppQImage[i],m_pFrame,i);
+	for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+	  LONG src[64]; // temporary buffer, the DCT requires a 8x8 block
+	  LONG *dst = (qr)?(qr->BlockAt(bx)->m_Data):NULL;
+	  m_ppDownsampler[i]->DownsampleRegion(bx,by,src);
+	  m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
+	  //
+	  // Inversely reconstruct and feed into the upsampler to get the residual signal.
+	  // For openloop coding, the upsampler already contains the original LDR
+	  // data.
+	  if (m_pResidualHelper && m_bOpenLoop == false) {
+	    m_ppDCT[i]->InverseTransformBlock(src,dst,(maxval + 1) >> 1);
+	    assert(m_ppUpsampler[i]);
+	    m_ppUpsampler[i]->DefineRegion(bx,by,src);
+	  }
+	}
+	m_ppDownsampler[i]->RemoveBlocks(by);
+	m_pppQImage[i] = &(qr->NextOf());
       }
     }
   }
@@ -558,26 +533,26 @@ void BlockBitmapRequester::AdvanceRRows(const RectAngle<LONG> &region,class Colo
     for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
       r.ra_MaxX = (r.ra_MinX & -8) + 7;
       if (r.ra_MaxX >= LONG(m_ulPixelWidth))
-        r.ra_MaxX = m_ulPixelWidth - 1;
+	r.ra_MaxX = m_ulPixelWidth - 1;
       // Place the reconstructed upsampled data into the D-buffer. 
       // Since the C-buffer is no longer required, use this for downsampling
       // the residual if this is requested, otherwise copy directly into
       // the destination.
       for(i = 0;i < m_ucCount;i++) {
-        // Read the reconstructed data out of the upsampler and push it
-        // into D.
-        m_ppUpsampler[i]->UpsampleRegion(r,m_ppDTemp[i]);
-        //
-        // And prepare the residual downsampler which is the output.
-        if (m_ppResidualDownsampler[i]) {
-          m_ppRTemp[i] = m_ppCTemp[i];
-        } else {
-          class QuantizedRow *rrow = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
-          m_ppRTemp[i] = rrow->BlockAt(x)->m_Data;
-        } 
-        //
-        // Build the output buffer for the downsampler that stored the original data.
-        m_ppOriginalImage[i]->DownsampleRegion(x,y,(LONG *)(m_ppOriginalIBM[i]->ibm_pData));
+	// Read the reconstructed data out of the upsampler and push it
+	// into D.
+	m_ppUpsampler[i]->UpsampleRegion(r,m_ppDTemp[i]);
+	//
+	// And prepare the residual downsampler which is the output.
+	if (m_ppResidualDownsampler[i]) {
+	  m_ppRTemp[i] = m_ppCTemp[i];
+	} else {
+	  class QuantizedRow *rrow = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
+	  m_ppRTemp[i] = rrow->BlockAt(x)->m_Data;
+	} 
+	//
+	// Build the output buffer for the downsampler that stored the original data.
+	m_ppOriginalImage[i]->DownsampleRegion(x,y,(LONG *)(m_ppOriginalIBM[i]->ibm_pData));
       }
       // OriginalIBM has now the original image data buffered in the downsampler.
       // ppDTemp contains the upsampled reconstructed data as reference.
@@ -588,14 +563,14 @@ void BlockBitmapRequester::AdvanceRRows(const RectAngle<LONG> &region,class Colo
       // or the the C-Buffer. If it is in the C-Buffer, but it back into the
       // Downsampler.
       for(i = 0;i < m_ucCount;i++) {
-        // Just collect the data in the downsampler for the time
-        // being. Will be taken care of as soon as it is complete.
-        if (m_ppResidualDownsampler[i]) {
-          m_ppResidualDownsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
-        } else {
-          // Otherwise, already quantize now as the data is in its final destination.
-          m_pResidualHelper->QuantizeResidual(m_ppDTemp[i],m_ppRTemp[i],i,x,y);
-        }
+	// Just collect the data in the downsampler for the time
+	// being. Will be taken care of as soon as it is complete.
+	if (m_ppResidualDownsampler[i]) {
+	  m_ppResidualDownsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
+	} else {
+	  // Otherwise, already quantize now as the data is in its final destination.
+	  m_pResidualHelper->QuantizeResidual(m_ppDTemp[i],m_ppRTemp[i],i,x,y);
+	}
       }
     }
     //
@@ -607,8 +582,8 @@ void BlockBitmapRequester::AdvanceRRows(const RectAngle<LONG> &region,class Colo
       // No further downsampling required? If so,
       // just push the residual out.
       if (m_ppResidualDownsampler[i] == NULL) { 
-        class QuantizedRow *rrow = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
-        m_pppRImage[i] = &(rrow->NextOf());
+	class QuantizedRow *rrow = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
+	m_pppRImage[i] = &(rrow->NextOf());
       }
     }
   }
@@ -622,14 +597,14 @@ void BlockBitmapRequester::AdvanceRRows(const RectAngle<LONG> &region,class Colo
       // Collect the downsampled blocks and push that into the DCT.
       m_ppResidualDownsampler[i]->GetCollectedBlocks(blocks);
       for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-        class QuantizedRow *qr = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
-        for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-          LONG *dst = (qr)?(qr->BlockAt(bx)->m_Data):NULL;
-          m_ppResidualDownsampler[i]->DownsampleRegion(bx,by,dst);
-          m_pResidualHelper->QuantizeResidual(NULL,dst,i,bx,by);
-        }
-        m_ppResidualDownsampler[i]->RemoveBlocks(by);
-        m_pppRImage[i] = &(qr->NextOf());
+	class QuantizedRow *qr = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
+	for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+	  LONG *dst = (qr)?(qr->BlockAt(bx)->m_Data):NULL;
+	  m_ppResidualDownsampler[i]->DownsampleRegion(bx,by,dst);
+	  m_pResidualHelper->QuantizeResidual(NULL,dst,i,bx,by);
+	}
+	m_ppResidualDownsampler[i]->RemoveBlocks(by);
+	m_pppRImage[i] = &(qr->NextOf());
       }
     }
   }
@@ -657,23 +632,23 @@ void BlockBitmapRequester::PullSourceData(const RectAngle<LONG> &region,class Co
   for(i = 0;i < m_ucCount;i++) {
     if (m_ppDownsampler[i]) {
       m_ppDownsampler[i]->SetBufferedRegion(region);
-    }   
+    }	
     // Ditto for the original image, but do not throw old stuff away.
     if (m_pResidualHelper) {
       if (m_ppOriginalImage[i]) {
-        m_ppOriginalImage[i]->ExtendBufferedRegion(region);
+	m_ppOriginalImage[i]->ExtendBufferedRegion(region);
       }
       // For openloop coding, fill the upsampler with the original data instead
       // of the reconstructed data.
       if (m_bOpenLoop && m_ppUpsampler[i]) {
-        // Note that the upsampler requires block coordinates, not image coordinates.   
-        // Also, the dummy open loop upsampler is only an image buffer with 1x1
-        // subsampling factors, thus coordinates carry over directly.
-        r.ra_MinX = minx;
-        r.ra_MinY = miny;
-        r.ra_MaxX = maxx;
-        r.ra_MaxY = maxy;
-        m_ppUpsampler[i]->ExtendBufferedRegion(r);
+	// Note that the upsampler requires block coordinates, not image coordinates.	
+	// Also, the dummy open loop upsampler is only an image buffer with 1x1
+	// subsampling factors, thus coordinates carry over directly.
+	r.ra_MinX = minx;
+	r.ra_MinY = miny;
+	r.ra_MaxX = maxx;
+	r.ra_MaxY = maxy;
+	m_ppUpsampler[i]->ExtendBufferedRegion(r);
       }
     }
   }
@@ -688,79 +663,79 @@ void BlockBitmapRequester::PullSourceData(const RectAngle<LONG> &region,class Co
     for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
       r.ra_MaxX = (r.ra_MinX & -8) + 7;
       if (r.ra_MaxX > region.ra_MaxX)
-        r.ra_MaxX = region.ra_MaxX;
+	r.ra_MaxX = region.ra_MaxX;
       
       // If the user supplied a dedicated LDR image.
       if (hasLDRImage()) {
-        for(i = 0;i < m_ucCount;i++) {
-          ExtractLDRBitmap(m_ppTempIBM[i],r,i);
-        }
-        
-        ctrafo->LDRRGB2YCbCr(r,m_ppTempIBM,m_ppCTemp); 
-        
-        // Extract now the HDR image.
-        for(i = 0;i < m_ucCount;i++) {      
-          ExtractBitmap(m_ppTempIBM[i],r,i);
-        }
+	for(i = 0;i < m_ucCount;i++) {
+	  ExtractLDRBitmap(m_ppTempIBM[i],r,i);
+	}
+	
+	ctrafo->LDRRGB2YCbCr(r,m_ppTempIBM,m_ppCTemp); 
+	
+	// Extract now the HDR image.
+	for(i = 0;i < m_ucCount;i++) {      
+	  ExtractBitmap(m_ppTempIBM[i],r,i);
+	}
       } else {
-        // Take the LDR from the HDR image.
-        for(i = 0;i < m_ucCount;i++) {
-          // Collect the source data.
-          ExtractBitmap(m_ppTempIBM[i],r,i);
-        }
-        //
-        // Run the color transformer.
-        ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
+	// Take the LDR from the HDR image.
+	for(i = 0;i < m_ucCount;i++) {
+	  // Collect the source data.
+	  ExtractBitmap(m_ppTempIBM[i],r,i);
+	}
+	//
+	// Run the color transformer.
+	ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
       }
       
       // Now push the transformed data into either the downsampler, 
       // or the forward DCT block row.
       for(i = 0;i < m_ucCount;i++) {
-        //
-        // Now for the actual downsampling.
-        if (m_ppDownsampler[i]) {
-          // Just collect the data in the downsampler for the time
-          // being. Will be taken care of as soon as it is complete.
-          m_ppDownsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
-        } else { 
-          class QuantizedRow *qrow = BuildImageRow(m_pppQImage[i],m_pFrame,i);
-          LONG *dst                = qrow->BlockAt(x)->m_Data;
-          m_ppDCT[i]->TransformBlock(m_ppCTemp[i],dst,(maxval + 1) >> 1);
-        }
+	//
+	// Now for the actual downsampling.
+	if (m_ppDownsampler[i]) {
+	  // Just collect the data in the downsampler for the time
+	  // being. Will be taken care of as soon as it is complete.
+	  m_ppDownsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
+	} else { 
+	  class QuantizedRow *qrow = BuildImageRow(m_pppQImage[i],m_pFrame,i);
+	  LONG *dst                = qrow->BlockAt(x)->m_Data;
+	  m_ppDCT[i]->TransformBlock(m_ppCTemp[i],dst,(maxval + 1) >> 1);
+	}
       }
       //
       // For residual coding: Also keep the original image, undownsampled
       // here in the downsampler base until we can make use of it and
       // the reconstructed image becomes available.
       if (m_pResidualHelper) {
-        // For openloop coding, store the transformed source data now
-        // in the upsampler. This will be used later to compute
-        // the residual. Note that CTemp contains now the LDR
-        // image.
-        if (m_bOpenLoop) {
-          for(i = 0;i < m_ucCount;i++) {
-            assert(m_ppUpsampler[i]);
-            m_ppUpsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
-          }
-        }
-        //
-        // Get the original HDR image unaltered, move it to the
-        // dummy downsampler to store it there until it is needed.
-        ctrafo->RGB2RGB(r,m_ppTempIBM,m_ppCTemp);
-        //
-        for(i = 0;i < m_ucCount;i++) {
-          // Get the original image unaltered, move it to the dummy downsampler
-          // to store it there until it is needed.
-          assert(m_ppOriginalImage[i]);
-          m_ppOriginalImage[i]->DefineRegion(x,y,m_ppCTemp[i]);
-        }
+	// For openloop coding, store the transformed source data now
+	// in the upsampler. This will be used later to compute
+	// the residual. Note that CTemp contains now the LDR
+	// image.
+	if (m_bOpenLoop) {
+	  for(i = 0;i < m_ucCount;i++) {
+	    assert(m_ppUpsampler[i]);
+	    m_ppUpsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
+	  }
+	}
+	//
+	// Get the original HDR image unaltered, move it to the
+	// dummy downsampler to store it there until it is needed.
+	ctrafo->RGB2RGB(r,m_ppTempIBM,m_ppCTemp);
+	//
+	for(i = 0;i < m_ucCount;i++) {
+	  // Get the original image unaltered, move it to the dummy downsampler
+	  // to store it there until it is needed.
+	  assert(m_ppOriginalImage[i]);
+	  m_ppOriginalImage[i]->DefineRegion(x,y,m_ppCTemp[i]);
+	}
       }
       //
       // If residual coding is enabled, all the data should go into the
       // downsampler, even though it does not sample much, but rather
       // acts as image buffer.
       for(i = 0;i < m_ucCount;i++) {
-        assert(m_ppDownsampler[i] || m_pResidualHelper == NULL);
+	assert(m_ppDownsampler[i] || m_pResidualHelper == NULL);
       }
     }
     //
@@ -790,65 +765,65 @@ void BlockBitmapRequester::EncodeUnsampled(const RectAngle<LONG> &region,class C
     for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
       r.ra_MaxX = (r.ra_MinX & -8) + 7;
       if (r.ra_MaxX > region.ra_MaxX)
-        r.ra_MaxX = region.ra_MaxX;
+	r.ra_MaxX = region.ra_MaxX;
       
       //
       // If the user supplied a dedicated LDR image.
       if (hasLDRImage()) {
-        for(i = 0;i < m_ucCount;i++) {      
-          ExtractLDRBitmap(m_ppTempIBM[i],r,i);
-        }
-        
-        ctrafo->LDRRGB2YCbCr(r,m_ppTempIBM,m_ppCTemp); 
-        
-        // Extract the HDR image now.
-        for(i = 0;i < m_ucCount;i++) {      
-          ExtractBitmap(m_ppTempIBM[i],r,i);
-        }
+	for(i = 0;i < m_ucCount;i++) {      
+	  ExtractLDRBitmap(m_ppTempIBM[i],r,i);
+	}
+	
+	ctrafo->LDRRGB2YCbCr(r,m_ppTempIBM,m_ppCTemp); 
+	
+	// Extract the HDR image now.
+	for(i = 0;i < m_ucCount;i++) {      
+	  ExtractBitmap(m_ppTempIBM[i],r,i);
+	}
       } else {
-        for(i = 0;i < m_ucCount;i++) {      
-          ExtractBitmap(m_ppTempIBM[i],r,i);
-        }
-        
-        //if (x == 245 && y == 126 && m_ucCount == 1)
-        //printf("gotcha");     
-        ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
+	for(i = 0;i < m_ucCount;i++) {      
+	  ExtractBitmap(m_ppTempIBM[i],r,i);
+	}
+	
+	//if (x == 245 && y == 126 && m_ucCount == 1)
+	//printf("gotcha"); 	
+	ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
       }
       
       for(i = 0;i < m_ucCount;i++) {
-        class QuantizedRow *qrow = BuildImageRow(m_pppQImage[i],m_pFrame,i);
-        LONG *dst = qrow->BlockAt(x)->m_Data;
-        LONG *src = m_ppCTemp[i];
-        
-        m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
+	class QuantizedRow *qrow = BuildImageRow(m_pppQImage[i],m_pFrame,i);
+	LONG *dst = qrow->BlockAt(x)->m_Data;
+	LONG *src = m_ppCTemp[i];
+	
+	m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
       }
       //
       // If any residuals are required, compute them now.
       if (m_pResidualHelper) {
-        for(i = 0;i < m_ucCount;i++) { 
-          class QuantizedRow *qrow = *m_pppQImage[i];
-          class QuantizedRow *rrow = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
-          assert(qrow && rrow);
-          m_ppQTemp[i] = qrow->BlockAt(x)->m_Data;
-          m_ppRTemp[i] = rrow->BlockAt(x)->m_Data;
-          if (m_bOpenLoop) {
-            memcpy(m_ppDTemp[i],m_ppCTemp[i],64 * sizeof(LONG));
-          } else {
-            m_ppDCT[i]->InverseTransformBlock(m_ppDTemp[i],m_ppQTemp[i],(maxval + 1) >> 1);
-          }
-        }
-        // Step One:
-        // Feed now the color transformer with the residual data.
-        //if (x == 117 && y == 34)
-        //printf("gotcha");
-        ctrafo->RGB2Residual(r,m_ppTempIBM,m_ppDTemp,m_ppRTemp);
-        //
-        // Step two: Compute the residuals by means of the color transformer.
-        // This also computes the forwards transformation of the residual.
-        // Quantization and DCT are still missing.
-        for(i = 0;i < m_ucCount;i++) { 
-          m_pResidualHelper->QuantizeResidual(m_ppDTemp[i],m_ppRTemp[i],i,x,y);
-        }
+	for(i = 0;i < m_ucCount;i++) { 
+	  class QuantizedRow *qrow = *m_pppQImage[i];
+	  class QuantizedRow *rrow = BuildImageRow(m_pppRImage[i],m_pResidualHelper->ResidualFrameOf(),i);
+	  assert(qrow && rrow);
+	  m_ppQTemp[i] = qrow->BlockAt(x)->m_Data;
+	  m_ppRTemp[i] = rrow->BlockAt(x)->m_Data;
+	  if (m_bOpenLoop) {
+	    memcpy(m_ppDTemp[i],m_ppCTemp[i],64 * sizeof(LONG));
+	  } else {
+	    m_ppDCT[i]->InverseTransformBlock(m_ppDTemp[i],m_ppQTemp[i],(maxval + 1) >> 1);
+	  }
+	}
+	// Step One:
+	// Feed now the color transformer with the residual data.
+	//if (x == 117 && y == 34)
+	//printf("gotcha");
+	ctrafo->RGB2Residual(r,m_ppTempIBM,m_ppDTemp,m_ppRTemp);
+	//
+	// Step two: Compute the residuals by means of the color transformer.
+	// This also computes the forwards transformation of the residual.
+	// Quantization and DCT are still missing.
+	for(i = 0;i < m_ucCount;i++) { 
+	  m_pResidualHelper->QuantizeResidual(m_ppDTemp[i],m_ppRTemp[i],i,x,y);
+	}
       }
     }
     for(i = 0;i < m_ucCount;i++) {
@@ -930,7 +905,7 @@ void BlockBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
 /// BlockBitmapRequester::ReconstructUnsampled
 // Reconstruct a region not using any subsampling.
 void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *rr,const RectAngle<LONG> &region,
-                                                ULONG maxmcu,class ColorTrafo *ctrafo)
+						ULONG maxmcu,class ColorTrafo *ctrafo)
 {   
   ULONG maxval  = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   RectAngle<LONG> r;
@@ -952,29 +927,29 @@ void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *r
     for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
       r.ra_MaxX = (r.ra_MinX & -8) + 7;
       if (r.ra_MaxX > region.ra_MaxX)
-        r.ra_MaxX = region.ra_MaxX;
+	r.ra_MaxX = region.ra_MaxX;
       
       for(i = 0;i < m_ucCount;i++) {      
-        LONG *dst = m_ppCTemp[i];
-        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-          class QuantizedRow *qrow = *m_pppQImage[i];
-          const LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):(NULL);
-          //
-          ExtractBitmap(m_ppTempIBM[i],r,i);
-          m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
-        } else {
-          memset(dst,0,sizeof(LONG) * 64);
-        }
+	LONG *dst = m_ppCTemp[i];
+	if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+	  class QuantizedRow *qrow = *m_pppQImage[i];
+	  const LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):(NULL);
+	  //
+	  ExtractBitmap(m_ppTempIBM[i],r,i);
+	  m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
+	} else {
+	  memset(dst,0,sizeof(LONG) * 64);
+	}
       }
       //
       // Perform the color transformation now.
       //if (x == 117 && y == 34)
-      //printf("gotcha");       
+      //printf("gotcha"); 	
       if (m_pResidualHelper) {
-        for(i = rr->rr_usFirstComponent; i <= rr->rr_usLastComponent; i++) {
-          class QuantizedRow *rrow = *m_pppRImage[i];
-          m_pResidualHelper->DequantizeResidual(m_ppCTemp[i],m_ppDTemp[i],rrow->BlockAt(x)->m_Data,i);
-        }
+	for(i = rr->rr_usFirstComponent; i <= rr->rr_usLastComponent; i++) {
+	  class QuantizedRow *rrow = *m_pppRImage[i];
+	  m_pResidualHelper->DequantizeResidual(m_ppCTemp[i],m_ppDTemp[i],rrow->BlockAt(x)->m_Data,i);
+	}
       }
       //
       // Otherwise, the residual remains unused.
@@ -1012,14 +987,14 @@ void BlockBitmapRequester::PullQData(const struct RectangleRequest *rr,const Rec
       up->SetBufferedImageRegion(blocks);
       //
       for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-        class QuantizedRow *qrow = *m_pppQImage[i];
-        for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-          LONG *src = (qrow)?(qrow->BlockAt(bx)->m_Data):NULL;
-          LONG dst[64];
-          m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
-          up->DefineRegion(bx,by,dst);
-        }
-        if (qrow) m_pppQImage[i] = &(qrow->NextOf());
+	class QuantizedRow *qrow = *m_pppQImage[i];
+	for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+	  LONG *src = (qrow)?(qrow->BlockAt(bx)->m_Data):NULL;
+	  LONG dst[64];
+	  m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
+	  up->DefineRegion(bx,by,dst);
+	}
+	if (qrow) m_pppQImage[i] = &(qrow->NextOf());
       }
     }
   }
@@ -1046,14 +1021,14 @@ void BlockBitmapRequester::PullRData(const struct RectangleRequest *rr,const Rec
       up->SetBufferedImageRegion(blocks);
       //
       for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-        class QuantizedRow *rrow = *m_pppRImage[i];
-        for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-          LONG *src = (rrow)?(rrow->BlockAt(bx)->m_Data):NULL;
-          LONG dst[64];
-          m_pResidualHelper->DequantizeResidual(NULL,dst,src,i);
-          up->DefineRegion(bx,by,dst);
-        }
-        if (rrow) m_pppRImage[i] = &(rrow->NextOf());
+	class QuantizedRow *rrow = *m_pppRImage[i];
+	for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+	  LONG *src = (rrow)?(rrow->BlockAt(bx)->m_Data):NULL;
+	  LONG dst[64];
+	  m_pResidualHelper->DequantizeResidual(NULL,dst,src,i);
+	  up->DefineRegion(bx,by,dst);
+	}
+	if (rrow) m_pppRImage[i] = &(rrow->NextOf());
       }
     }
   }
@@ -1063,7 +1038,7 @@ void BlockBitmapRequester::PullRData(const struct RectangleRequest *rr,const Rec
 /// BlockBitmapRequester::PushReconstructedData
 // Generate the final output of the reconstructed data.
 void BlockBitmapRequester::PushReconstructedData(const struct RectangleRequest *rr,const RectAngle<LONG> &region,
-                                                 ULONG maxmcu,class ColorTrafo *ctrafo)
+						 ULONG maxmcu,class ColorTrafo *ctrafo)
 {  
   ULONG maxval = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   RectAngle<LONG> r;
@@ -1085,37 +1060,37 @@ void BlockBitmapRequester::PushReconstructedData(const struct RectangleRequest *
     for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
       r.ra_MaxX = (r.ra_MinX & -8) + 7;
       if (r.ra_MaxX > region.ra_MaxX)
-        r.ra_MaxX = region.ra_MaxX;
+	r.ra_MaxX = region.ra_MaxX;
       
       for(i = 0;i < m_ucCount;i++) {
-        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-          ExtractBitmap(m_ppTempIBM[i],r,i);
-          if (m_ppUpsampler[i]) {
-            // Upsampled case, take from the upsampler, transform
-            // into the color buffer.
-            m_ppUpsampler[i]->UpsampleRegion(r,m_ppCTemp[i]);
-          } else {
-            class QuantizedRow *qrow = *m_pppQImage[i];
-            LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):NULL;
-            // Plain case. Transform directly into the color buffer.
-            m_ppDCT[i]->InverseTransformBlock(m_ppCTemp[i],src,(maxval + 1) >> 1);
-          }
-        } else {
-          // Not requested, zero the buffer.
-          memset(m_ppCTemp[i],0,sizeof(LONG) * 64);
-        }
-        //
-        // Now for the residual image.
-        if (m_pResidualHelper) {
-          if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-            if (m_ppResidualUpsampler[i]) {
-              m_ppResidualUpsampler[i]->UpsampleRegion(r,m_ppDTemp[i]);
-            } else {
-              class QuantizedRow *rrow = *m_pppRImage[i];
-              m_pResidualHelper->DequantizeResidual(NULL,m_ppDTemp[i],rrow->BlockAt(x)->m_Data,i);
-            }
-          }
-        }
+	if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+	  ExtractBitmap(m_ppTempIBM[i],r,i);
+	  if (m_ppUpsampler[i]) {
+	    // Upsampled case, take from the upsampler, transform
+	    // into the color buffer.
+	    m_ppUpsampler[i]->UpsampleRegion(r,m_ppCTemp[i]);
+	  } else {
+	    class QuantizedRow *qrow = *m_pppQImage[i];
+	    LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):NULL;
+	    // Plain case. Transform directly into the color buffer.
+	    m_ppDCT[i]->InverseTransformBlock(m_ppCTemp[i],src,(maxval + 1) >> 1);
+	  }
+	} else {
+	  // Not requested, zero the buffer.
+	  memset(m_ppCTemp[i],0,sizeof(LONG) * 64);
+	}
+	//
+	// Now for the residual image.
+	if (m_pResidualHelper) {
+	  if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+	    if (m_ppResidualUpsampler[i]) {
+	      m_ppResidualUpsampler[i]->UpsampleRegion(r,m_ppDTemp[i]);
+	    } else {
+	      class QuantizedRow *rrow = *m_pppRImage[i];
+	      m_pResidualHelper->DequantizeResidual(NULL,m_ppDTemp[i],rrow->BlockAt(x)->m_Data,i);
+	    }
+	  }
+	}
       }
       ctrafo->YCbCr2RGB(r,m_ppTempIBM,m_ppCTemp,m_ppDTemp);
     }
@@ -1124,12 +1099,12 @@ void BlockBitmapRequester::PushReconstructedData(const struct RectangleRequest *
     // upsampled components have been advanced above.
     for(i = 0;i < m_ucCount;i++) {
       if (m_ppUpsampler[i] == NULL) {
-        class QuantizedRow *qrow = *m_pppQImage[i];
-        if (qrow) m_pppQImage[i] = &(qrow->NextOf());
+	class QuantizedRow *qrow = *m_pppQImage[i];
+	if (qrow) m_pppQImage[i] = &(qrow->NextOf());
       }
       if (m_pResidualHelper && m_ppResidualUpsampler[i] == NULL) {
-        class QuantizedRow *rrow = *m_pppRImage[i];
-        if (rrow) m_pppRImage[i] = &(rrow->NextOf());
+	class QuantizedRow *rrow = *m_pppRImage[i];
+	if (rrow) m_pppRImage[i] = &(rrow->NextOf());
       }
     }
   }
@@ -1139,7 +1114,7 @@ void BlockBitmapRequester::PushReconstructedData(const struct RectangleRequest *
 /// BlockBitmapRequester::RequestUserDataForDecoding
 // Pull data buffers from the user data bitmap hook
 void BlockBitmapRequester::RequestUserDataForDecoding(class BitMapHook *bmh,RectAngle<LONG> &region,
-                                                      const struct RectangleRequest *rr,bool alpha)
+						      const struct RectangleRequest *rr,bool alpha)
 {
   UBYTE i;
   
@@ -1193,7 +1168,7 @@ bool BlockBitmapRequester::isNextMCULineReady(void) const
       // codedlines + comp->SubYOf() << 3 * comp->MCUHeightOf() is the number of 
       // lines that must be buffered to encode the next MCU
       if (m_pulReadyLines[i] < codedlines + (comp->SubYOf() << 3) * comp->MCUHeightOf())
-        return false;
+	return false;
     }
   }
 

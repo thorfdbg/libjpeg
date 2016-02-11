@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This box keeps an inverse tone mapping curve, however, this box here
 ** is defined by parameters, not by actual providing the table explicitly
@@ -76,21 +51,21 @@ class ParametricToneMappingBox : public ToneMapperBox {
     UBYTE  m_ucTableBits;   // 1<<m_cuTableBits gives the size of the table.
     //
     TableImpl(UBYTE inbits,UBYTE outbits,UBYTE infract,UBYTE outfract,
-              ULONG offset,UBYTE tablebits)
+	      ULONG offset,UBYTE tablebits)
       : m_pNext(NULL), m_plTable(NULL), m_plInverseTable(NULL), m_pfTable(NULL), 
-        m_ulTableEntries(0), m_ulInverseTableEntries(0),
-        m_ucInputBits(inbits), m_ucOutputBits(outbits), 
-        m_ucInputFracts(infract), m_ucOutputFracts(outfract),
-        m_ulInputOffset(offset), m_ucTableBits(tablebits)
+	m_ulTableEntries(0), m_ulInverseTableEntries(0),
+	m_ucInputBits(inbits), m_ucOutputBits(outbits), 
+	m_ucInputFracts(infract), m_ucOutputFracts(outfract),
+	m_ulInputOffset(offset), m_ucTableBits(tablebits)
     { } 
     //
     // For non-extended tables, this is the simpler constructor.
     TableImpl(UBYTE inbits,UBYTE outbits,UBYTE infract,UBYTE outfract)
       : m_pNext(NULL), m_plTable(NULL), m_plInverseTable(NULL), m_pfTable(NULL), 
-        m_ulTableEntries(0), m_ulInverseTableEntries(0),
-        m_ucInputBits(inbits), m_ucOutputBits(outbits), 
-        m_ucInputFracts(infract), m_ucOutputFracts(outfract),
-        m_ulInputOffset(0), m_ucTableBits(outbits)
+	m_ulTableEntries(0), m_ulInverseTableEntries(0),
+	m_ucInputBits(inbits), m_ucOutputBits(outbits), 
+	m_ucInputFracts(infract), m_ucOutputFracts(outfract),
+	m_ulInputOffset(0), m_ucTableBits(outbits)
     { }
   }        *m_pImpls;
   //
@@ -143,7 +118,7 @@ private:
   //
   // The exended version that also takes an offset and the table size.
   struct TableImpl *FindImpl(UBYTE dctbits,UBYTE spatialbits,UBYTE dctfract,UBYTE spatialfract,
-                             ULONG offset,UBYTE tablebits) const;
+			     ULONG offset,UBYTE tablebits) const;
   //
 public:
   enum {
@@ -158,7 +133,7 @@ public:
   //
   // Check whether this box fits the selected parameters. Returns true in case of a match.
   bool CompareCurve(CurveType curve,UBYTE rounding_mode,
-                    FLOAT p1 = 0.0,FLOAT p2 = 0.0,FLOAT p3 = 0.0,FLOAT p4 = 0.0) const;
+		    FLOAT p1 = 0.0,FLOAT p2 = 0.0,FLOAT p3 = 0.0,FLOAT p4 = 0.0) const;
   //
   // Same as above, but this is the scaled version with
   // outputs in the range 0..2^outputbits-1.
@@ -184,12 +159,12 @@ public:
   // The first entry the table is thus able to cover is at -inputoffset, and there are in total
   // 1<<truebits entries in the table.
   const LONG *ExtendedInverseScaledTableOf(UBYTE dctbits,UBYTE spatialbits,UBYTE infract,UBYTE outfract,
-                                           ULONG inputoffset,UBYTE truebits);
+					   ULONG inputoffset,UBYTE truebits);
   //
   // Compute the table from the parameters.
   // Define the table from an external source.
   void DefineTable(UBYTE tableidx,CurveType type,UBYTE rounding_mode,
-                   FLOAT p1 = 0.0,FLOAT p2 = 0.0,FLOAT p3 = 0.0,FLOAT p4 = 0.0);
+		   FLOAT p1 = 0.0,FLOAT p2 = 0.0,FLOAT p3 = 0.0,FLOAT p4 = 0.0);
   //
   // Return the curve type of this box.
   CurveType CurveTypeOf(void) const

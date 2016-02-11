@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
@@ -188,7 +163,7 @@ class Tables: public JKeeper {
   // Build a tone mapping for the type (base-tag) and the given tag list
   // The base tag is the tag-id for the type of the box. All others are offsets.
   class ToneMapperBox *BuildToneMapping(const struct JPG_TagItem *tags,
-                                        JPG_Tag basetag,UBYTE inbits,UBYTE outbits);
+					JPG_Tag basetag,UBYTE inbits,UBYTE outbits);
   //
   // Scan for a refinement box in the box list of this tables class.
   // Return the box if it is found, or NULL if no refinement exists. Note that the
@@ -196,11 +171,19 @@ class Tables: public JKeeper {
   // codestream.
   class DataBox *RefinementDataOf(UWORD index,ULONG boxtype) const;
   //
+#if ISO_CODE
+  // Parse off the tags for a profile A encoder.
+  void CreateProfileASettings(const struct JPG_TagItem *tags,class FileTypeBox *profile);
+  //
+  // Parse off the tags for a profile B encoder.
+  void CreateProfileBSettings(const struct JPG_TagItem *tags,class FileTypeBox *profile,
+			      UBYTE precision,MergingSpecBox::DecorrelationType ltrafo);
+#endif
   //
   // Parse off the tags for a profile C encoder
   void CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTypeBox *profile,
-                              UBYTE precison,UBYTE rangebits,
-                              MergingSpecBox::DecorrelationType ltrafo,bool dopart8,bool dopart9);
+			      UBYTE precison,UBYTE rangebits,
+			      MergingSpecBox::DecorrelationType ltrafo,bool dopart8,bool dopart9);
   //
   // Return the merging spec box responsible for this table.
   class MergingSpecBox *SpecsOf(void) const;
@@ -317,7 +300,7 @@ public:
   // Return the color transformer suitable for the external data
   // type and the color space indicated in the application markers.
   class ColorTrafo *ColorTrafoOf(class Frame *frame,class Frame *residualframe,
-                                 UBYTE external_type,bool encoding); 
+				 UBYTE external_type,bool encoding); 
   //
   // Check whether residual data in the APP11 marker shall be written.
   bool UseResiduals(void) const;

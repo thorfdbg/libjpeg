@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This class defines the arbitrary color transformation defined
 ** in JPEG-LS part-2. It is - in a sense - a special case of the 
@@ -74,7 +49,7 @@ void LSColorTrafo::WriteMarker(class ByteStream *io)
 
   if (len > MAX_UWORD)
     JPG_THROW(OVERFLOW_PARAMETER,"LSColorTrafo::WriteMarker",
-              "too many components, cannot create a LSE color transformation marker");
+	      "too many components, cannot create a LSE color transformation marker");
 
   io->PutWord(len);
   io->Put(0x0d);    // Type of the LSE marker.
@@ -108,8 +83,8 @@ void LSColorTrafo::ParseMarker(class ByteStream *io,UWORD len)
   
   if (len < 6)
     JPG_THROW(MALFORMED_STREAM,"LSColorTrafo::ParseMarker",
-              "length of the LSE color transformation marker is invalid, "
-              "must be at least six bytes long");
+	      "length of the LSE color transformation marker is invalid, "
+	      "must be at least six bytes long");
   
   m_usMaxTrans = io->GetWord();
   m_ucDepth    = io->Get();
@@ -117,11 +92,11 @@ void LSColorTrafo::ParseMarker(class ByteStream *io,UWORD len)
 
   if (len != 2 * m_ucDepth * m_ucDepth)
     JPG_THROW(MALFORMED_STREAM,"LSColorTrafo::ParseMarker",
-              "length of the LSE color transformation marker is invalid");
+	      "length of the LSE color transformation marker is invalid");
 
   if (m_ucDepth == 0)
     JPG_THROW(MALFORMED_STREAM,"LSColorTrafo::ParseMarker",
-              "number of components in the LSE color transformation marker must not be zero");
+	      "number of components in the LSE color transformation marker must not be zero");
 
   // Read the input labels of the components to be transformed.
   assert(m_pucInputLabels == NULL);
@@ -145,7 +120,7 @@ void LSColorTrafo::ParseMarker(class ByteStream *io,UWORD len)
     m_pucShift[i]   = v & 0x7f;
     if (m_pucShift[i] > 32)
       JPG_THROW(OVERFLOW_PARAMETER,"LSColorTrafo::ParseMarker",
-                "LSE color transformation marker shift value is too large, must be < 32");
+		"LSE color transformation marker shift value is too large, must be < 32");
     // And the matrix itself.
     for(j = 0;j < m_ucDepth - 1;j++) {
       m_pusMatrix[j + i * (m_ucDepth - 1)] = io->GetWord();

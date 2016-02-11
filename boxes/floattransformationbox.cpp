@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This box keeps a linear transformation that can be used either as L
 ** or C transformation. This is the floating point version.
@@ -52,25 +27,25 @@ bool FloatTransformationBox::ParseBoxContent(class ByteStream *stream,UQUAD boxs
 
   if (boxsize != 1 + 9 * 4)
     JPG_THROW(MALFORMED_STREAM,"FloatTransformationBox::ParseBoxContent",
-              "malformed JPEG stream, size of the linear transformation box is inccorrect");
+	      "malformed JPEG stream, size of the linear transformation box is inccorrect");
   
   b = stream->Get();
   if (b == ByteStream::EOF)
     JPG_THROW(MALFORMED_STREAM,"FloatTransformationBox::ParseBoxContent",
-              "malformed JPEG stream, unexpected EOF while parsing the linear transformation box");
+	      "malformed JPEG stream, unexpected EOF while parsing the linear transformation box");
   
   //
   // The ID must be between 5 and 15.
   m_ucID = b >> 4;
   if (m_ucID < 5 || m_ucID > 15)
     JPG_THROW(MALFORMED_STREAM,"FloatTransformationBox::ParseBoxContent",
-              "malformed JPEG stream, the M value of a linear transformation box is out of range");
+	      "malformed JPEG stream, the M value of a linear transformation box is out of range");
 
   //
   // The t value (fractional bits) must be 0.
   if ((b & 0x0f) != 0)
     JPG_THROW(MALFORMED_STREAM,"FloatTransformationBox::ParseBoxContent",
-              "malformed JPEG stream, the t value of a linear transformation box is invalid");
+	      "malformed JPEG stream, the t value of a linear transformation box is invalid");
 
   for(i = 0;i < 9;i++) {
     LONG lo,hi;
@@ -78,7 +53,7 @@ bool FloatTransformationBox::ParseBoxContent(class ByteStream *stream,UQUAD boxs
     lo = stream->GetWord();
     if (lo == ByteStream::EOF)
       JPG_THROW(MALFORMED_STREAM,"FloatTransformationBox::ParseBoxContent",
-                "malformed JPEG stream, unexpected EOF while parsing the linear transformation box");
+		"malformed JPEG stream, unexpected EOF while parsing the linear transformation box");
 
     m_fMatrix[i] = IEEEDecode(ULONG((hi << 16) | lo));
   }
@@ -135,21 +110,21 @@ void FloatTransformationBox::InvertMatrix(void)
     for(y2 = 0;y2 < 3;y2++) {
       // This row already handled?
       if (pivot[y2] == false) {
-        // Nope.
-        for(x2 = 0;x2 < 3;x2++) {
-          // Is this row and column already handled?
-          if (pivot[x2] == false) {
-            DOUBLE here = m_fInverse[x2 + y2 * 3];
-            // Compute the max as absolute value of the entry.
-            if (here < 0.0)
-              here = -here;
-            if (here > max) {
-              max = here;
-              xpiv = x2;
-              ypiv = y2;
-            }
-          } 
-        }
+	// Nope.
+	for(x2 = 0;x2 < 3;x2++) {
+	  // Is this row and column already handled?
+	  if (pivot[x2] == false) {
+	    DOUBLE here = m_fInverse[x2 + y2 * 3];
+	    // Compute the max as absolute value of the entry.
+	    if (here < 0.0)
+	      here = -here;
+	    if (here > max) {
+	      max = here;
+	      xpiv = x2;
+	      ypiv = y2;
+	    }
+	  } 
+	}
       }
     }
     // Now we have the pivot element, this diagonal is handled.
@@ -159,9 +134,9 @@ void FloatTransformationBox::InvertMatrix(void)
     // rows to move in place.
     if (xpiv != ypiv) {
       for(x1 = 0;x1 < 3;x1++) {
-        FLOAT t = m_fInverse[x1 + xpiv * 3];
-        m_fInverse[x1 + xpiv * 3] = m_fInverse[x1 + ypiv * 3];
-        m_fInverse[x1 + ypiv * 3] = t;
+	FLOAT t = m_fInverse[x1 + xpiv * 3];
+	m_fInverse[x1 + xpiv * 3] = m_fInverse[x1 + ypiv * 3];
+	m_fInverse[x1 + ypiv * 3] = t;
       }
     }
     // Remember the column swap we performed implicitly, need to fixup
@@ -175,7 +150,7 @@ void FloatTransformationBox::InvertMatrix(void)
     max = m_fInverse[xpiv + xpiv * 3];
     if (max == 0.0)
       JPG_THROW(INVALID_PARAMETER,"FloatTransformationBox::InvertMatrix",
-                "Invalid decorrelation matrix provided, the matrix is not invertible");
+		"Invalid decorrelation matrix provided, the matrix is not invertible");
     //
     // Divide the pivot row by the pivot element to create a one there,
     // already insert the resulting identity matrix into the target
@@ -184,21 +159,21 @@ void FloatTransformationBox::InvertMatrix(void)
       DOUBLE pivinv = 1.0 / max;
       m_fInverse[xpiv + xpiv * 3] = 1.0f;
       for(x2 = 0;x2 < 3;x2++) {
-        // Now perform the division by the pivot.
-        m_fInverse[x2 + xpiv * 3] *= pivinv;
+	// Now perform the division by the pivot.
+	m_fInverse[x2 + xpiv * 3] *= pivinv;
       }
     }
     //
     // Reduce rows, except for the pivot row.
     for(y2 = 0;y2 < 3;y2++) {
       if (y2 != xpiv) {
-        DOUBLE tmp = m_fInverse[xpiv + y2 * 3];
-        m_fInverse[xpiv + y2 * 3] = 0.0f;
-        //
-        // Subtract a multiple of the pivot row from this row.
-        for(x2 = 0;x2 < 3;x2++) {
-          m_fInverse[x2 + y2 * 3] -= m_fInverse[x2 + xpiv * 3] * tmp;
-        }
+	DOUBLE tmp = m_fInverse[xpiv + y2 * 3];
+	m_fInverse[xpiv + y2 * 3] = 0.0f;
+	//
+	// Subtract a multiple of the pivot row from this row.
+	for(x2 = 0;x2 < 3;x2++) {
+	  m_fInverse[x2 + y2 * 3] -= m_fInverse[x2 + xpiv * 3] * tmp;
+	}
       }
     }
   }
@@ -209,9 +184,9 @@ void FloatTransformationBox::InvertMatrix(void)
       x1 = srcrow[x];
       x2 = dstrow[x];
       for(y2 = 0;y2 < 3;y2++) {
-        FLOAT t = m_fInverse[x1 + y2 * 3];
-        m_fInverse[x1 + y2 * 3] = m_fInverse[x2 + y2 * 3];
-        m_fInverse[x2 + y2 * 3] = t;
+	FLOAT t = m_fInverse[x1 + y2 * 3];
+	m_fInverse[x1 + y2 * 3] = m_fInverse[x2 + y2 * 3];
+	m_fInverse[x2 + y2 * 3] = t;
       }
     }
   }

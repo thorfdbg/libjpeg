@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 **
 ** Represents the scan including the scan header.
@@ -108,7 +83,7 @@ void LosslessScan::StartParseScan(class ByteStream *io,class Checksum *chk,class
   NOREF(chk);
   NOREF(ctrl);
   JPG_THROW(NOT_IMPLEMENTED,"LosslessScan::StartParseScan",
-            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+	    "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
 #endif
 }
 ///
@@ -141,7 +116,7 @@ void LosslessScan::StartWriteScan(class ByteStream *io,class Checksum *chk,class
   NOREF(chk);
   NOREF(ctrl);
   JPG_THROW(NOT_IMPLEMENTED,"LosslessScan::StartWriteScan",
-            "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
+	    "Lossless JPEG not available in your code release, please contact Accusoft for a full version");
 #endif
 }
 ///
@@ -198,9 +173,9 @@ bool LosslessScan::WriteMCU(void)
       BeginWriteMCU(m_Stream.ByteStreamOf());    
       //
       if (m_bMeasure) {
-        MeasureMCU(prev,top);
+	MeasureMCU(prev,top);
       } else {
-        WriteMCU(prev,top);
+	WriteMCU(prev,top);
       }
     } while(AdvanceToTheRight());
     //
@@ -234,37 +209,37 @@ void LosslessScan::WriteMCU(struct Line **prev,struct Line **top)
       class PredictorBase *pred = mcupred;
       UBYTE xm = m_ucMCUWidth[i];
       do {
-        // Decode now the difference between the predicted value and
-        // the real value.
-        LONG v = pred->EncodeSample(lp,pp);
-        //
-        if (v == 0) {
-          dc->Put(&m_Stream,0);
-        } else if (v == MIN_WORD) {
-          dc->Put(&m_Stream,16); // Do not append bits
-        } else {
-          UBYTE symbol = 0;
-          do {
-            symbol++;
-            if (v > -(1 << symbol) && v < (1 << symbol)) {
-              dc->Put(&m_Stream,symbol);
-              if (v >= 0) {
-                m_Stream.Put(symbol,v);
-              } else {
-                m_Stream.Put(symbol,v - 1);
-              }
-              break;
-            }
-          } while(true);
-        }
-        //
-        // One pixel done. Proceed to the next in the MCU. Note that
-        // the lines have been extended such that always a complete MCU is present.
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v = pred->EncodeSample(lp,pp);
+	//
+	if (v == 0) {
+	  dc->Put(&m_Stream,0);
+	} else if (v == MIN_WORD) {
+	  dc->Put(&m_Stream,16); // Do not append bits
+	} else {
+	  UBYTE symbol = 0;
+	  do {
+	    symbol++;
+	    if (v > -(1 << symbol) && v < (1 << symbol)) {
+	      dc->Put(&m_Stream,symbol);
+	      if (v >= 0) {
+		m_Stream.Put(symbol,v);
+	      } else {
+		m_Stream.Put(symbol,v - 1);
+	      }
+	      break;
+	    }
+	  } while(true);
+	}
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
       } while(--xm && (lp++,pp++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
     } while(--ym && (pp = line->m_pData + m_ulX[i],line = (line->m_pNext)?(line->m_pNext):(line),
-                     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
+		     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
   }
 #else
   NOREF(prev);
@@ -298,32 +273,32 @@ void LosslessScan::MeasureMCU(struct Line **prev,struct Line **top)
       class PredictorBase *pred = mcupred;
       UBYTE xm = m_ucMCUWidth[i];
       do {
-        // Decode now the difference between the predicted value and
-        // the real value.
-        LONG v = pred->EncodeSample(lp,pp);
-        //
-        if (v == 0) {
-          dcstat->Put(0);
-        } else if (v == -32768) {
-          dcstat->Put(16); // Do not append bits
-        } else {
-          UBYTE symbol = 0;
-          do {
-            symbol++;
-            if (v > -(1 << symbol) && v < (1 << symbol)) {
-              dcstat->Put(symbol);
-              break;
-            }
-          } while(true);
-        }
-        //
-        // One pixel done. Proceed to the next in the MCU. Note that
-        // the lines have been extended such that always a complete MCU is present.
+	// Decode now the difference between the predicted value and
+	// the real value.
+	LONG v = pred->EncodeSample(lp,pp);
+	//
+	if (v == 0) {
+	  dcstat->Put(0);
+	} else if (v == -32768) {
+	  dcstat->Put(16); // Do not append bits
+	} else {
+	  UBYTE symbol = 0;
+	  do {
+	    symbol++;
+	    if (v > -(1 << symbol) && v < (1 << symbol)) {
+	      dcstat->Put(symbol);
+	      break;
+	    }
+	  } while(true);
+	}
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
       } while(--xm && (lp++,pp++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
     } while(--ym && (pp = line->m_pData + m_ulX[i],line = (line->m_pNext)?(line->m_pNext):(line),
-                     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
+		     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
   }
 #else
   NOREF(prev);
@@ -355,32 +330,32 @@ void LosslessScan::ParseMCU(struct Line **prev,struct Line **top)
       class PredictorBase *pred = mcupred;
       UBYTE xm = m_ucMCUWidth[i];
       do {
-        LONG v;
-        UBYTE symbol = dc->Get(&m_Stream);
-        
-        if (symbol == 0) {
-          v = 0;
-        } else if (symbol == 16) {
-          v = -32768;
-        } else {
-          LONG thre = 1L << (symbol - 1);
-          LONG diff = m_Stream.Get(symbol); // get the number of bits 
-          if (diff < thre) {
-            diff += (-1L << symbol) + 1;
-          }
-          v = diff;
-        }
-        //
-        // Set the current pixel, do the inverse pointwise transformation.
-        lp[0] = pred->DecodeSample(v,lp,pp);
-        //
-        // One pixel done. Proceed to the next in the MCU. Note that
-        // the lines have been extended such that always a complete MCU is present.
+	LONG v;
+	UBYTE symbol = dc->Get(&m_Stream);
+	
+	if (symbol == 0) {
+	  v = 0;
+	} else if (symbol == 16) {
+	  v = -32768;
+	} else {
+	  LONG thre = 1L << (symbol - 1);
+	  LONG diff = m_Stream.Get(symbol); // get the number of bits 
+	  if (diff < thre) {
+	    diff += (-1L << symbol) + 1;
+	  }
+	  v = diff;
+	}
+	//
+	// Set the current pixel, do the inverse pointwise transformation.
+	lp[0] = pred->DecodeSample(v,lp,pp);
+	//
+	// One pixel done. Proceed to the next in the MCU. Note that
+	// the lines have been extended such that always a complete MCU is present.
       } while(--xm && (lp++,pp++,pred = pred->MoveRight(),true));
       //
       // Go to the next line.
     } while(--ym && (pp = line->m_pData + m_ulX[i],line = (line->m_pNext)?(line->m_pNext):(line),
-                     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
+		     lp = line->m_pData + m_ulX[i],mcupred = mcupred->MoveDown(),true));
   }
 #else
   NOREF(prev);
@@ -414,17 +389,17 @@ bool LosslessScan::ParseMCU(void)
     bool startofline = true;
     do {
       if (BeginReadMCU(m_Stream.ByteStreamOf())) {
-        ParseMCU(prev,top);
+	ParseMCU(prev,top);
       } else {
-        // Only if this is not due to a DNL marker that has been detected.
-        if (m_ulPixelHeight != 0 && !hasFoundDNL()) {
-          ClearMCU(top);
-        } else if (!startofline) {
-          // The problem is here that the DNL marker might have been detected, even though decoding
-          // is not yet done completely. This may be because there are still just enough bits in the
-          // bitream present to run a single decode. Big Outch! Just continue decoding in this case.
-          ParseMCU(prev,top);
-        } else break;
+	// Only if this is not due to a DNL marker that has been detected.
+	if (m_ulPixelHeight != 0 && !hasFoundDNL()) {
+	  ClearMCU(top);
+	} else if (!startofline) {
+	  // The problem is here that the DNL marker might have been detected, even though decoding
+	  // is not yet done completely. This may be because there are still just enough bits in the
+	  // bitream present to run a single decode. Big Outch! Just continue decoding in this case.
+	  ParseMCU(prev,top);
+	} else break;
       }
       startofline = false;
     } while(AdvanceToTheRight());

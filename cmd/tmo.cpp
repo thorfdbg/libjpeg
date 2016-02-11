@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** A couple of generic TMO related functions: Estimate TMO from LDR and HDR
 ** image pair, build a gamma mapping.
@@ -101,23 +76,23 @@ void InvertTable(UWORD input[65536],UWORD output[65536],UBYTE inbits,UBYTE outbi
       // swapped here, otherwise the table would grow out of range
       // too easily.
       if (last > current) {
-        mid = ((current + last + 1) >> 1) - 1;
+	mid = ((current + last + 1) >> 1) - 1;
       } else {
-        mid = ((current + last - 1) >> 1) - 1;
+	mid = ((current + last - 1) >> 1) - 1;
       }
       while(last != mid) {
-        if (lastfilled == false) // Do not overwrite the flat area from the last time.
-          output[last] = lastj;
-        if (last > mid)    last--;
-        else               last++;
-        lastfilled = false;
+	if (lastfilled == false) // Do not overwrite the flat area from the last time.
+	  output[last] = lastj;
+	if (last > mid)    last--;
+	else               last++;
+	lastfilled = false;
       }
       while(last != current) {
-        if (lastfilled == false) // Do not overwrite the flat area from the last time.
-          output[last]  = j;
-        if (last > current) last--;
-        else                last++;
-        lastfilled = false;
+	if (lastfilled == false) // Do not overwrite the flat area from the last time.
+	  output[last]  = j;
+	if (last > current) last--;
+	else                last++;
+	lastfilled = false;
       }
       lastanchor = j;
       }
@@ -171,7 +146,7 @@ static void save_histogram(const char *filename,double hist[256])
   if (out) {
     for(int i = 0;i < 256;i++) {
       if (hist[i] >= 0.0) {
-        fprintf(out,"%d\t%g\n",i,hist[i]);
+	fprintf(out,"%d\t%g\n",i,hist[i]);
       }
     }
     fclose(out);
@@ -183,9 +158,9 @@ static void save_histogram(const char *filename,double hist[256])
 /// BuildIntermediateTable
 // Build an intermediate table from a histogram.
 void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
-                            UWORD ldrtohdr[65536],int hiddenbits,
-                            bool median,bool &fullrange,bool flt,
-                            int smooth)
+			    UWORD ldrtohdr[65536],int hiddenbits,
+			    bool median,bool &fullrange,bool flt,
+			    int smooth)
 {     
   int i,j,k;
   double intermed[256];
@@ -203,36 +178,36 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
     for(j = 0;j < hdrcnt;j++) {
       count += hists[i+offs][j];
       if (hists[i+offs][j] > 0) {
-        if (min == -1) min = j;
-        max = j;
+	if (min == -1) min = j;
+	max = j;
       }
     }
     if (count > 0) {
       if (max > absmax)
-        absmax = max;
+	absmax = max;
       if (min < absmin)
-        absmin = min;
+	absmin = min;
       if (max - min > (hdrcnt >> 1)) {
-        fullrange   = true;
-        intermed[i] = (max - min) >> 1;
+	fullrange   = true;
+	intermed[i] = (max - min) >> 1;
       } else {
-        if (median) {
-          int median = 0;
-          for(j = 0;j < hdrcnt;j++) {
-            median += hists[i+offs][j];
-            if (median >= (count >> 1))
-              break;
-          }
-          intermed[i] = j;
-        } else {
-          double total = 0.0;
-          double sum   = 0.0;
-          for(j = 0;j < hdrcnt;j++) {
-            sum   += double(hists[i+offs][j]) * j;
-            total += double(hists[i+offs][j]);
-          }
-          intermed[i] = sum / total;
-        }
+	if (median) {
+	  int median = 0;
+	  for(j = 0;j < hdrcnt;j++) {
+	    median += hists[i+offs][j];
+	    if (median >= (count >> 1))
+	      break;
+	  }
+	  intermed[i] = j;
+	} else {
+	  double total = 0.0;
+	  double sum   = 0.0;
+	  for(j = 0;j < hdrcnt;j++) {
+	    sum   += double(hists[i+offs][j]) * j;
+	    total += double(hists[i+offs][j]);
+	  }
+	  intermed[i] = sum / total;
+	}
       }
     } else {
       intermed[i] = -1;
@@ -255,16 +230,16 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
     if (intermed[i] < 0.0) {
       // Find the next filled slot.
       for(j = i;j < 256;j++) {
-        if (intermed[j] >= 0.0) {
-          nex = intermed[j];
-          break;
-        }
+	if (intermed[j] >= 0.0) {
+	  nex = intermed[j];
+	  break;
+	}
       }
       if (j == 256)
-        nex = absmax;
+	nex = absmax;
       // Use a linear interpolation to fill the gaps.
       for(k = i;k < j;k++) {
-        intermed[i] = double(k - v)/double(j - v) * (nex - cur) + cur;
+	intermed[i] = double(k - v)/double(j - v) * (nex - cur) + cur;
       }
     } else {
       cur = intermed[i];
@@ -289,7 +264,7 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
   if (intermed[0] > min) {
     for (i = 0;i < 256;i++) {
       if (intermed[i] >= min + i) {
-        intermed[i] = min + i;
+	intermed[i] = min + i;
       } else break;
     }
   }
@@ -298,9 +273,9 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
   for(i = 0;i < 256;i++) {
     if (intermed[i] <= now) {
       if (now + 1 < max) {
-        intermed[i] = now + 1;
+	intermed[i] = now + 1;
       } else {
-        intermed[i] = max;
+	intermed[i] = max;
       }
     }
     now = intermed[i];
@@ -310,11 +285,11 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
     now = intermed[255] + 1;
     for(i = 255;i >= 0;i--) {
       if (intermed[i] >= now) {
-        if (now - 1 > min) {
-          intermed[i] = now - 1;
-        } else {
-          intermed[i] = min + i;
-        }
+	if (now - 1 > min) {
+	  intermed[i] = now - 1;
+	} else {
+	  intermed[i] = min + i;
+	}
       }
       now = intermed[i];
     }
@@ -347,8 +322,8 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
       k = 255;
     if (k > j) {
       ldrtohdr[i] = double(i - (j << hiddenbits)) / 
-        double((k << hiddenbits) - double(j << hiddenbits)) * 
-        (intermed[k] - intermed[j]) + intermed[j];
+	double((k << hiddenbits) - double(j << hiddenbits)) * 
+	(intermed[k] - intermed[j]) + intermed[j];
     } else {
       ldrtohdr[i] = intermed[j];
     }
@@ -356,7 +331,7 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
     // to create a continuous map.
     if (flt) {
       if (ldrtohdr[i] & 0x8000)
-        ldrtohdr[i] ^= 0x7fff;
+	ldrtohdr[i] ^= 0x7fff;
     }
   }
   //
@@ -367,9 +342,9 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
 // Build an inverse tone mapping from a hdr/ldr image pair, though generate it as
 // a floating point table. This requires floating point input.
 void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int count,
-                             FLOAT ldrtohdr[256],
-                             bool bigendian,bool median,bool fullrange,
-                             int smooth)
+			     FLOAT ldrtohdr[256],
+			     bool bigendian,bool median,bool fullrange,
+			     int smooth)
 {
   int i;
   UWORD tmp[65536];
@@ -395,9 +370,9 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int count,
 /// BuildToneMappingFromLDR
 // Build an inverse tone mapping from a hdr/ldr image pair
 void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int count,
-                             UWORD ldrtohdr[65536],bool flt,
-                             bool bigendian,bool xyz,int hiddenbits,bool median,bool &fullrange,
-                             int smooth)
+			     UWORD ldrtohdr[65536],bool flt,
+			     bool bigendian,bool xyz,int hiddenbits,bool median,bool &fullrange,
+			     int smooth)
 {
   long hpos  = ftell(in);
   long lpos  = ftell(ldrin);
@@ -414,40 +389,40 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int coun
     for(i = 0;i < 256;i++) {
       hists[i] = (int *)malloc(sizeof(int) * hdrcnt);
       if (hists[i] == NULL)
-        break;
+	break;
       memset(hists[i],0,sizeof(int) * hdrcnt);
     }
     if (i == 256) {
       for(y = 0;y < h;y++) {
-        for(x = 0;x < w;x++) {
-          // Read the HDR image parameters.
-          int r,g,b;
-          int rl,gl,bl;
-          double y;
-          //
-          warn |= ReadRGBTriple(in,r,g,b,y,depth,count,flt,bigendian,xyz);
-          /*
-          r     = y * (hdrcnt - 1) + 0.5;
-          if (r < 0)       r = 0;
-          if (r >= hdrcnt) r = hdrcnt - 1;
-          */
-          //
-          // Read the LDR parameters.
-          ReadRGBTriple(ldrin,rl,gl,bl,y,8,count,false,false,false);
-          /*
-          rl    = y * 255 + 0.5;
-          if (rl < 0)   rl = 0;
-          if (rl > 255) rl = 255;
-          */
-          // Update the histogram.
-          // Actually, here it might make sense to collect
-          // three histograms, not one. The coding core
-          // would actually even support this, though this
-          // frontend is currently limited.
-          hists[rl][r]++;
-          hists[gl][g]++;
-          hists[bl][b]++;
-        }
+	for(x = 0;x < w;x++) {
+	  // Read the HDR image parameters.
+	  int r,g,b;
+	  int rl,gl,bl;
+	  double y;
+	  //
+	  warn |= ReadRGBTriple(in,r,g,b,y,depth,count,flt,bigendian,xyz);
+	  /*
+	  r     = y * (hdrcnt - 1) + 0.5;
+	  if (r < 0)       r = 0;
+	  if (r >= hdrcnt) r = hdrcnt - 1;
+	  */
+	  //
+	  // Read the LDR parameters.
+	  ReadRGBTriple(ldrin,rl,gl,bl,y,8,count,false,false,false);
+	  /*
+	  rl    = y * 255 + 0.5;
+	  if (rl < 0)   rl = 0;
+	  if (rl > 255) rl = 255;
+	  */
+	  // Update the histogram.
+	  // Actually, here it might make sense to collect
+	  // three histograms, not one. The coding core
+	  // would actually even support this, though this
+	  // frontend is currently limited.
+	  hists[rl][r]++;
+	  hists[gl][g]++;
+	  hists[bl][b]++;
+	}
       }
       //
       // Build tables for each component.
@@ -455,7 +430,7 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int coun
       //
       // Release the temporary storage for the histogram.
       for(i = 0;i < 256;i++) {
-        free(hists[i]);
+	free(hists[i]);
       }
     }
     free(hists);
@@ -472,9 +447,9 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int coun
 /// BuildRGBToneMappingFromLDR
 // Build an inverse tone mapping from a hdr/ldr image pair
 void BuildRGBToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int count,
-                                UWORD red[65536],UWORD green[65536],UWORD blue[65536],
-                                bool flt,bool bigendian,bool xyz,int hiddenbits,
-                                bool median,bool &fullrange,int smooth)
+				UWORD red[65536],UWORD green[65536],UWORD blue[65536],
+				bool flt,bool bigendian,bool xyz,int hiddenbits,
+				bool median,bool &fullrange,int smooth)
 {
   long hpos  = ftell(in);
   long lpos  = ftell(ldrin);
@@ -491,30 +466,30 @@ void BuildRGBToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int c
     for(i = 0;i < 256 * 3;i++) {
       hists[i] = (int *)malloc(sizeof(int) * hdrcnt);
       if (hists[i] == NULL)
-        break;
+	break;
       memset(hists[i],0,sizeof(int) * hdrcnt);
     }
     if (i == 256 * 3) {
       for(y = 0;y < h;y++) {
-        for(x = 0;x < w;x++) {
-          // Read the HDR image parameters.
-          int r,g,b;
-          int rl,gl,bl;
-          double y;
-          //
-          warn |= ReadRGBTriple(in,r,g,b,y,depth,count,flt,bigendian,xyz);
-          //
-          // Read the LDR parameters.
-          ReadRGBTriple(ldrin,rl,gl,bl,y,8,count,false,false,false);
-          // Update the histogram.
-          // Actually, here it might make sense to collect
-          // three histograms, not one. The coding core
-          // would actually even support this, though this
-          // frontend is currently limited.
-          hists[rl + (0<<0)][r]++;
-          hists[gl + (1<<8)][g]++;
-          hists[bl + (2<<8)][b]++;
-        }
+	for(x = 0;x < w;x++) {
+	  // Read the HDR image parameters.
+	  int r,g,b;
+	  int rl,gl,bl;
+	  double y;
+	  //
+	  warn |= ReadRGBTriple(in,r,g,b,y,depth,count,flt,bigendian,xyz);
+	  //
+	  // Read the LDR parameters.
+	  ReadRGBTriple(ldrin,rl,gl,bl,y,8,count,false,false,false);
+	  // Update the histogram.
+	  // Actually, here it might make sense to collect
+	  // three histograms, not one. The coding core
+	  // would actually even support this, though this
+	  // frontend is currently limited.
+	  hists[rl + (0<<0)][r]++;
+	  hists[gl + (1<<8)][g]++;
+	  hists[bl + (2<<8)][b]++;
+	}
       }
       //
       // Build tables for each component.
@@ -524,7 +499,7 @@ void BuildRGBToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int c
       //
       // Release the temporary storage for the histogram.
       for(i = 0;i < 256;i++) {
-        free(hists[i]);
+	free(hists[i]);
       }
     }
     free(hists);
@@ -541,7 +516,7 @@ void BuildRGBToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int c
 /// BuildGammaMapping
 // Build a static gamma mapping to map the HDR to the LDR domain.
 void BuildGammaMapping(double gamma,double exposure,UWORD ldrtohdr[65536],
-                       bool flt,int max,int hiddenbits)
+		       bool flt,int max,int hiddenbits)
 {
   int i;
   int outmax   = (flt)?(0x7bff):(max); // 0x7c00 is INF in half-float
@@ -556,20 +531,20 @@ void BuildGammaMapping(double gamma,double exposure,UWORD ldrtohdr[65536],
     int int_out;
     if (gamma != 1.0) {
       if (in > knee) {
-        out = pow((in + 0.055) / 1.055,gamma) / exposure;
+	out = pow((in + 0.055) / 1.055,gamma) / exposure;
       } else {
-        out = in * divs / exposure;
+	out = in * divs / exposure;
       }
       if (flt) {
-        int_out = DoubleToHalf(out + shift);
+	int_out = DoubleToHalf(out + shift);
       } else {
-        int_out = outmax * (out + shift) + 0.5;
+	int_out = outmax * (out + shift) + 0.5;
       }
     } else {
       if (flt) {
-        int_out = DoubleToHalf(out + shift);
+	int_out = DoubleToHalf(out + shift);
       } else {
-        int_out = outmax * (in  + shift) + 0.5;
+	int_out = outmax * (in  + shift) + 0.5;
       }
     }
     if (int_out > outmax) int_out = outmax;
@@ -597,35 +572,35 @@ void LoadLTable(const char *ltable,UWORD ldrtohdr[65536],bool flt,int max,int hi
       long value;
       fgets(buffer,sizeof(buffer),in);line++;
       if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\0')
-        continue;
+	continue;
       value = strtol(buffer,&end,0);
       if (end <= buffer) {
-        fprintf(stderr,"junk in LUT table definition file %s at line %d, ignoring this line.\n",ltable,line);
-        continue;
+	fprintf(stderr,"junk in LUT table definition file %s at line %d, ignoring this line.\n",ltable,line);
+	continue;
       }
       if (*end != '\n') {
-        fprintf(stderr,"junk in LUT table definition file %s behind line %d, ignoring the junk.\n",ltable,line);
+	fprintf(stderr,"junk in LUT table definition file %s behind line %d, ignoring the junk.\n",ltable,line);
       }
       if (i > inmax) {
-        fprintf(stderr,"too many lines in file %s, line %d is superfluos. Expected only %d inputs.\n",ltable,line,inmax);
+	fprintf(stderr,"too many lines in file %s, line %d is superfluos. Expected only %d inputs.\n",ltable,line,inmax);
       } else {
-        if (value > long(outmax)) {
-          fprintf(stderr,"input value %ld at line %d in file %s is too large, maximum value is %d, clipping it.\n",
-                  value,line,ltable,max);
-          value = outmax;
-        } else if (value < 0) {
-          fprintf(stderr,"input value %ld at line %d in file %s is too small, minimum value is %d, clipping it.\n",
-                  value,line,ltable,0);
-          value = 0;
-        }
-        ldrtohdr[i++] = value;
+	if (value > long(outmax)) {
+	  fprintf(stderr,"input value %ld at line %d in file %s is too large, maximum value is %d, clipping it.\n",
+		  value,line,ltable,max);
+	  value = outmax;
+	} else if (value < 0) {
+	  fprintf(stderr,"input value %ld at line %d in file %s is too small, minimum value is %d, clipping it.\n",
+		  value,line,ltable,0);
+	  value = 0;
+	}
+	ldrtohdr[i++] = value;
       }
     }
     if (i < inmax) {
       fprintf(stderr,"file %s only defined %d out of %d values, extending the table by adding the maximum.\n",
-              ltable,i,inmax);
+	      ltable,i,inmax);
       while(i < inmax) {
-        ldrtohdr[i++] = outmax;
+	ldrtohdr[i++] = outmax;
       }
     }
     fclose(in);

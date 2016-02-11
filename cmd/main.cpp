@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This header provides the main function.
 ** This main function is only a demo, it is not part of the libjpeg code.
@@ -74,7 +49,7 @@ void ParseSubsamplingFactors(UBYTE *sx,UBYTE *sy,const char *sub,int cnt)
       int y = strtol(sub,&end,0);
       *sy++ = y;
       if (*end != ',')
-        break;
+	break;
       sub = end + 1;
     } else break;
   } while(--cnt);
@@ -158,14 +133,55 @@ const char *ParseString(int &argc,char **&argv)
 void PrintLicense(void)
 {
 
+#if ISO_CODE
   printf(""
-         "jpeg Copyright (C) 2012-2014 Thomas Richter, University of Stuttgart\n"
-         "and Accusoft\n\n"
-         "This program comes with ABSOLUTELY NO WARRANTY; for details see \n"
-         "README.license.gpl\n"
-         "This is free software, and you are welcome to redistribute it\n"
-         "under certain conditions, see again README.license.gpl for details.\n\n"
-         );
+	 "This software module was originally contributed by the parties as\n"
+	 "listed below in the course of development of the ISO/IEC 18477 (JPEG\n"
+	 "XT) standard for validation and reference purposes:\n"
+	 "\n"
+	 "- University of Stuttgart\n"
+	 "- Accusoft\n"
+	 "\n"
+	 "Redistribution and use in source and binary forms, with or without\n"
+	 "modification, are permitted provided that the following conditions are\n"
+	 "met:\n"
+	 "* Redistributions of source code must retain the above copyright notice,\n"
+	 "  this list of conditions and the following disclaimer.\n"
+	 "* Redistributions in binary form must reproduce the above copyright notice,\n"
+	 "  this list of conditions and the following disclaimer in the documentation\n"
+	 "  and/or other materials provided with the distribution.\n"
+	 "* Neither the name of the <ORGANIZATION> nor the names of its\n"
+	 "  contributors may be used to endorse or promote products derived from this\n"
+	 "  software without specific prior written permission.\n"
+	 "* Redistributed products derived from this software must conform to\n"
+	 "  ISO/IEC 18477 (JPEG XT) except that non-commercial redistribution\n"
+	 "  for research and for furtherance of ISO/IEC standards is permitted.\n"
+	 "  Otherwise, contact the contributing parties for any other\n"
+	 "  redistribution rights for products derived from this software.\n"
+	 "\n"
+	 "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n"
+	 "\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\n"
+	 "LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\n"
+	 "A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\n"
+	 "HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\n"
+	 "SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\n"
+	 "LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\n"
+	 "DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\n"
+	 "THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n"
+	 "(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n"
+	 "OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"
+	 "\n\n"
+	 );
+#else
+  printf(""
+	 "jpeg Copyright (C) 2012-2014 Thomas Richter, University of Stuttgart\n"
+	 "and Accusoft\n\n"
+	 "This program comes with ABSOLUTELY NO WARRANTY; for details see \n"
+	 "README.license.gpl\n"
+	 "This is free software, and you are welcome to redistribute it\n"
+	 "under certain conditions, see again README.license.gpl for details.\n\n"
+	 );
+#endif
 }
 ///
 
@@ -174,148 +190,166 @@ void PrintLicense(void)
 void PrintUsage(const char *progname)
 {    
   printf("Usage: %s [options] source target\n"
-          "default is to decode the jpeg input and write a ppm output\n"
-          "use -q [1..100] or -p to enforce encoding\n\n"
-          "-q quality : selects the encoding mode and defines the quality of the base image\n"
-          "-Q quality : defines the quality for the extension layer\n"
-          "-quality q : use a profile and part specific weighting between base and extension\n"
-          "             layer quality\n"
-          "-r         : enable the residual codestream for HDR and lossless\n"
-          "             coding, requires -q and -Q to define base and\n"
-          "             enhancement layer quality.\n"
-          "-r12       : use a 12 bit residual image instead of an 8 bit residual\n"
-          "             image.\n"
-          "-rl        : enforce a int-to-int lossless DCT in the residual domain\n"
-          "             for lossless coding enabled by -Q 100\n"
-          "-ro        : disable the DCT in the residual domain, quantize spatially for\n"
-          "             near-lossless coding\n"
-          "-ldr file  : specifies a separate file containing the base layer\n"
-          "             for encoding.\n"
-          "-R bits    : specify refinement bits for the base images.\n"
-          "             This works like -r but in the DCT domain.\n"
-          "-rR bits   : specify refinement bits for the residual image.\n"
-          "-N         : enable noise shaping of the prediction residual\n"
-          "-l         : enable lossless coding without a residual image by an\n"
-          "             int-to-int DCT, also requires -c and -q 100 for true lossless\n"
-#if ACCUSOFT_CODE
-          "-p         : JPEG lossless (predictive) mode\n"
-          "             also requires -c for true lossless\n"
+	  "default is to decode the jpeg input and write a ppm output\n"
+	  "use -q [1..100] or -p to enforce encoding\n\n"
+	  "-q quality : selects the encoding mode and defines the quality of the base image\n"
+	  "-Q quality : defines the quality for the extension layer\n"
+	  "-quality q : use a profile and part specific weighting between base and extension\n"
+	  "             layer quality\n"
+#if ISO_CODE
+	  "-profile X : encode according to profile X, X = a,b,c\n"
+	  "             as defined in the JPEG XT standard. Without any parameter,\n"
+	  "             the encoder tries to figure out the profile itself.\n"
 #endif
-          "-c         : disable the RGB to YCbCr decorrelation transformation\n"
-          "-xyz       : indicates that the HDR image is in the XYZ colorspace\n"
-          "             note that the image is not *converted* to this space, but\n"
-          "             is assumed to be encoded in this space.\n"
-          "-cxyz      : similar to the above, but uses the dedicated C transformation\n"
-          "             to implement a XYZ colorspace conversion.\n"
-          "-sp        : use separate LUTs for each component.\n"
-          "-md        : use the median instead of the center of mass\n"
-          "             for constructing the inverse TMO of profile C.\n"
-          "-ct        : use the center of mass instead of the median\n"
-          "             for constructing the inverse TMO of profile C.\n"
-          "-sm iter   : use <iter> iterations to smooth out the histogram for\n"
-          "             inverse-TMO based algorithms. Default is not to smooth\n"
-          "             the histogram.\n"
-          "-ncl       : disable clamping of out-of-gamut colors.\n"
-          "             this is automatically enabled for lossless.\n"
+	  "-r         : enable the residual codestream for HDR and lossless\n"
+	  "             coding, requires -q and -Q to define base and\n"
+	  "             enhancement layer quality.\n"
+	  "-r12       : use a 12 bit residual image instead of an 8 bit residual\n"
+	  "             image.\n"
+	  "-rl        : enforce a int-to-int lossless DCT in the residual domain\n"
+	  "             for lossless coding enabled by -Q 100\n"
+	  "-ro        : disable the DCT in the residual domain, quantize spatially for\n"
+	  "             near-lossless coding\n"
+	  "-ldr file  : specifies a separate file containing the base layer\n"
+	  "             for encoding.\n"
+	  "-R bits    : specify refinement bits for the base images.\n"
+	  "             This works like -r but in the DCT domain.\n"
+	  "-rR bits   : specify refinement bits for the residual image.\n"
+	  "-N         : enable noise shaping of the prediction residual\n"
+	  "-l         : enable lossless coding without a residual image by an\n"
+	  "             int-to-int DCT, also requires -c and -q 100 for true lossless\n"
 #if ACCUSOFT_CODE
-          "-m maxerr  : defines a maximum pixel errror for JPEG LS coding\n"
+	  "-p         : JPEG lossless (predictive) mode\n"
+	  "             also requires -c for true lossless\n"
 #endif
-          "-h         : optimize the Huffman tables\n"
+	  "-c         : disable the RGB to YCbCr decorrelation transformation\n"
+	  "-xyz       : indicates that the HDR image is in the XYZ colorspace\n"
+	  "             note that the image is not *converted* to this space, but\n"
+	  "             is assumed to be encoded in this space.\n"
+	  "-cxyz      : similar to the above, but uses the dedicated C transformation\n"
+	  "             to implement a XYZ colorspace conversion.\n"
+	  "-sp        : use separate LUTs for each component.\n"
+	  "-md        : use the median instead of the center of mass\n"
+	  "             for constructing the inverse TMO of profile C.\n"
+	  "-ct        : use the center of mass instead of the median\n"
+	  "             for constructing the inverse TMO of profile C.\n"
+	  "-sm iter   : use <iter> iterations to smooth out the histogram for\n"
+	  "             inverse-TMO based algorithms. Default is not to smooth\n"
+	  "             the histogram.\n"
+	  "-ncl       : disable clamping of out-of-gamut colors.\n"
+	  "             this is automatically enabled for lossless.\n"
 #if ACCUSOFT_CODE
-          "-a         : use arithmetic coding instead of huffman coding\n"
-          "             available for all coding schemes (-p,-v,-l and default)\n"
+	  "-m maxerr  : defines a maximum pixel errror for JPEG LS coding\n"
 #endif
-          "-v         : use progressive instead of sequential encoding\n"
-          "             available for all coding schemes (-r,-a,-l and default)\n"
+	  "-h         : optimize the Huffman tables\n"
 #if ACCUSOFT_CODE
-          "-d         : encode the DC band only (requires -p)\n"
+	  "-a         : use arithmetic coding instead of huffman coding\n"
+	  "             available for all coding schemes (-p,-v,-l and default)\n"
+#endif
+	  "-v         : use progressive instead of sequential encoding\n"
+	  "             available for all coding schemes (-r,-a,-l and default)\n"
+#if ACCUSOFT_CODE
+	  "-d         : encode the DC band only (requires -p)\n"
+#endif
+#if ISO_CODE
+	  "-ae factor : define an auto-exposure value for part 7 profile B.\n"
+	  "             By default, this factor is 0.6\n"
+	  "-e exposure: define a manual exposure value for part 7 profile B.\n"
+	  "             Auto-exposure, i.e. not using this parameter, is recommended.\n"
 #endif
 #if ACCUSOFT_CODE
-          "-y levels  : hierarchical JPEG coding with the given number of decomposition\n"
-          "             levels. If levels is zero, then a lossless coding mode for\n"
-          "             hierarchical is used in which the second lossless scan encodes\n"
-          "             the DCT residuals of the first scan. For that, -c is suggested\n"
-          "             for true lossless. If levels is one, then the lossy initial scan\n"
-          "             is downscaled by a power of two.\n"
+	  "-y levels  : hierarchical JPEG coding with the given number of decomposition\n"
+	  "             levels. If levels is zero, then a lossless coding mode for\n"
+	  "             hierarchical is used in which the second lossless scan encodes\n"
+	  "             the DCT residuals of the first scan. For that, -c is suggested\n"
+	  "             for true lossless. If levels is one, then the lossy initial scan\n"
+	  "             is downscaled by a power of two.\n"
 #endif
-          "-g gamma   : define the exponent for the gamma for the LDR domain, or rather, for\n"
-          "             mapping HDR to LDR. A suggested value is 2.4 for mapping scRGB to sRBG.\n"
-          "             This option controls the base-nonlinearity that generates the\n"
-          "             HDR pre-cursor image from the LDR image. It is also used in the\n"
-          "             absense of -ldr (i.e. no LDR image) to tonemap the HDR input image.\n"
-          "             Use -g 0 to use an approximate inverse TMO as base-nonlinearity, and\n"
-          "             for tonemapping with the Reinhard operator if the LDR image is missing.\n"
-          "-gf file   : define the inverse one-point L-nonlinearity on decoding from a file\n"
-          "             this file contains one (ASCII encoded) digit per line, 256*2^h lines\n"
-          "             in total, where h is the number of refinement bits. Each line contains\n"
-          "             an (integer) output value the corresponding input is mapped to.\n"
-          "-z mcus    : define the restart interval size, zero disables it\n"
+	  "-g gamma   : define the exponent for the gamma for the LDR domain, or rather, for\n"
+	  "             mapping HDR to LDR. A suggested value is 2.4 for mapping scRGB to sRBG.\n"
+	  "             This option controls the base-nonlinearity that generates the\n"
+	  "             HDR pre-cursor image from the LDR image. It is also used in the\n"
+	  "             absense of -ldr (i.e. no LDR image) to tonemap the HDR input image.\n"
+	  "             Use -g 0 to use an approximate inverse TMO as base-nonlinearity, and\n"
+	  "             for tonemapping with the Reinhard operator if the LDR image is missing.\n"
+#if ISO_CODE
+	  "-epsn eps  : define the numerator normalizer for profile B encoding,\n"
+	  "             defaults to 1e-7\n"
+	  "-epsd eps  : define the denominator normalizer for profile B endocoding,\n"
+	  "             defaults to 1e-7\n"
+	  "-lr        : encode the residual for profile B log-encoded, not gamma-encoded.\n"
+#endif
+	  "-gf file   : define the inverse one-point L-nonlinearity on decoding from a file\n"
+	  "             this file contains one (ASCII encoded) digit per line, 256*2^h lines\n"
+	  "             in total, where h is the number of refinement bits. Each line contains\n"
+	  "             an (integer) output value the corresponding input is mapped to.\n"
+	  "-z mcus    : define the restart interval size, zero disables it\n"
 #if ACCUSOFT_CODE
-          "-n         : indicate the image height by a DNL marker\n"
+	  "-n         : indicate the image height by a DNL marker\n"
 #endif
-          "-s WxH,... : define subsampling factors for all components\n"
-          "             note that these are NOT MCU sizes\n"
-          "             Default is 1x1,1x1,1x1 (444 subsampling)\n"
-          "             1x1,2x2,2x2 is the 420 subsampling often used\n"
-          "-sr WxH,...: define subsampling in the residual domain\n"
-          "-rs        : encode the residual image in sequential (rather than the modified residual)\n"
-          "             coding mode\n"
-          "-rv        : encode the residual image in progressive coding mode\n"
-          "-ol        : open loop encoding, residuals are based on original, not reconstructed\n"
-          "-dz        : improved deadzone quantizer, may help to improve the R/D performance\n"
-          "-qt n      : define the quantization table. The following tables are currently defined:\n"
-          "             n = 0 the default tables from Annex K of the JPEG standard (default)\n"
-          "             n = 1 a completely flat table that should be PSNR-optimal\n"
-          "             n = 2 a MS-SSIM optimized table\n"
-          "             n = 3 the table suggested by ImageMagick\n"
-          "             n = 4 a HSV-PSNR optimized table\n"
-          "             n = 5 the table from Klein, Silverstein and Carney:\n"
-          "                   Relevance of human vision to JPEG-DCT compression (1992)\n"
-          "             n = 6 the table from Watson, Taylor, Borthwick:\n"
-          "                   DCTune perceptual optimization of compressed dental X-Rays (1997)\n"
-          "             n = 7 the table from Ahumada, Watson, Peterson:\n"
-          "                   A visual detection model for DCT coefficient quantization (1993)\n"
-          "             n = 8 the table from Peterson, Ahumada and Watson:\n"
-          "                   An improved detection model for DCT coefficient quantization (1993)\n"
-          "-rqt n     : defines the quantization table for the residual stream in the same way\n"
-          "-al file   : specifies a one-component pgm/pfm file that contains an alpha component\n"
-          "             or the code will write the alpha component to.\n"
-          "             This demo code DOES NOT implement compositing of alpha and background\n"
-          "-am mode   : specifes the mode of the alpha: 1 (regular) 2 (premultiplied) 3 (matte-removal)\n"
-          "-ab r,g,b  : specifies the matte (background) color for mode 3 as RGB triple\n"
-          "-ar        : enable residual coding for the alpha channel, required if the\n"
-          "             alpha channel is larger than 8bpp\n"
-          "-ar12      : use a 12 bit residual for the alpha channel\n"
-          "-aR bits   : set refinement bits in the alpha base codestream\n"
-          "-arR bits  : set refinement bits in the residual alpha codestream\n"
-          "-aol       : enable open loop coding for the alpha channel\n"
-          "-adz       : enable the deadzone quantizer for the alpha channel\n"
-          "-all       : enable lossless DCT for alpha coding\n"
-          "-alo       : disable the DCT in the residual alpha channel, quantize spatially.\n"
-          "-aq qu     : specify a quality for the alpha base channel (usually the only one)\n"
-          "-aQ qu     : specify a quality for the alpha extension layer\n"
-          "-aqt n     : specify the quantization table for the alpha channel\n"
-          "-arqt n    : specify the quantization table for residual alpha\n"
-          "-aquality q: specify a combined quality for both\n"
+	  "-s WxH,... : define subsampling factors for all components\n"
+	  "             note that these are NOT MCU sizes\n"
+	  "             Default is 1x1,1x1,1x1 (444 subsampling)\n"
+	  "             1x1,2x2,2x2 is the 420 subsampling often used\n"
+	  "-sr WxH,...: define subsampling in the residual domain\n"
+	  "-rs        : encode the residual image in sequential (rather than the modified residual)\n"
+	  "             coding mode\n"
+	  "-rv        : encode the residual image in progressive coding mode\n"
+	  "-ol        : open loop encoding, residuals are based on original, not reconstructed\n"
+	  "-dz        : improved deadzone quantizer, may help to improve the R/D performance\n"
+	  "-qt n      : define the quantization table. The following tables are currently defined:\n"
+	  "             n = 0 the default tables from Annex K of the JPEG standard (default)\n"
+	  "             n = 1 a completely flat table that should be PSNR-optimal\n"
+	  "             n = 2 a MS-SSIM optimized table\n"
+	  "             n = 3 the table suggested by ImageMagick\n"
+	  "             n = 4 a HSV-PSNR optimized table\n"
+	  "             n = 5 the table from Klein, Silverstein and Carney:\n"
+	  "                   Relevance of human vision to JPEG-DCT compression (1992)\n"
+	  "             n = 6 the table from Watson, Taylor, Borthwick:\n"
+	  "                   DCTune perceptual optimization of compressed dental X-Rays (1997)\n"
+	  "             n = 7 the table from Ahumada, Watson, Peterson:\n"
+	  "                   A visual detection model for DCT coefficient quantization (1993)\n"
+	  "             n = 8 the table from Peterson, Ahumada and Watson:\n"
+	  "                   An improved detection model for DCT coefficient quantization (1993)\n"
+	  "-rqt n     : defines the quantization table for the residual stream in the same way\n"
+	  "-al file   : specifies a one-component pgm/pfm file that contains an alpha component\n"
+	  "             or the code will write the alpha component to.\n"
+	  "             This demo code DOES NOT implement compositing of alpha and background\n"
+	  "-am mode   : specifes the mode of the alpha: 1 (regular) 2 (premultiplied) 3 (matte-removal)\n"
+	  "-ab r,g,b  : specifies the matte (background) color for mode 3 as RGB triple\n"
+	  "-ar        : enable residual coding for the alpha channel, required if the\n"
+	  "             alpha channel is larger than 8bpp\n"
+	  "-ar12      : use a 12 bit residual for the alpha channel\n"
+	  "-aR bits   : set refinement bits in the alpha base codestream\n"
+	  "-arR bits  : set refinement bits in the residual alpha codestream\n"
+	  "-aol       : enable open loop coding for the alpha channel\n"
+	  "-adz       : enable the deadzone quantizer for the alpha channel\n"
+	  "-all       : enable lossless DCT for alpha coding\n"
+	  "-alo       : disable the DCT in the residual alpha channel, quantize spatially.\n"
+	  "-aq qu     : specify a quality for the alpha base channel (usually the only one)\n"
+	  "-aQ qu     : specify a quality for the alpha extension layer\n"
+	  "-aqt n     : specify the quantization table for the alpha channel\n"
+	  "-arqt n    : specify the quantization table for residual alpha\n"
+	  "-aquality q: specify a combined quality for both\n"
 #if ACCUSOFT_CODE
-          "-ra        : enable arithmetic coding for residual image (*NOT SPECIFIED*)\n"
-          "-ls mode   : encode in JPEG LS (NOT 10918) mode, where 0 is scan-interleaved,\n"
-          "             1 is line interleaved and 2 is sample interleaved.\n"
-          "             NOTE THAT THIS IS NOT 10918 (JPEG) COMPLIANT, BUT COMPLIANT TO\n"
-          "             14495-1 (JPEG-LS) WHICH IS A DIFFERENT STANDARD.\n"
-          "             Use -c to bypass the YCbCr color transformation for true lossless,\n"
-          "             also use -c for decoding images encoded by the UBC reference software\n"
-          "             as it does not write an indicator marker to disable the\n"
-          "             transformation itself.\n"
-          "             Note that the UBC software will not able to decode streams created by\n"
-          "             this software due to a limitation of the UBC code - the streams are\n"
-          "             nevertheless fully conforming.\n"
-          "-cls       : Use a JPEG LS part-2 conforming pseudo-RCT color transformation.\n"
-          "             Note that this transformation is only CONFORMING TO 14495-2\n"
-          "             AND NOT CONFORMING TO 10918-1. Works for near-lossless JPEG LS\n"
-          "             DO NOT USE FOR LOSSY 10918-1, it will also create artifacts.\n"
+	  "-ra        : enable arithmetic coding for residual image (*NOT SPECIFIED*)\n"
+	  "-ls mode   : encode in JPEG LS (NOT 10918) mode, where 0 is scan-interleaved,\n"
+	  "             1 is line interleaved and 2 is sample interleaved.\n"
+	  "             NOTE THAT THIS IS NOT 10918 (JPEG) COMPLIANT, BUT COMPLIANT TO\n"
+	  "             14495-1 (JPEG-LS) WHICH IS A DIFFERENT STANDARD.\n"
+	  "             Use -c to bypass the YCbCr color transformation for true lossless,\n"
+	  "             also use -c for decoding images encoded by the UBC reference software\n"
+	  "             as it does not write an indicator marker to disable the\n"
+	  "             transformation itself.\n"
+	  "             Note that the UBC software will not able to decode streams created by\n"
+	  "             this software due to a limitation of the UBC code - the streams are\n"
+	  "             nevertheless fully conforming.\n"
+	  "-cls       : Use a JPEG LS part-2 conforming pseudo-RCT color transformation.\n"
+	  "             Note that this transformation is only CONFORMING TO 14495-2\n"
+	  "             AND NOT CONFORMING TO 10918-1. Works for near-lossless JPEG LS\n"
+	  "             DO NOT USE FOR LOSSY 10918-1, it will also create artifacts.\n"
 #endif
-          ,progname);
+	  ,progname);
 }
 ///
 
@@ -335,6 +369,11 @@ int main(int argc,char **argv)
   int resprec       = 8;  // precision in the residual domain
   int aresprec      = 8;  // precision of the residual alpha
   double gamma      = 0.0;
+#if ISO_CODE
+  double epsilonn   = 1e-7; // the normalizing epsilon in the numerator
+  double epsilond   = 1e-7; // the normalizing epsilon in the denominator for the profile B encoder
+  bool linearres    = false;
+#endif
   bool pyramidal    = false;
   bool residuals    = false;
   int  colortrafo   = JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR;
@@ -362,9 +401,16 @@ int main(int argc,char **argv)
   bool separate     = false;
   bool noclamp      = false;
   bool setprofile   = false;
+#if ISO_CODE
+  bool gammaspecd   = false;
+#endif
   bool median       = true;
   int splitquality  = -1;
   int profile       = 2;    // profile C.
+#if ISO_CODE
+  double factor     = 0.6;  // auto-exposure for profile B
+  double exposure   = -1.0; // manual exposure value for profile B.
+#endif
   const char *sub       = NULL;
   const char *ressub    = NULL;
   const char *ldrsource = NULL;
@@ -396,17 +442,17 @@ int main(int argc,char **argv)
       const char *s = ParseString(argc,argv);
       setprofile    = true;
       if (!strcmp(s,"a") || !strcmp(s,"A")) {
-        profile = 0;
+	profile = 0;
       } else if (!strcmp(s,"b") || !strcmp(s,"B")) {
-        profile = 1;
+	profile = 1;
       } else if (!strcmp(s,"c") || !strcmp(s,"C")) {
-        profile = 2;
+	profile = 2;
       } else if (!strcmp(s,"d") || !strcmp(s,"D")) {
-        profile = 4;
+	profile = 4;
       } else {
-        fprintf(stderr,"unknown profile definition %s, only profiles a,b,c and d exist",
-                s);
-        return 20;
+	fprintf(stderr,"unknown profile definition %s, only profiles a,b,c and d exist",
+		s);
+	return 20;
       }
     } else if (!strcmp(argv[1],"-m")) {
       maxerror = ParseInt(argc,argv);
@@ -435,6 +481,15 @@ int main(int argc,char **argv)
       argv++;
       argc--;
     } 
+#if ISO_CODE
+    else if (!strcmp(argv[1],"-ae")) {
+      factor = ParseDouble(argc,argv);
+      profile = 1; // take this as an indicator of profile B.
+    } else if (!strcmp(argv[1],"-e")) {
+      exposure = ParseDouble(argc,argv);
+      profile = 1; // take this as an indicator of profile B
+    } 
+#endif
     else if (!strcmp(argv[1],"-c")) {
       colortrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE;
       argv++;
@@ -460,14 +515,14 @@ int main(int argc,char **argv)
     } else if (!strcmp(argv[1],"-am")) {
       alphamode = ParseInt(argc,argv);
       if (alphamode < 0 || alphamode > 3) {
-        fprintf(stderr,"the alpha mode specified with -am must be between 0 and 3\n");
-        return 20;
+	fprintf(stderr,"the alpha mode specified with -am must be between 0 and 3\n");
+	return 20;
       }
     } else if (!strcmp(argv[1],"-ab")) {
       const char *matte = ParseString(argc,argv);
       if (sscanf(matte,"%d,%d,%d",&matte_r,&matte_g,&matte_b) != 3) {
-        fprintf(stderr,"-ab expects three numeric arguments separated comma, i.e. r,g,b\n");
-        return 20;
+	fprintf(stderr,"-ab expects three numeric arguments separated comma, i.e. r,g,b\n");
+	return 20;
       }
     } else if (!strcmp(argv[1],"-all")) {
       aserms = true;
@@ -574,8 +629,21 @@ int main(int argc,char **argv)
       argc--;
     } else if (!strcmp(argv[1],"-g")) {
       gamma = ParseDouble(argc,argv);
+#if ISO_CODE
+      gammaspecd = true;
+#endif
     } else if (!strcmp(argv[1],"-gf")) {
       lsource = ParseString(argc,argv);
+#if ISO_CODE   
+    } else if (!strcmp(argv[1],"-epsd")) {
+      epsilond = ParseDouble(argc,argv);
+    } else if (!strcmp(argv[1],"-epsn")) {
+      epsilonn = ParseDouble(argc,argv);
+    } else if (!strcmp(argv[1],"-lr")) {
+      linearres = true;
+      argv++;
+      argc--;
+#endif      
     } else if (!strcmp(argv[1],"-aq")) {
       alphaquality = ParseInt(argc,argv);
     } else if (!strcmp(argv[1],"-aQ")) {
@@ -600,11 +668,11 @@ int main(int argc,char **argv)
     else if (!strcmp(argv[1],"-y")) {
       levels = ParseInt(argc,argv);
       if (levels == 0 || levels == 1) {
-        // In this mode, the hierarchical model is used for lossless coding
-        levels++;
-        pyramidal = false;
+	// In this mode, the hierarchical model is used for lossless coding
+	levels++;
+	pyramidal = false;
       } else {
-        pyramidal = true;
+	pyramidal = true;
       }
     } 
 #endif
@@ -621,8 +689,14 @@ int main(int argc,char **argv)
   if (splitquality > 0) {
     switch(profile) {
     case 0:
+#if ISO_CODE
+      SplitQualityA(splitquality,quality,hdrquality);
+#endif
       break;
     case 1:
+#if ISO_CODE
+      SplitQualityB(splitquality,quality,hdrquality);
+#endif
       break;
     case 2:
     case 4:
@@ -640,8 +714,8 @@ int main(int argc,char **argv)
   if (argc != 3) {
     if (argc > 3) {
       fprintf(stderr,"Error in argument parsing, argument %s not understood or parsed correctly.\n"
-              "Run without arguments for a list of command line options.\n\n",
-              argv[1]);
+	      "Run without arguments for a list of command line options.\n\n",
+	      argv[1]);
       exit(20);
     }
 
@@ -655,27 +729,84 @@ int main(int argc,char **argv)
   } else {
     switch(profile) {
     case 0:
+#if ISO_CODE
+      if (xyz || cxyz) {
+	fprintf(stderr,"**** XYZ color input currently not yet supported for profile A, sorry. ****\n");
+	exit(20);
+      }
+      if (serms) {
+	fprintf(stderr,"**** Profile A does not support lossless coding. ****\n");
+	exit(20);
+      }
+      if (!openloop) {
+	fprintf(stderr,
+		"**** WARNING: Closed loop coding used for profile A. ****\n"
+		"**** this works, but is not recommended. Try -ol to  ****\n"
+		"**** switch to open loop coding.                     ****\n"
+		);
+      }
+      EncodeA(argv[1],ldrsource,argv[2],quality,hdrquality,
+	      tabletype,residualtt,colortrafo,
+	      progressive,rprogressive,
+	      hiddenbits,riddenbits,optimize,
+	      openloop,deadzone,noclamp,sub,ressub,
+	      gammaspecd?gamma:-1.0,median,smooth, // make 2.4 the default gamma, unless specified otherwise
+	      alpha,alphamode,matte_r,matte_g,matte_b,
+	      alpharesiduals,alphaquality,alphahdrquality,
+	      alphatt,residualalphatt,
+	      ahiddenbits,ariddenbits,aresprec,aopenloop,adeadzone,aserms,abypass);
+#else
       fprintf(stderr,"**** Profile A encoding not supported due to patented IPRs.\n");
+#endif
       break;
     case 1:
+#if ISO_CODE
+      if (xyz || cxyz) {
+	fprintf(stderr,"**** XYZ color input currently not yet supported for profile A, sorry. ****\n");
+	exit(20);
+      }
+      if (serms) {
+	fprintf(stderr,"**** Profile B does not support lossless coding. ****\n");
+	exit(20);
+      }
+      if (!openloop) {
+	fprintf(stderr,
+		"**** WARNING: Closed loop coding used for profile B. ****\n"
+		"**** this works, but is not recommended. Try -ol to  ****\n"
+		"**** switch to open loop coding.                     ****\n"
+		);
+      }
+      EncodeB(argv[1],ldrsource,argv[2],exposure,factor,
+	      gammaspecd?gamma:-1.0,
+	      epsilonn,epsilond,median,smooth,linearres,
+	      quality,hdrquality,
+	      tabletype,residualtt,colortrafo,
+	      progressive,rprogressive,hiddenbits,riddenbits,
+	      optimize,openloop,deadzone,noclamp,sub,ressub,
+	      alpha,alphamode,matte_r,matte_g,matte_b,
+	      alpharesiduals,alphaquality,alphahdrquality,
+	      alphatt,residualalphatt,
+	      ahiddenbits,ariddenbits,aresprec,aopenloop,adeadzone,aserms,abypass);
+#else
       fprintf(stderr,"**** Profile B encoding not supported due to patented IPRs.\n");
+#endif
       break;
     case 2:
     case 4:
       if (setprofile && ((residuals == false && hiddenbits == false && profile != 4) || profile == 2))
-        residuals = true;
+	residuals = true;
       EncodeC(argv[1],ldrsource,argv[2],lsource,quality,hdrquality,
-              tabletype,residualtt,maxerror,colortrafo,
-              lossless,progressive,
-              residuals,optimize,accoding,rsequential,rprogressive,raccoding,
-              dconly,levels,pyramidal,writednl,restart,
-              gamma,lsmode,noiseshaping,serms,losslessdct,dctbypass,openloop,deadzone,xyz,cxyz,
-              hiddenbits,riddenbits,resprec,separate,median,smooth,noclamp,
-              sub,ressub,
-              alpha,alphamode,matte_r,matte_g,matte_b,
-              alpharesiduals,alphaquality,alphahdrquality,
-              alphatt,residualalphatt,
-              ahiddenbits,ariddenbits,aresprec,aopenloop,adeadzone,aserms,abypass);
+	      tabletype,residualtt,maxerror,colortrafo,
+	      lossless,progressive,
+	      residuals,optimize,accoding,rsequential,rprogressive,raccoding,
+	      dconly,levels,pyramidal,writednl,restart,
+	      gamma,lsmode,noiseshaping,serms,losslessdct,dctbypass,openloop,deadzone,xyz,cxyz,
+	      hiddenbits,riddenbits,resprec,separate,median,smooth,noclamp,
+	      sub,ressub,
+	      alpha,alphamode,matte_r,matte_g,matte_b,
+	      alpharesiduals,alphaquality,alphahdrquality,
+	      alphatt,residualalphatt,
+	      ahiddenbits,ariddenbits,aresprec,aopenloop,adeadzone,aserms,abypass);
       break;
     }
   }

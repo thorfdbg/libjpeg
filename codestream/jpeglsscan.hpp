@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
@@ -225,9 +200,9 @@ protected:
   bool isRunMode(LONG d1,LONG d2,LONG d3) const
   {
     if ((d1 > m_lNear || d1 < -m_lNear) ||
-        (d2 > m_lNear || d2 < -m_lNear) ||
-        (d3 > m_lNear || d3 < -m_lNear))
-         return false;
+	(d2 > m_lNear || d2 < -m_lNear) ||
+	(d3 > m_lNear || d3 < -m_lNear))
+	 return false;
     return true;
   }
   //
@@ -333,9 +308,9 @@ protected:
     // Quantization of the error signal.
     if (unlikely(m_lNear > 0)) {
       if (errval > 0) {
-        errval =  (m_lNear + errval) / m_lDelta;
+	errval =  (m_lNear + errval) / m_lDelta;
       } else {
-        errval = -(m_lNear - errval) / m_lDelta;
+	errval = -(m_lNear - errval) / m_lDelta;
       }
     }
 
@@ -361,8 +336,8 @@ protected:
 
     if (unlikely(k == 24)) {
       JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombParameter",
-               "Golomb coding parameter of JPEG LS stream run out of bounds, "
-               "synchronization lost");
+	       "Golomb coding parameter of JPEG LS stream run out of bounds, "
+	       "synchronization lost");
       return 0;
     }
     
@@ -428,20 +403,20 @@ protected:
     if (likely(unary < limit)) {
       // Unary part
       if (likely(unary)) {
-        if (unlikely(unary > 32)) {
-          m_Stream.Put<32>(0);
-          unary -= 32;
-        }
-        m_Stream.Put(unary,0);
+	if (unlikely(unary > 32)) {
+	  m_Stream.Put<32>(0);
+	  unary -= 32;
+	}
+	m_Stream.Put(unary,0);
       }
       m_Stream.Put<1>(1);
       // binary part.
       if (k)
-        m_Stream.Put(k,errval);
+	m_Stream.Put(k,errval);
     } else {
       if (unlikely(limit > 32)) {
-        m_Stream.Put<32>(0);
-        limit -= 32;
+	m_Stream.Put<32>(0);
+	limit -= 32;
       }
       m_Stream.Put(limit,0);
       m_Stream.Put<1>(1);
@@ -466,18 +441,18 @@ protected:
       // Can be at most "limit" zeros, the encoder writes a one after at most "limit" zeros.
       // If not, we're pretty much out of sync.
       if (unlikely(u > limit)) {
-        JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombDecode","found invalid Golomb code");
-        return 0;
+	JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombDecode","found invalid Golomb code");
+	return 0;
       }
       if (likely(in < 8)) {
-        m_Stream.SkipBits(in+1);
-        if (unlikely(u == limit)) {
-          return m_Stream.Get(m_lQbpp) + 1;
-        } else if (k) {
-          return m_Stream.Get(k) | (u << k);
-        } else {
-          return u;
-        }
+	m_Stream.SkipBits(in+1);
+	if (unlikely(u == limit)) {
+	  return m_Stream.Get(m_lQbpp) + 1;
+	} else if (k) {
+	  return m_Stream.Get(k) | (u << k);
+	} else {
+	  return u;
+	}
       }
       m_Stream.SkipBits(8);
     } while(true);
@@ -492,9 +467,9 @@ protected:
     if (unlikely(m_lN[context] >= m_lReset)) {
       m_lA[context] >>= 1;
       if (m_lB[context] >= 0)
-        m_lB[context] >>= 1;
+	m_lB[context] >>= 1;
       else
-        m_lB[context]   = -((1 - m_lB[context]) >> 1);
+	m_lB[context]   = -((1 - m_lB[context]) >> 1);
       m_lN[context] >>= 1;
     }
     m_lN[context]++;
@@ -502,15 +477,15 @@ protected:
     if (unlikely(m_lB[context] <= -m_lN[context])) {
       m_lB[context] += m_lN[context];
       if (m_lC[context] > -128)
-        m_lC[context]--;
+	m_lC[context]--;
       if (m_lB[context] <= -m_lN[context]) 
-        m_lB[context] = -m_lN[context] + 1;
+	m_lB[context] = -m_lN[context] + 1;
     } else if (unlikely(m_lB[context] > 0)) {
       m_lB[context] -= m_lN[context];
       if (m_lC[context] < 127)
-        m_lC[context]++;
+	m_lC[context]++;
       if (m_lB[context] > 0)
-        m_lB[context] = 0;
+	m_lB[context] = 0;
     }
   }
   //
@@ -522,15 +497,15 @@ protected:
       m_Stream.Put<1>(1);
       runcnt -= 1 << m_lJ[runindex];
       if (runindex < 31)
-        runindex++;
+	runindex++;
     }
     if (end) {
       if (runcnt > 0) 
-        m_Stream.Put<1>(1); // decoder will detect an end of line.
+	m_Stream.Put<1>(1); // decoder will detect an end of line.
     } else {
       m_Stream.Put<1>(0);
       if (m_lJ[runindex])
-        m_Stream.Put(m_lJ[runindex],runcnt);
+	m_Stream.Put(m_lJ[runindex],runcnt);
       // Reduction of the run index happens later.
     }
   }
@@ -545,11 +520,11 @@ protected:
       run += (1 << m_lJ[runindex]);
       // Can the run be completed?
       if (run <= length && runindex < 31) 
-        runindex++;
+	runindex++;
       //
       // If the run reaches the end of the line, do not get more bits.
       if (run >= length) {
-        return length;
+	return length;
       }
     } 
 
@@ -561,7 +536,7 @@ protected:
       
     if (run > length) {
       JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::DecodeRun",
-               "found run across the end of the line, trimming it");
+	       "found run across the end of the line, trimming it");
       run = length;
     }
 
@@ -600,8 +575,8 @@ protected:
 
     if (k == 24) {
       JPG_WARN(MALFORMED_STREAM,"JPEGLSScan::GolombParameter",
-               "Golomb coding parameter of JPEG LS stream run out of bounds, "
-               "synchronization lost");
+	       "Golomb coding parameter of JPEG LS stream run out of bounds, "
+	       "synchronization lost");
       return 0;
     }
 

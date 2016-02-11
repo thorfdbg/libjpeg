@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
  * Definition of how to request a given rectangle for display,
  * for load or for checking for a necessary update.
@@ -81,50 +56,50 @@ void RectangleRequest::ParseTags(const struct JPG_TagItem *tags,const class Imag
     switch (tags->ti_Tag) { 
     case JPGTAG_DECODER_MINX:
       if (coord < 0)
-        JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
-                  "Rectangle MinX underflow, must be >= 0");
+	JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
+		  "Rectangle MinX underflow, must be >= 0");
       if (coord > rr_Request.ra_MinX) {
-        rr_Request.ra_MinX = coord;
+	rr_Request.ra_MinX = coord;
       }
       break;
     case JPGTAG_DECODER_MINY:
       if (coord < 0)
-        JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
-                  "Rectangle MinY underflow, must be >= 0");
+	JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
+		  "Rectangle MinY underflow, must be >= 0");
       if (coord > rr_Request.ra_MinY) {
-        rr_Request.ra_MinY = coord;
+	rr_Request.ra_MinY = coord;
       }
       break;
     case JPGTAG_DECODER_MAXX:
       if (coord < 0)
-        JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
-                  "Rectangle MaxX underflow, must be >= 0");
+	JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
+		  "Rectangle MaxX underflow, must be >= 0");
       if (coord < rr_Request.ra_MaxX) {
-        rr_Request.ra_MaxX = coord;
+	rr_Request.ra_MaxX = coord;
       }
       break;
     case JPGTAG_DECODER_MAXY:
       if (coord < 0)
-        JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
-                  "Rectangle MaxY underflow, must be >= 0");
+	JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
+		  "Rectangle MaxY underflow, must be >= 0");
       if (coord < rr_Request.ra_MaxY) {
-        rr_Request.ra_MaxY = coord;
+	rr_Request.ra_MaxY = coord;
       }
       break;
     case JPGTAG_DECODER_MINCOMPONENT:
       if (coord < 0 || coord > MAX_UWORD)
-        JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
-                  "MinComponent overflow, must be >= 0 && < 65536");
+	JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
+		  "MinComponent overflow, must be >= 0 && < 65536");
       if (UWORD(coord) > rr_usFirstComponent) {
-        rr_usFirstComponent = coord;
+	rr_usFirstComponent = coord;
       }
       break;
     case JPGTAG_DECODER_MAXCOMPONENT:
       if (coord < 0 || coord > MAX_UWORD)
-        JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
-                  "MaxComponent overflow, must be >= 0 && < 65536");
+	JPG_THROW(OVERFLOW_PARAMETER,"RectangleRequest::ParseFromTagList",
+		  "MaxComponent overflow, must be >= 0 && < 65536");
       if (UWORD(coord) < rr_usLastComponent) {
-        rr_usLastComponent = coord;
+	rr_usLastComponent = coord;
       }
       break;
     case JPGTAG_DECODER_INCLUDE_ALPHA:
@@ -138,7 +113,7 @@ void RectangleRequest::ParseTags(const struct JPG_TagItem *tags,const class Imag
   // will fall over...
   if (rr_Request.IsEmpty())
     JPG_THROW(INVALID_PARAMETER,"RectangleRequest::ParseFromTagList",
-              "the requested rectangle is empty");
+	      "the requested rectangle is empty");
 }
 ///
 
@@ -217,11 +192,11 @@ void RectangleRequest::Enqueue(struct RectangleRequest *&first)
     if (*current == NULL || (*current)->rr_cPriority < rr_cPriority) {
       // Enqueue in front of "*current".
       if (*current && (*current)->Contains(this)) {
-        // This request is just superfluous. Dispose.
-        delete this;
+	// This request is just superfluous. Dispose.
+	delete this;
       } else {
-        rr_pNext = *current;
-        *current = this;
+	rr_pNext = *current;
+	*current = this;
       }
       return;
     }

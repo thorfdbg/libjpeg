@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 **
 ** This class represents the image as a whole, consisting either of a single
@@ -243,9 +218,9 @@ public:
   // for the regular "flat" mode. Tag offset is an offset added to the tags for
   // defining the residual image.
   void InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
-                                UBYTE precision,ScanType type,UBYTE levels,bool scale,
-                                bool writednl,const UBYTE *subx,const UBYTE *suby,
-                                ULONG tagoffset,const struct JPG_TagItem *tags);
+				UBYTE precision,ScanType type,UBYTE levels,bool scale,
+				bool writednl,const UBYTE *subx,const UBYTE *suby,
+				ULONG tagoffset,const struct JPG_TagItem *tags);
   //
   // Start parsing a single frame. If the second argument is set, the scan
   // type is a residual scan type.

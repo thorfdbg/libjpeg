@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** The actual downsampling implementation.
 **
@@ -91,18 +66,18 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
       int i = 8; // pixel in the line
 
       do {
-        switch(sx) { // actually this will be unrolled because it is a template
-        case 4:
-          *bp += src[3];
-        case 3:
-          *bp += src[2];
-        case 2:
-          *bp += src[1];
-        case 1:
-          *bp += src[0];
-        }
-        src += sx;
-        bp++;
+	switch(sx) { // actually this will be unrolled because it is a template
+	case 4:
+	  *bp += src[3];
+	case 3:
+	  *bp += src[2];
+	case 2:
+	  *bp += src[1];
+	case 1:
+	  *bp += src[0];
+	}
+	src += sx;
+	bp++;
       } while(--i);
       //
       // Now continue with the next line if there is one, count the number of lines summed up.
@@ -115,12 +90,12 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
     if (lines >= sy || line == NULL) {
       // Only if there is actually anything in the buffer, otherwise just leave it empty.
       if (lines) {
-        WORD norm = lines * sx;
-        if (norm > 1) {
-          // Normalize the summed pixels.
-          buffer[0] /= norm;buffer[1] /= norm;buffer[2] /= norm;buffer[3] /= norm;
-          buffer[4] /= norm;buffer[5] /= norm;buffer[6] /= norm;buffer[7] /= norm;
-        }
+	WORD norm = lines * sx;
+	if (norm > 1) {
+	  // Normalize the summed pixels.
+	  buffer[0] /= norm;buffer[1] /= norm;buffer[2] /= norm;buffer[3] /= norm;
+	  buffer[4] /= norm;buffer[5] /= norm;buffer[6] /= norm;buffer[7] /= norm;
+	}
       }
       // Start the next buffer line.
       buffer    += 8;

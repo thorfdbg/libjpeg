@@ -1,28 +1,3 @@
-/*************************************************************************
-
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
-    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
-    towards intermediate, high-dynamic-range lossy and lossless coding
-    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
-
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
-    Accusoft.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
 /*
 ** This class contains and maintains the huffman code parsers.
 **
@@ -98,7 +73,7 @@ void HuffmanTable::WriteMarker(class ByteStream *io)
     if (m_pCoder[i]) {
       UBYTE type = 0;
       if (i >= 4)
-        type |= 0x10;    // is an AC table then.
+	type |= 0x10;    // is an AC table then.
       type |= i & 0x03;  // the huffman table identifier.
       io->Put(type);
       m_pCoder[i]->WriteMarker(io);
@@ -133,7 +108,7 @@ void HuffmanTable::ParseMarker(class ByteStream *io)
     }
     if ((t & 0x0f) > 3) {
       JPG_THROW(MALFORMED_STREAM,"HuffmanTable::ParseMarker",
-                "invalid Huffman table destination, must be between 0 and 3");
+		"invalid Huffman table destination, must be between 0 and 3");
     }
     t = (t & 0x03) | ((t & 0xf0) >> 2);
     delete m_pCoder[t];m_pCoder[t] = NULL;
