@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
  * Member functions of the bitmap hook class
  * 
@@ -124,8 +149,8 @@ void BitMapHook::InitHookTags(struct JPG_TagItem *tags)
 /// BitMapHook::Request
 // Fill the tag items for a request call and make the call.
 void BitMapHook::Request(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
-			 const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-			 const class Component *comp,bool alpha)
+                         const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
+                         const class Component *comp,bool alpha)
 {
   // Fill in the encoding tags.
   tags[0].ti_Data.ti_lData  = JPGFLAG_BIO_REQUEST;
@@ -169,8 +194,8 @@ void BitMapHook::Request(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pi
 /// BitMapHook::Release
 // Release the tag items for a release call and make the call.
 void BitMapHook::Release(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
-			 const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-			 const class Component *comp,bool alpha)
+                         const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
+                         const class Component *comp,bool alpha)
 {
   if (hook) {
     tags[0].ti_Data.ti_lData  = JPGFLAG_BIO_RELEASE;
@@ -206,7 +231,7 @@ void BitMapHook::Release(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pi
 // let the user fill out this tag list and
 // fill out the image bitmap from this stuff.
 void BitMapHook::RequestClientData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-				   const class Component *comp)
+                                   const class Component *comp)
 {
   Request(m_pHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,false);
 }
@@ -217,7 +242,7 @@ void BitMapHook::RequestClientData(const RectAngle<LONG> &rect,struct ImageBitMa
 // and release it. The user may use this
 // call here to release temporary memory, etc, etc.
 void BitMapHook::ReleaseClientData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-				   const class Component *comp)
+                                   const class Component *comp)
 {
   Release(m_pHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,false);
 }
@@ -228,7 +253,7 @@ void BitMapHook::ReleaseClientData(const RectAngle<LONG> &rect,const struct Imag
 // let the user fill out this tag list and
 // fill out the image bitmap from this stuff.
 void BitMapHook::RequestClientAlpha(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-				   const class Component *comp)
+                                   const class Component *comp)
 {
   Request(m_pAlphaHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,true);
 }
@@ -239,7 +264,7 @@ void BitMapHook::RequestClientAlpha(const RectAngle<LONG> &rect,struct ImageBitM
 // and release it. The user may use this
 // call here to release temporary memory, etc, etc.
 void BitMapHook::ReleaseClientAlpha(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-				    const class Component *comp)
+                                    const class Component *comp)
 {
   Release(m_pAlphaHook,m_BitmapTags,m_DefaultImageLayout.ibm_ucPixelType,rect,ibm,comp,true);
 }
@@ -252,7 +277,7 @@ void BitMapHook::ReleaseClientAlpha(const RectAngle<LONG> &rect,const struct Ima
 // LDR hook function is available, i.e. should only be called if the 
 // providesLDRImage() method above returns true.
 void BitMapHook::RequestLDRData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-				const class Component *comp)
+                                const class Component *comp)
 {
   Request(m_pLDRHook,m_LDRTags,CTYP_UBYTE,rect,ibm,comp,false);
 }
@@ -263,7 +288,7 @@ void BitMapHook::RequestLDRData(const RectAngle<LONG> &rect,struct ImageBitMap *
 // providesLDRImage() must have been checked before and must have returned
 // true for this to make sense.
 void BitMapHook::ReleaseLDRData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-				const class Component *comp)
+                                const class Component *comp)
 {
   Release(m_pLDRHook,m_LDRTags,CTYP_UBYTE,rect,ibm,comp,false);
 }

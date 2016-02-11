@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This class is the base class for all floating-point based transformers,
 ** most notably profiles A and B of 18477-7.
@@ -99,28 +124,28 @@ public:
   // and moves that into the target buffer. Shift and max values are the clamping
   // of the LDR data.
   virtual void RGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
-			 Buffer target) = 0;
+                         Buffer target) = 0;
   //
   // In case the user already provided a tone-mapped version of the image, this call already
   // takes the LDR version of the image, performs no tone-mapping but only a color
   // decorrelation transformation and injects it as LDR image.
   virtual void LDRRGB2YCbCr(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
-			 Buffer target) = 0;
+                         Buffer target) = 0;
   //
   // Buffer the original data unaltered. Required for residual coding, for some modes of
   // it at least.
   virtual void RGB2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
-		       Buffer target) = 0;
+                       Buffer target) = 0;
   //
   // Compute the residual from the original image and the decoded LDR image, place result in
   // the output buffer. This depends rather on the coding model.
   virtual void RGB2Residual(const RectAngle<LONG> &r,const struct ImageBitMap *const *source,
-			    Buffer reconstructed,Buffer residual) = 0;
+                            Buffer reconstructed,Buffer residual) = 0;
   //
   // Inverse transform a block from YCbCr to RGB, incuding a clipping operation and a dc level
   // shift.
   virtual void YCbCr2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *dest,
-			 Buffer source,Buffer residual) = 0;
+                         Buffer source,Buffer residual) = 0;
   //
   // Return the external pixel type of this trafo.
   virtual UBYTE PixelTypeOf(void) const

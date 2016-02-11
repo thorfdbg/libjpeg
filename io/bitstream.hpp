@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This class allows to read individual bits from a stream of bytes.
 ** This class implements the bytestuffing as required.
@@ -114,7 +139,7 @@ public:
     if (n > m_ucBits) {
       Fill();
       if (unlikely(n > m_ucBits))
-	ReportError();
+        ReportError();
     }
     
     v         = m_ulB >> (32 - n);
@@ -135,7 +160,7 @@ public:
     if (bits > m_ucBits) {
       Fill();
       if (unlikely(bits > m_ucBits))
-	ReportError();
+        ReportError();
     }
 
     v         = m_ulB >> (32 - bits);
@@ -179,19 +204,19 @@ public:
       // Conclusion is that we may have a 0xff just in front of a marker without
       // the byte stuffing. Wierd.
       if (!bitstuffing)
-	m_ucB   |= (1 << m_ucBits) - 1;
+        m_ucB   |= (1 << m_ucBits) - 1;
       m_pIO->Put(m_ucB);
       if (m_pChk)
-	m_pChk->Update(m_ucB);
+        m_pChk->Update(m_ucB);
       m_ucBits = 8;
       if (m_ucB == 0xff) {   // stuffing case? 
-	m_pIO->Put(0x00);    // stuff a zero byte
-	if (m_pChk)
-	  m_pChk->Update(0x00);
-	// Note that this must also happen if we are bitstuffing to avoid a pseudo-0xffff
-	// marker (JPEG 2000 could have dropped the 0xff here, but we can't).
-	// Actually, such markers are allowable, or rather might be, but
-	// be conservative and avoid writing them.
+        m_pIO->Put(0x00);    // stuff a zero byte
+        if (m_pChk)
+          m_pChk->Update(0x00);
+        // Note that this must also happen if we are bitstuffing to avoid a pseudo-0xffff
+        // marker (JPEG 2000 could have dropped the 0xff here, but we can't).
+        // Actually, such markers are allowable, or rather might be, but
+        // be conservative and avoid writing them.
       }
       m_ucB = 0;
     }
@@ -210,7 +235,7 @@ public:
       // Only in case all bits of the byte are read, and we
       // need the refill anyhow... trigger it early.
       if (m_ucBits == 0 && m_ucNextBits == 7) {
-	Fill();
+        Fill();
       }
     }
   }
@@ -230,16 +255,16 @@ public:
       // m_ucBits = 0; // superfluous: We've now zero bits space left. 
       m_pIO->Put(m_ucB);
       if (m_pChk)
-	m_pChk->Update(m_ucB);
+        m_pChk->Update(m_ucB);
       m_ucBits = 8;
       if (m_ucB == 0xff) {  // byte stuffing case?
-	if (bitstuffing) {
-	  m_ucBits = 7;
-	} else {
-	  m_pIO->Put(0x00);    // stuff a zero byte
-	  if (m_pChk)
-	    m_pChk->Update(0x00);
-	}
+        if (bitstuffing) {
+          m_ucBits = 7;
+        } else {
+          m_pIO->Put(0x00);    // stuff a zero byte
+          if (m_pChk)
+            m_pChk->Update(0x00);
+        }
       }
       m_ucB = 0;
     }
@@ -265,16 +290,16 @@ public:
       // m_ucBits = 0; // superfluous: We've now zero bits space left. 
       m_pIO->Put(m_ucB);
       if (m_pChk)
-	m_pChk->Update(m_ucB);
+        m_pChk->Update(m_ucB);
       m_ucBits = 8;
       if (m_ucB == 0xff) {  // byte stuffing case?
-	if (bitstuffing) {
-	  m_ucBits = 7;
-	} else {
-	  m_pIO->Put(0x00);    // stuff a zero byte
-	  if (m_pChk)
-	    m_pChk->Update(0x00);
-	}
+        if (bitstuffing) {
+          m_ucBits = 7;
+        } else {
+          m_pIO->Put(0x00);    // stuff a zero byte
+          if (m_pChk)
+            m_pChk->Update(0x00);
+        }
       }
       m_ucB = 0;
     }

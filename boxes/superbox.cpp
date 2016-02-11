@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This class provides the necessary mechanisms for superbox parsing.
 ** It describes a box that contains sub-boxes and parses the sub-boxes.
@@ -83,7 +108,7 @@ bool SuperBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
     if (lbox == 1) {
       LONG l1,l2,l3,l4;
       if (boxsize < 4 + 4 + 8)
-	JPG_THROW(MALFORMED_STREAM,"SuperBox::ParseBoxContent","found incomplete box header within a superbox");
+        JPG_THROW(MALFORMED_STREAM,"SuperBox::ParseBoxContent","found incomplete box header within a superbox");
       //
       // Read XLBox.
       l1 = stream->GetWord();
@@ -91,13 +116,13 @@ bool SuperBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
       l3 = stream->GetWord();
       l4 = stream->GetWord();
       if (l4 == ByteStream::EOF)
-	JPG_THROW(UNEXPECTED_EOF,"SuperBox::ParseBoxContent","run into an EOF while parsing a box header in a superbox");
+        JPG_THROW(UNEXPECTED_EOF,"SuperBox::ParseBoxContent","run into an EOF while parsing a box header in a superbox");
       //
       xlbox = (UQUAD(l1) << 48) | (UQUAD(l2) << 32) | (UQUAD(l3) << 16) | (UQUAD(l4) << 0);
       //
       // Check for consisteny. The xlbox size needs to include tbox,lbox and xlbox.
       if (xlbox < 4 + 4 + 8)
-	JPG_THROW(MALFORMED_STREAM,"SuperBox::ParseBoxContent","box size within super box is inconsistent and too short");
+        JPG_THROW(MALFORMED_STREAM,"SuperBox::ParseBoxContent","box size within super box is inconsistent and too short");
       overhead = 4 + 4 + 8;
     } else if (lbox == 0) {
       // This is actually not part of the standard. It could mean (and it does mean, in J2K) that the
@@ -115,7 +140,7 @@ bool SuperBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
     // Check whether there are enough bytes left for the body of this box.
     if (boxsize < xlbox)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::ParseBoxContent",
-		"incomplete super box, super box does not provide enough data for body of sub-box");
+                "incomplete super box, super box does not provide enough data for body of sub-box");
     //
     // Create a new sub-box of this box.
     box      = CreateBox(tbox);
@@ -125,14 +150,14 @@ bool SuperBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
       // Nobody interested in this box. Just skip the body bytes.
       xlbox   -= overhead;
       while(xlbox > 0) {
-	UWORD skip;
-	if (xlbox > MAX_UWORD) {
-	  skip = MAX_UWORD;
-	} else {
-	  skip = UWORD(xlbox);
-	}
-	stream->SkipBytes(skip);
-	xlbox -= skip;
+        UWORD skip;
+        if (xlbox > MAX_UWORD) {
+          skip = MAX_UWORD;
+        } else {
+          skip = UWORD(xlbox);
+        }
+        stream->SkipBytes(skip);
+        xlbox -= skip;
       }
       //
       //
@@ -143,19 +168,19 @@ bool SuperBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
       // Parse now the body of the box. It is complete by definition since the
       // superbox is complete.
       if (box->ParseBoxContent(stream,xlbox - overhead)) {
-	// Done. Reduce the number of available bytes.
-	boxsize -= xlbox;
-	// Inform the superbox that the box is now created.
-	AcknowledgeBox(box,tbox);
+        // Done. Reduce the number of available bytes.
+        boxsize -= xlbox;
+        // Inform the superbox that the box is now created.
+        AcknowledgeBox(box,tbox);
       } else if (xlbox - overhead <= MAX_ULONG) {
-	// Push this into the decoder stream of the box and
-	// let the box do its parsing when it feels like it.
-	box->InputStreamOf()->Append(stream,xlbox - overhead,0);
-	boxsize -= xlbox;
+        // Push this into the decoder stream of the box and
+        // let the box do its parsing when it feels like it.
+        box->InputStreamOf()->Append(stream,xlbox - overhead,0);
+        boxsize -= xlbox;
       } else {
-	// Input is too long. I don't want to buffer >4GB.
-	JPG_THROW(OVERFLOW_PARAMETER,"SuperBox::ParseBoxContent",
-		  "sub-box of a superbox is too long (>4GB) for buffering");
+        // Input is too long. I don't want to buffer >4GB.
+        JPG_THROW(OVERFLOW_PARAMETER,"SuperBox::ParseBoxContent",
+                  "sub-box of a superbox is too long (>4GB) for buffering");
       }
     }
     // Done with this box. Continue until all bytes done.

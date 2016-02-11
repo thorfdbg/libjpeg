@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** A random access IO stream that allows forwards and backwards
@@ -30,17 +55,17 @@ LONG RandomAccessStream::PeekWord(void)
       LastUnDo();
       // Ok, now check whether we can undo the first get as well.
       if (m_pucBufPtr>m_pucBuffer) {
-	// Yes, we can.
-	LastUnDo();
+        // Yes, we can.
+        LastUnDo();
       } else {
-	// Otherwise, we're in a mess. We allocated the buffer one
-	// byte larger than necessary, so we can move the buffer
-	// contents up by one byte and place the first byte at the
-	// beginning of the buffer. *Yuck*
-	memmove(m_pucBuffer+1,m_pucBuffer,m_pucBufEnd - m_pucBuffer);
-	m_pucBuffer[0] = (UBYTE) byte1;
-	m_pucBufEnd++;
-	m_uqCounter--;
+        // Otherwise, we're in a mess. We allocated the buffer one
+        // byte larger than necessary, so we can move the buffer
+        // contents up by one byte and place the first byte at the
+        // beginning of the buffer. *Yuck*
+        memmove(m_pucBuffer+1,m_pucBuffer,m_pucBufEnd - m_pucBuffer);
+        m_pucBuffer[0] = (UBYTE) byte1;
+        m_pucBufEnd++;
+        m_uqCounter--;
       }
       // Deliver the result.
       return ((byte1<<8) | byte2);

@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This class represents the quantization tables.
 **
@@ -168,11 +193,11 @@ void Quantization::WriteMarker(class ByteStream *io)
 
     if (m_pDelta[i]) {
       for(j = 0;j < 64;j++) {
-	if (m_pDelta[i][j] > 255) {
-	  types[i] = 1;
-	  len     += 64;
-	  break;
-	}
+        if (m_pDelta[i][j] > 255) {
+          types[i] = 1;
+          len     += 64;
+          break;
+        }
       }
       len += 64 + 1;
     }
@@ -183,13 +208,13 @@ void Quantization::WriteMarker(class ByteStream *io)
     if (m_pDelta[i]) {
       io->Put((types[i] << 4) | i);
       if (types[i]) {
-	for(j = 0;j < 64;j++) {
-	  io->PutWord(m_pDelta[i][DCT::ScanOrder[j]]);
-	}
+        for(j = 0;j < 64;j++) {
+          io->PutWord(m_pDelta[i][DCT::ScanOrder[j]]);
+        }
       } else {
-	for(j = 0;j < 64;j++) {
-	  io->Put(m_pDelta[i][DCT::ScanOrder[j]]);
-	}
+        for(j = 0;j < 64;j++) {
+          io->Put(m_pDelta[i][DCT::ScanOrder[j]]);
+        }
       }
     }
   }
@@ -211,10 +236,10 @@ void Quantization::WriteMarker(class ByteStream *io)
 // quantization table to use. CUSTOM is then a pointer to a custom
 // table if the table selector is custom.
 void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortrafo,
-				     bool addresidual,bool forresidual,bool rct,
-				     LONG tableselector,
-				     const LONG customluma[64],
-				     const LONG customchroma[64])
+                                     bool addresidual,bool forresidual,bool rct,
+                                     LONG tableselector,
+                                     const LONG customluma[64],
+                                     const LONG customchroma[64])
 {
   int i,j;
   const LONG *table       = NULL;
@@ -241,13 +266,13 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
     } else {
       int hdrq = hdrquality; //((hdrquality << 2) - hdrquality + quality) >> 2;
       if (hdrq == 0) {
-	hdrscale = MAX_UWORD;
+        hdrscale = MAX_UWORD;
       } else if (hdrq < 50) {
-	hdrscale = 5000 / hdrq;
+        hdrscale = 5000 / hdrq;
       } else if (hdrq <= 100) {
-	hdrscale = 200 - hdrq * 2;
+        hdrscale = 200 - hdrq * 2;
       } else {
-	hdrscale = 0;
+        hdrscale = 0;
       }
     }
   } else {
@@ -296,7 +321,7 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
   case JPGFLAG_QUANTIZATION_CUSTOM:
     if (customluma == NULL)
       JPG_THROW(MISSING_PARAMETER,"Quantization::InitDefaultTables",
-		"custom quantization has been specified, but the custom luma quantization matrix is not present");
+                "custom quantization has been specified, but the custom luma quantization matrix is not present");
     lumatable   = customluma;
     if (customchroma == NULL)
       chromatable = lumatable;
@@ -305,7 +330,7 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
     break;
   default:
     JPG_THROW(INVALID_PARAMETER,"Quantization::InitDefaultTables",
-	      "an invalid quantization matrix type has been specified");
+              "an invalid quantization matrix type has been specified");
     break;
   }
   
@@ -316,9 +341,9 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
       break;
     case 1:
       if (colortrafo) {
-	table = chromatable;
+        table = chromatable;
       } else {
-	table = NULL;
+        table = NULL;
       }
       break;
     default:
@@ -326,60 +351,60 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
     }
     if (table) {
       if (m_pDelta[i] == NULL)
-	m_pDelta[i] = (UWORD *)m_pEnviron->AllocMem(sizeof(UWORD) * 64);
+        m_pDelta[i] = (UWORD *)m_pEnviron->AllocMem(sizeof(UWORD) * 64);
       for(j = 0;j < 64;j++) {
-	LONG mult  = (i >= 2 || forresidual)?(hdrscale):(scale);
-	LONG delta = (table[j] * mult  + 50) / 100;
-	LONG lelta = (table[j] * scale + 50) / 100;
+        LONG mult  = (i >= 2 || forresidual)?(hdrscale):(scale);
+        LONG delta = (table[j] * mult  + 50) / 100;
+        LONG lelta = (table[j] * scale + 50) / 100;
 #if BETTER_QUANTIZATION
-	if ((j & 7) + (j >> 3) > 3) {
-	  delta = (table[j] * mult + 50) / 100;
-	} else if ((j & 7) + (j >> 3) > 2) {
-	  int sc = (mult > 400)?(400):mult;
-	  delta  = (table[j] * sc + 50) / 100;
-	} else if ((j & 7) + (j >> 3) >= 1) {
-	  int sc = (mult > 200)?(200):mult;
-	  delta  = (table[j] * sc + 50) / 100;
-	} else { 
-	  int sc = (mult > 100)?(100):mult;
-	  delta  = (table[j] * sc + 50) / 100;
-	}
+        if ((j & 7) + (j >> 3) > 3) {
+          delta = (table[j] * mult + 50) / 100;
+        } else if ((j & 7) + (j >> 3) > 2) {
+          int sc = (mult > 400)?(400):mult;
+          delta  = (table[j] * sc + 50) / 100;
+        } else if ((j & 7) + (j >> 3) >= 1) {
+          int sc = (mult > 200)?(200):mult;
+          delta  = (table[j] * sc + 50) / 100;
+        } else { 
+          int sc = (mult > 100)?(100):mult;
+          delta  = (table[j] * sc + 50) / 100;
+        }
 
-	if ((j & 7) + (j >> 3) > 3) {
-	  lelta = (table[j] * scale + 50) / 100;
-	} else if ((j & 7) + (j >> 3) > 2) {
-	  LONG sc = (scale > 400)?(400):scale;
-	  lelta  = (table[j] * sc + 50) / 100;
-	} else if ((j & 7) + (j >> 3) >= 1) {
-	  LONG sc = (scale > 200)?(200):scale;
-	  lelta  = (table[j] * sc + 50) / 100;
-	} else { 
-	  LONG sc = (scale > 100)?(100):scale;
-	  lelta  = (table[j] * sc + 50) / 100;
-	}
+        if ((j & 7) + (j >> 3) > 3) {
+          lelta = (table[j] * scale + 50) / 100;
+        } else if ((j & 7) + (j >> 3) > 2) {
+          LONG sc = (scale > 400)?(400):scale;
+          lelta  = (table[j] * sc + 50) / 100;
+        } else if ((j & 7) + (j >> 3) >= 1) {
+          LONG sc = (scale > 200)?(200):scale;
+          lelta  = (table[j] * sc + 50) / 100;
+        } else { 
+          LONG sc = (scale > 100)?(100):scale;
+          lelta  = (table[j] * sc + 50) / 100;
+        }
 #endif
-	// Quantize at least as fine as the base layer,
-	// otherwise no reasonable residual can be expected.
-	if (false && forresidual && delta > lelta && delta > 0)
-	  delta = lelta;
-	if (delta <= 0) 
-	  delta = 1;
-	if (delta > 32767)
-	  delta = 32767;
-	if (rct && (forresidual && i == 1) && delta > 1) {
-	  // The range of the chroma components was extended by one extra bit.
-	  delta <<= 1;
-	}
-	if (rct && (forresidual && i == 0)) {
-	  // Luma is also extended by one bit, can even be stripped off for lossless.
-	  delta <<= 1;
-	}
-	m_pDelta[i][j] = delta;
+        // Quantize at least as fine as the base layer,
+        // otherwise no reasonable residual can be expected.
+        if (false && forresidual && delta > lelta && delta > 0)
+          delta = lelta;
+        if (delta <= 0) 
+          delta = 1;
+        if (delta > 32767)
+          delta = 32767;
+        if (rct && (forresidual && i == 1) && delta > 1) {
+          // The range of the chroma components was extended by one extra bit.
+          delta <<= 1;
+        }
+        if (rct && (forresidual && i == 0)) {
+          // Luma is also extended by one bit, can even be stripped off for lossless.
+          delta <<= 1;
+        }
+        m_pDelta[i][j] = delta;
       }
     } else {
       if (m_pDelta[i]) {
-	m_pEnviron->FreeMem(m_pDelta[i],sizeof(UWORD) * 64);
-	m_pDelta[i] = NULL;
+        m_pEnviron->FreeMem(m_pDelta[i],sizeof(UWORD) * 64);
+        m_pDelta[i] = NULL;
       }
     }
   }
@@ -422,26 +447,26 @@ void Quantization::ParseMarker(class ByteStream *io)
     if (type == 0) {
       // UBYTE entries.
       if (len < 64)
-	JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker contains insufficient data");
+        JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker contains insufficient data");
       //
       for(i = 0;i < 64;i++) {
-	LONG data = io->Get();
-	if (data == ByteStream::EOF)
-	  JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker run out of data");
-	m_pDelta[target][DCT::ScanOrder[i]] = data;
+        LONG data = io->Get();
+        if (data == ByteStream::EOF)
+          JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker run out of data");
+        m_pDelta[target][DCT::ScanOrder[i]] = data;
       }
       len -= 64;
     } else {
       assert(type == 1);
       
       if (len < 64 * 2)
-	JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker contains insufficient data");
+        JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker contains insufficient data");
       //
       for(i = 0;i < 64;i++) {
-	LONG data = io->GetWord();
-	if (data == ByteStream::EOF)
-	  JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker run out of data");
-	m_pDelta[target][DCT::ScanOrder[i]] = data;
+        LONG data = io->GetWord();
+        if (data == ByteStream::EOF)
+          JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker run out of data");
+        m_pDelta[target][DCT::ScanOrder[i]] = data;
       }
       len -= 64 * 2;
     }

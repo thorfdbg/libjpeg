@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class pulls blocks from the frame and reconstructs from those
@@ -120,7 +145,7 @@ class BlockBitmapRequester : public BlockBuffer, public BitmapCtrl {
   //
   // Reconstruct a region not using any subsampling.
   void ReconstructUnsampled(const struct RectangleRequest *rr,const RectAngle<LONG> &region,
-			    ULONG maxmcu,class ColorTrafo *ctrafo);
+                            ULONG maxmcu,class ColorTrafo *ctrafo);
   //
   // Pull the quantized data into the upsampler if there is one.
   void PullQData(const struct RectangleRequest *rr,const RectAngle<LONG> &region);
@@ -131,7 +156,7 @@ class BlockBitmapRequester : public BlockBuffer, public BitmapCtrl {
   //
   // Generate the final output of the reconstructed data.
   void PushReconstructedData(const struct RectangleRequest *rr,const RectAngle<LONG> &region,
-			     ULONG maxmcu,class ColorTrafo *ctrafo);
+                             ULONG maxmcu,class ColorTrafo *ctrafo);
   //
 public:
   //
@@ -166,7 +191,7 @@ public:
   //
   // Pull data buffers from the user data bitmap hook
   virtual void RequestUserDataForDecoding(class BitMapHook *bmh,RectAngle<LONG> &region,
-					  const struct RectangleRequest *rr,bool alpha); 
+                                          const struct RectangleRequest *rr,bool alpha); 
   //
   // Encode a region, push it into the internal buffers and
   // prepare everything for coding.

@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class represents a single frame and the frame dimensions.
@@ -134,7 +159,7 @@ class Frame : public JKeeper {
   // up over several components. A progressive scan cannot contain more
   // than one component if it includes AC parameters.
   void CreateProgressiveScanParameters(bool breakup,ULONG tagoffset,const struct JPG_TagItem *tags,
-				       const struct JPG_TagItem *scantags);
+                                       const struct JPG_TagItem *scantags);
   //
 public:
   // This requires a type identifier.
@@ -217,10 +242,10 @@ public:
   // tagoffset is an offset added to the tags - used to read from the residual scan types
   // rather the regular ones if this is a residual frame.
   class Scan *InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,UBYTE precision,
-				       bool writednl,
-				       const UBYTE *subx,const UBYTE *suby,
-				       ULONG tagoffset,
-				       const struct JPG_TagItem *tags);
+                                       bool writednl,
+                                       const UBYTE *subx,const UBYTE *suby,
+                                       ULONG tagoffset,
+                                       const struct JPG_TagItem *tags);
   //
   // Start parsing a single scan. Could also create a checksum
   // in case the APP markers come late.

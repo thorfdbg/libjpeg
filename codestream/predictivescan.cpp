@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This is the base class for all predictive scan types, it provides the
@@ -63,9 +88,9 @@ void PredictiveScan::FindComponentDimensions(void)
 
   if (m_pPredictors[0] == NULL) {
     PredictorBase::CreatePredictorChain(m_pEnviron,m_pPredictors,
-					(m_bDifferential)?(PredictorBase::None):
-					(PredictorBase::PredictionMode(m_ucPredictor)),
-					FractionalColorBitsOf() + m_ucLowBit,(1L << m_pFrame->PrecisionOf()) >> 1);
+                                        (m_bDifferential)?(PredictorBase::None):
+                                        (PredictorBase::PredictionMode(m_ucPredictor)),
+                                        FractionalColorBitsOf() + m_ucLowBit,(1L << m_pFrame->PrecisionOf()) >> 1);
   }
 
   for(i = 0;i < m_ucCount;i++) {
@@ -107,11 +132,11 @@ void PredictiveScan::ClearMCU(struct Line **top)
       LONG *p = line->m_pData;
       LONG *e = line->m_pData + m_ulWidth[i];
       do {
-	*p = neutral;
+        *p = neutral;
       } while(++p < e);
 
       if (line->m_pNext)
-	line = line->m_pNext;
+        line = line->m_pNext;
     } while(--ym);
   }
 #else
@@ -132,7 +157,7 @@ void PredictiveScan::FlushOnMarker(void)
   for(i = 0;i < m_ucCount;i++) {
     if (m_ulX[i]) {
       JPG_WARN(MALFORMED_STREAM,"LosslessScan::Flush",
-	       "found restart marker in the middle of the line, expect corrupt results");
+               "found restart marker in the middle of the line, expect corrupt results");
       break;
     }
     // Restart prediction from top-left.
@@ -155,7 +180,7 @@ void PredictiveScan::RestartOnMarker(void)
   for(i = 0;i < m_ucCount;i++) {
     if (m_ulX[i]) {
       JPG_WARN(MALFORMED_STREAM,"LosslessScan::Restart",
-	       "found restart marker in the middle of the line, expect corrupt results");
+               "found restart marker in the middle of the line, expect corrupt results");
       break;
     }
     // Restart prediction from top-left.

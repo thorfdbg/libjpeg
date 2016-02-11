@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class represents a single frame and the frame dimensions.
@@ -185,7 +210,7 @@ void Frame::ComputeMCUSizes(void)
     maxy = m_ppComponent[i]->SubYOf() * maxy / gcd(m_ppComponent[i]->SubYOf(),maxy);
     if (maxx > MAX_UBYTE || maxy > MAX_UBYTE)
       JPG_THROW(OVERFLOW_PARAMETER,"Frame::ComputeMCUSizes",
-		"the smallest common multiple of all subsampling factors must be smaller than 255");
+                "the smallest common multiple of all subsampling factors must be smaller than 255");
   }
   
   m_ucMaxMCUWidth  = maxx;
@@ -199,9 +224,9 @@ void Frame::ComputeMCUSizes(void)
   // then JPEG cannot support this subsampling setting. Wierd.
   for(i = 0;i < m_ucDepth;i++) {
     if (m_ppComponent[i]->SubXOf() != m_ucMaxMCUWidth  / m_ppComponent[i]->MCUWidthOf() ||
-	m_ppComponent[i]->SubYOf() != m_ucMaxMCUHeight / m_ppComponent[i]->MCUHeightOf())
+        m_ppComponent[i]->SubYOf() != m_ucMaxMCUHeight / m_ppComponent[i]->MCUHeightOf())
       JPG_THROW(INVALID_PARAMETER,"Frame::ComputeMCUSizes",
-		"the given set of subsampling parameters is not supported by JPEG");
+                "the given set of subsampling parameters is not supported by JPEG");
   }
 }
 ///
@@ -239,7 +264,7 @@ void Frame::WriteMarker(class ByteStream *io)
 // Write the scan trailer of this frame. This is only the
 // DNL marker if it is enabled.
 void Frame::WriteTrailer(class ByteStream *io)
-{	
+{       
   assert(m_pCurrent);
 
   //
@@ -292,15 +317,15 @@ class Component *Frame::DefineComponent(UBYTE idx,UBYTE subx,UBYTE suby)
 {
   if (m_ucDepth == 0)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::DefineComponent",
-	      "Frame depth must be specified first before defining the component properties");
+              "Frame depth must be specified first before defining the component properties");
 
   if (m_ucPrecision == 0)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::DefineComponent",
-	      "Frame precision must be specified first before defining the component properties");
+              "Frame precision must be specified first before defining the component properties");
 
   if (idx >= m_ucDepth)
     JPG_THROW(OVERFLOW_PARAMETER,"Frame::DefineComponent",
-	      "component index is out of range, must be between 0 and depth-1");
+              "component index is out of range, must be between 0 and depth-1");
   
   if (m_ppComponent == NULL) {
     m_ppComponent = (class Component **)m_pEnviron->AllocMem(sizeof(class Component *) * m_ucDepth);
@@ -309,7 +334,7 @@ class Component *Frame::DefineComponent(UBYTE idx,UBYTE subx,UBYTE suby)
 
   if (m_ppComponent[idx])
     JPG_THROW(OBJECT_EXISTS,"Frame::DefineComponent",
-	      "the indicated component is already defined");
+              "the indicated component is already defined");
 
   m_ppComponent[idx] = new(m_pEnviron) Component(m_pEnviron,idx,m_ucPrecision,subx,suby);
 
@@ -389,7 +414,7 @@ void Frame::CreateSequentialScanParameters(bool breakup,ULONG tagoffset,const st
 // up over several components. A progressive scan cannot contain more
 // than one component if it includes AC parameters.
 void Frame::CreateProgressiveScanParameters(bool breakup,ULONG tagoffset,const struct JPG_TagItem *,
-					    const struct JPG_TagItem *scantags)
+                                            const struct JPG_TagItem *scantags)
 {  
   UBYTE i;
   
@@ -401,83 +426,83 @@ void Frame::CreateProgressiveScanParameters(bool breakup,ULONG tagoffset,const s
     if (m_ucDepth > 1) {
       // Need to break up the scan into several scans if AC components are included.
       if (breakup) {
-	struct JPG_TagItem ctags[] = {
-	  JPG_ValueTag(JPGTAG_SCAN_COMPONENT0 + tagoffset,0),
-	  JPG_Continue(scantags)
-	};
-	for(i = 1; i < m_ucDepth;i++) {
-	  class Scan *scan = new(m_pEnviron) class Scan(this);
-	  if (m_pScan == NULL) {
-	    m_pScan = scan;
-	  } else {
-	    m_pLast->TagOn(scan);
-	  }
-	  m_pLast = scan;
-	  ctags[0].ti_Data.ti_lData = i;
-	  scan->InstallDefaults(1,tagoffset,ctags);
-	}
+        struct JPG_TagItem ctags[] = {
+          JPG_ValueTag(JPGTAG_SCAN_COMPONENT0 + tagoffset,0),
+          JPG_Continue(scantags)
+        };
+        for(i = 1; i < m_ucDepth;i++) {
+          class Scan *scan = new(m_pEnviron) class Scan(this);
+          if (m_pScan == NULL) {
+            m_pScan = scan;
+          } else {
+            m_pLast->TagOn(scan);
+          }
+          m_pLast = scan;
+          ctags[0].ti_Data.ti_lData = i;
+          scan->InstallDefaults(1,tagoffset,ctags);
+        }
       } else {
-	struct JPG_TagItem ctags[] = {
-	  JPG_ValueTag((m_ucDepth > 1)?(JPGTAG_SCAN_COMPONENT0 + tagoffset):JPGTAG_TAG_IGNORE,1),
-	  JPG_ValueTag((m_ucDepth > 2)?(JPGTAG_SCAN_COMPONENT1 + tagoffset):JPGTAG_TAG_IGNORE,2),
-	  JPG_ValueTag((m_ucDepth > 3)?(JPGTAG_SCAN_COMPONENT2 + tagoffset):JPGTAG_TAG_IGNORE,3),
-	  JPG_Continue(scantags)
-	};
-	class Scan *scan = new(m_pEnviron) class Scan(this);
-	if (m_pScan == NULL) {
-	  m_pScan = scan;
-	} else {
-	  m_pLast->TagOn(scan);
-	}
-	m_pLast = scan;
-	scan->InstallDefaults(m_ucDepth - 1,tagoffset,ctags);
+        struct JPG_TagItem ctags[] = {
+          JPG_ValueTag((m_ucDepth > 1)?(JPGTAG_SCAN_COMPONENT0 + tagoffset):JPGTAG_TAG_IGNORE,1),
+          JPG_ValueTag((m_ucDepth > 2)?(JPGTAG_SCAN_COMPONENT1 + tagoffset):JPGTAG_TAG_IGNORE,2),
+          JPG_ValueTag((m_ucDepth > 3)?(JPGTAG_SCAN_COMPONENT2 + tagoffset):JPGTAG_TAG_IGNORE,3),
+          JPG_Continue(scantags)
+        };
+        class Scan *scan = new(m_pEnviron) class Scan(this);
+        if (m_pScan == NULL) {
+          m_pScan = scan;
+        } else {
+          m_pLast->TagOn(scan);
+        }
+        m_pLast = scan;
+        scan->InstallDefaults(m_ucDepth - 1,tagoffset,ctags);
       }
     } // Nothing to do if chroma channels are not present.
   } else {
     // The "chroma" magic is not used.
     UBYTE create,depth = 0;
     if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + tagoffset) || 
-	scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0)) depth++;
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0)) depth++;
     if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT1 + tagoffset) ||
-	scantags->FindTagItem(JPGTAG_SCAN_COMPONENT1)) depth++;
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT1)) depth++;
     if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT2 + tagoffset) ||
-	scantags->FindTagItem(JPGTAG_SCAN_COMPONENT2)) depth++;
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT2)) depth++;
     if (scantags->FindTagItem(JPGTAG_SCAN_COMPONENT3 + tagoffset) ||
-	scantags->FindTagItem(JPGTAG_SCAN_COMPONENT3)) depth++;
+        scantags->FindTagItem(JPGTAG_SCAN_COMPONENT3)) depth++;
     //
     // The number of scans to create.
     create = (depth == 0)?(m_ucDepth):(depth);
     // Break up the scans?
     if (breakup) {
       struct JPG_TagItem ctags[] = {
-	JPG_ValueTag(JPGTAG_SCAN_COMPONENT0 + tagoffset,0),
-	JPG_ValueTag(JPGTAG_SCAN_COMPONENT1 + tagoffset,0),
-	JPG_ValueTag(JPGTAG_SCAN_COMPONENT2 + tagoffset,0),
-	JPG_ValueTag(JPGTAG_SCAN_COMPONENT3 + tagoffset,0),
-	JPG_Continue(scantags)
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT0 + tagoffset,0),
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT1 + tagoffset,0),
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT2 + tagoffset,0),
+        JPG_ValueTag(JPGTAG_SCAN_COMPONENT3 + tagoffset,0),
+        JPG_Continue(scantags)
       };
       for(i = 0;i < create;i++) {
-	const struct JPG_TagItem *comp = scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + i + tagoffset);
-	if (comp == NULL) 
-	  comp = scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + i);
-	if (depth == 0 || comp) {
-	  ctags[0].ti_Data.ti_lData = (comp)?(comp->ti_Data.ti_lData):(i);
-	  class Scan *scan = new(m_pEnviron) class Scan(this);
-	  if (m_pScan == NULL) {
-	    m_pScan = scan;
-	  } else {
-	    m_pLast->TagOn(scan);
-	  }
-	  m_pLast = scan;
-	  scan->InstallDefaults(1,tagoffset,ctags);
-	}
+        const struct JPG_TagItem *comp = scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + i + tagoffset);
+        if (comp == NULL) 
+          comp = scantags->FindTagItem(JPGTAG_SCAN_COMPONENT0 + i);
+        if (depth == 0 || comp) {
+          ctags[0].ti_Data.ti_lData = (comp)?(comp->ti_Data.ti_lData):(i);
+          class Scan *scan = new(m_pEnviron) class Scan(this);
+          if (m_pScan == NULL) {
+            m_pScan = scan;
+          } else {
+            m_pLast->TagOn(scan);
+          }
+          m_pLast = scan;
+          scan->InstallDefaults(1,tagoffset,ctags);
+        }
       }
     } else {
       class Scan *scan = new(m_pEnviron) class Scan(this);
       if (m_pScan == NULL) {
-	m_pScan = scan;
+        m_pScan = scan;
       } else {
-	m_pLast->TagOn(scan);
+        m_pLast->TagOn(scan);
       }
       m_pLast = scan;
       scan->InstallDefaults(m_ucDepth,tagoffset,scantags);
@@ -491,9 +516,9 @@ void Frame::CreateProgressiveScanParameters(bool breakup,ULONG tagoffset,const s
 // tagoffset is an offset added to the tags - used to read from the residual scan types
 // rather the regular ones if this is a residual frame.
 class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,UBYTE prec,
-					    bool writednl,const UBYTE *psubx,const UBYTE *psuby,
-					    ULONG tagoffset,
-					    const struct JPG_TagItem *tags)
+                                            bool writednl,const UBYTE *psubx,const UBYTE *psuby,
+                                            ULONG tagoffset,
+                                            const struct JPG_TagItem *tags)
 {
   UBYTE i;
   bool breakup;
@@ -522,7 +547,7 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
   case Baseline: 
     if (m_ucPrecision != 8)
       JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters",
-		"image precision for baseline scan must be 8");
+                "image precision for baseline scan must be 8");
     break;
   case Sequential:
   case Progressive:
@@ -535,7 +560,7 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     //
     if (m_ucPrecision != 8 && m_ucPrecision != 12)
       JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters",
-		"image precision must be 8 or 12");
+                "image precision must be 8 or 12");
     break;
   case Residual:
   case ACResidual:
@@ -550,7 +575,7 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     }
     if (m_ucPrecision < 2 || m_ucPrecision > 17)
       JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultScanParameters",
-		"image precision for residual coding must be between 2 and 17");
+                "image precision for residual coding must be between 2 and 17");
     break;
   default: // lossless, residual.
     if (m_ucPrecision < 2 || m_ucPrecision > 16)
@@ -594,17 +619,17 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
   case ACDifferentialProgressive:
     if (m_ucDepth > 4)
       JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultParameters",
-		"progressive mode allows only up to four components");
+                "progressive mode allows only up to four components");
     //
     while(tags && (tags = tags->FindTagItem(JPGTAG_IMAGE_SCAN + tagoffset))) {
       const struct JPG_TagItem *scantags = (struct JPG_TagItem *)(tags->ti_Data.ti_pPtr);
       if (scantags) {
-	LONG sstart  = scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START);
-	sstart = scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START + tagoffset,sstart);
-	//
-	// If there are AC frequencies included, break up the scans.
-	breakup = (sstart > 0)?true:false;
-	CreateProgressiveScanParameters(breakup,tagoffset,tags,scantags);
+        LONG sstart  = scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START);
+        sstart = scantags->GetTagData(JPGTAG_SCAN_SPECTRUM_START + tagoffset,sstart);
+        //
+        // If there are AC frequencies included, break up the scans.
+        breakup = (sstart > 0)?true:false;
+        CreateProgressiveScanParameters(breakup,tagoffset,tags,scantags);
       }
       tags = tags->NextTagItem();
     }
@@ -624,16 +649,16 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     //
     if (m_pTables->UseResiduals()) { 
       if (m_ucDepth > 4)
-	JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultParameters",
-		  "progressive mode allows only up to four components");
+        JPG_THROW(OVERFLOW_PARAMETER,"Frame::InstallDefaultParameters",
+                  "progressive mode allows only up to four components");
       //
       while(tags && (tags = tags->FindTagItem(JPGTAG_IMAGE_SCAN + tagoffset))) {
-	const struct JPG_TagItem *scantags = (struct JPG_TagItem *)(tags->ti_Data.ti_pPtr);
-	if (scantags) {
-	  // Must always break up the scan.
-	  CreateProgressiveScanParameters(true,tagoffset,tags,scantags);
-	}
-	tags = tags->NextTagItem();
+        const struct JPG_TagItem *scantags = (struct JPG_TagItem *)(tags->ti_Data.ti_pPtr);
+        if (scantags) {
+          // Must always break up the scan.
+          CreateProgressiveScanParameters(true,tagoffset,tags,scantags);
+        }
+        tags = tags->NextTagItem();
       }
     }
     break;
@@ -642,8 +667,8 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     breakup = false;
     if (m_Type == JPEG_LS) {
       if (tags->GetTagData(JPGTAG_SCAN_LS_INTERLEAVING,JPGFLAG_SCAN_LS_INTERLEAVING_NONE) == 
-	  JPGFLAG_SCAN_LS_INTERLEAVING_NONE)
-	breakup = true;
+          JPGFLAG_SCAN_LS_INTERLEAVING_NONE)
+        breakup = true;
     }
     CreateSequentialScanParameters(breakup,tagoffset,tags);
   }
@@ -655,7 +680,7 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     case ACLossless:
     case JPEG_LS:
       JPG_THROW(INVALID_PARAMETER,"Frame::InstallDefaultScanParameters",
-		"the lossless scans do not support hidden refinement scans");
+                "the lossless scans do not support hidden refinement scans");
       break;
     case DifferentialSequential:
     case DifferentialProgressive:
@@ -666,7 +691,7 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
       // Hmm. At this time, simply disallow. There is probably a way how to fit this into
       // the highest hierarchical level, but not now.
       JPG_THROW(NOT_IMPLEMENTED,"Frame::InstallDefaultScanParameters",
-		"the hierarchical mode does not yet allow hidden refinement coding");
+                "the hierarchical mode does not yet allow hidden refinement coding");
       break;
     case Residual:
     case ACResidual:
@@ -674,43 +699,43 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
     case ACResidualProgressive:
       // Create hidden refinement scans for residual scans.
       {
-	UBYTE hiddenbits;
-	UBYTE totalhidden = m_pTables->HiddenDCTBitsOf();
-	UBYTE component;
-	class Scan *scan;
-	for(hiddenbits = 0;hiddenbits < totalhidden;hiddenbits++) {
-	  component = m_ucDepth;
-	  do {
-	    component--;
-	    scan = new(m_pEnviron) class Scan(this);
-	    scan->TagOn(m_pScan);
-	    m_pScan = scan; // The AC part
-	    scan->MakeHiddenRefinementScan(hiddenbits,ComponentOf(component),0,63);
-	  } while(component);
-	}
+        UBYTE hiddenbits;
+        UBYTE totalhidden = m_pTables->HiddenDCTBitsOf();
+        UBYTE component;
+        class Scan *scan;
+        for(hiddenbits = 0;hiddenbits < totalhidden;hiddenbits++) {
+          component = m_ucDepth;
+          do {
+            component--;
+            scan = new(m_pEnviron) class Scan(this);
+            scan->TagOn(m_pScan);
+            m_pScan = scan; // The AC part
+            scan->MakeHiddenRefinementScan(hiddenbits,ComponentOf(component),0,63);
+          } while(component);
+        }
       }
       break;
     default:
       // Create hidden refinement scans for regular scans: Separate DC scans are required here.
       {
-	UBYTE hiddenbits;
-	UBYTE totalhidden = m_pTables->HiddenDCTBitsOf();
-	UBYTE component;
-	class Scan *scan;
-	for(hiddenbits = 0;hiddenbits < totalhidden;hiddenbits++) {
-	  component = m_ucDepth;
-	  do {
-	    component--;
-	    scan = new(m_pEnviron) class Scan(this);
-	    scan->TagOn(m_pScan);
-	    m_pScan = scan; // The AC part
-	    scan->MakeHiddenRefinementScan(hiddenbits,ComponentOf(component),1,63);
-	  } while(component);
-	  scan = new(m_pEnviron) class Scan(this);
-	  scan->TagOn(m_pScan);
-	  m_pScan = scan; // The DC part
-	  scan->MakeHiddenRefinementScan(hiddenbits,NULL,0,0);
-	}
+        UBYTE hiddenbits;
+        UBYTE totalhidden = m_pTables->HiddenDCTBitsOf();
+        UBYTE component;
+        class Scan *scan;
+        for(hiddenbits = 0;hiddenbits < totalhidden;hiddenbits++) {
+          component = m_ucDepth;
+          do {
+            component--;
+            scan = new(m_pEnviron) class Scan(this);
+            scan->TagOn(m_pScan);
+            m_pScan = scan; // The AC part
+            scan->MakeHiddenRefinementScan(hiddenbits,ComponentOf(component),1,63);
+          } while(component);
+          scan = new(m_pEnviron) class Scan(this);
+          scan->TagOn(m_pScan);
+          m_pScan = scan; // The DC part
+          scan->MakeHiddenRefinementScan(hiddenbits,NULL,0,0);
+        }
       }
       break;
     }
@@ -727,7 +752,7 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
 
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartParseScan",
-	      "frame is currently not available for parsing");
+              "frame is currently not available for parsing");
 
   scan = new(m_pEnviron) class Scan(this);
 
@@ -772,14 +797,14 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
       // call.
       m_pAdapter = new(m_pEnviron) class ChecksumAdapter(io,chk,false);
       if (ScanForScanHeader(m_pAdapter)) {
-	scan->ParseMarker(m_pAdapter);
-	scan->StartParseScan(m_pAdapter,chk,m_pImage);
-	return scan;
+        scan->ParseMarker(m_pAdapter);
+        scan->StartParseScan(m_pAdapter,chk,m_pImage);
+        return scan;
       }
     } else {
       if (ScanForScanHeader(io)) {
-	scan->ParseMarker(io);
-	scan->StartParseScan(io,chk,m_pImage);
+        scan->ParseMarker(io);
+        scan->StartParseScan(io,chk,m_pImage);
       }
       return scan;
     }
@@ -805,17 +830,17 @@ bool Frame::ScanForScanHeader(class ByteStream *stream)
     do {
       stream->LastUnDo();
       do {
-	data = stream->Get();
+        data = stream->Get();
       } while(data != 0xff && data != ByteStream::EOF);
       //
       if (data == ByteStream::EOF)
-	break; // Try from the main stream
+        break; // Try from the main stream
       stream->LastUnDo();
       //
       // If this is SOS, we recovered. Maybe.
       data = stream->GetWord();
       if (data == ByteStream::EOF)
-	break;
+        break;
       // Check for the proper marker.
     } while(data != 0xffda);
   }
@@ -830,10 +855,10 @@ class Scan *Frame::StartWriteScan(class ByteStream *io,class Checksum *chk)
 {
   if (m_pCurrent == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartWriteScan",
-	      "scan parameters have not been defined yet"); 
+              "scan parameters have not been defined yet"); 
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartWriteScan",
-	      "frame is currently not available for measurements");
+              "frame is currently not available for measurements");
   //
   // Create a compatible image buffer and put it into BitmapCtrl,
   // or re-use it.
@@ -868,10 +893,10 @@ class Scan *Frame::StartMeasureScan(void)
 {
   if (m_pCurrent == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartMeasureScan",
-	      "scan parameters have not been defined yet");
+              "scan parameters have not been defined yet");
   if (m_pImage == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartMeasureScan",
-	      "frame is currently not available for measurements");
+              "frame is currently not available for measurements");
   // 
   // Create a compatible image buffer and put it into BitmapCtrl,
   // or re-use it.
@@ -929,7 +954,7 @@ void Frame::WriteFrameType(class ByteStream *io) const
 {
   if (m_pScan == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::WriteFrameType",
-	      "frame parameters have not yet been installed, cannot write frame type");
+              "frame parameters have not yet been installed, cannot write frame type");
 
   m_pScan->WriteFrameType(io);
 }
@@ -966,11 +991,11 @@ bool Frame::ParseTrailer(class ByteStream *io)
     case 0xfff7: // JPEG LS SOS
       // All non-differential frames, may not appear in a hierarchical process.
       JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-	       "found a non-differential frame start behind the initial frame");
+               "found a non-differential frame start behind the initial frame");
       return false;
     case 0xffde: // DHP, should not go here.
       JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-	       "found a double DHP marker behind a frame start");
+               "found a double DHP marker behind a frame start");
       return false;
     case 0xffc5:
     case 0xffc6:
@@ -980,18 +1005,18 @@ bool Frame::ParseTrailer(class ByteStream *io)
     case 0xffcf:
       // All differential types, may only appear in a differential frame.
       if (!m_pParent->isHierarchical())
-	JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-		 "found a differential frame start outside a hierarchical process");
+        JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
+                 "found a differential frame start outside a hierarchical process");
       return false;
     case 0xffda: // This is an SOS marker, i.e. the frame does not end here.
       return true;
     case 0xffd9: // The EOI still needs to be seen by the image.
       // Once we run into the EOI, check for the refinement scans.
       if ((box = m_pTables->RefinementDataOf(m_usRefinementCount)) && !m_bCreatedRefinement) {
-	assert(m_pImage);
-	// This must be the start of a new scan. No filler bytes allowed here.
-	m_bBuildRefinement = true;
-	return true;
+        assert(m_pImage);
+        // This must be the start of a new scan. No filler bytes allowed here.
+        m_bBuildRefinement = true;
+        return true;
       } 
       // No refinement scans, or refinement scans done:
       // We're done here.
@@ -1013,37 +1038,37 @@ bool Frame::ParseTrailer(class ByteStream *io)
       break;
     case ByteStream::EOF:
       JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-	       "missing an EOI marker at the end of the stream");
+               "missing an EOI marker at the end of the stream");
       return false;
     default:
       if (marker < 0xff00) {
-	JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
-		 "expecting a marker or marker segment - stream is out of sync");
-	// Advance to the next marker and see how it goes from there...
-	io->Get(); // Remove the invalid thing.
-	do {
-	  marker = io->Get();
-	} while(marker != 0xff && marker != ByteStream::EOF);
-	//
-	if (marker == ByteStream::EOF) {
-	  JPG_WARN(UNEXPECTED_EOF,"Frame::ParseTrailer",
-		   "run into an EOF while scanning for the next marker");
-	  return false;
-	}
-	io->LastUnDo();
-	// Continue parsing, check what the next marker might be.
+        JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
+                 "expecting a marker or marker segment - stream is out of sync");
+        // Advance to the next marker and see how it goes from there...
+        io->Get(); // Remove the invalid thing.
+        do {
+          marker = io->Get();
+        } while(marker != 0xff && marker != ByteStream::EOF);
+        //
+        if (marker == ByteStream::EOF) {
+          JPG_WARN(UNEXPECTED_EOF,"Frame::ParseTrailer",
+                   "run into an EOF while scanning for the next marker");
+          return false;
+        }
+        io->LastUnDo();
+        // Continue parsing, check what the next marker might be.
       } else {
-	// Something that looks like a valid marker. This could be the
-	// tables/misc section of the next frame or next scan, depending
-	// on whether we are hierarchical (next frame) or progressive (next scan).
-	// Unfortunately, what is what we only know after having received either
-	// the SOS marker (next scan) or an SOF marker (next frame).
-	// Thus, at this time, parse of the tables, place its data in the
-	// global table namespace, overriding what was there, then
-	// continue parsing here until we know what we have.
-	assert(m_pTables);
-	// This might include EXP if we are hierarchical.
-	m_pTables->ParseTables(io,NULL,m_pParent->isHierarchical());
+        // Something that looks like a valid marker. This could be the
+        // tables/misc section of the next frame or next scan, depending
+        // on whether we are hierarchical (next frame) or progressive (next scan).
+        // Unfortunately, what is what we only know after having received either
+        // the SOS marker (next scan) or an SOF marker (next frame).
+        // Thus, at this time, parse of the tables, place its data in the
+        // global table namespace, overriding what was there, then
+        // continue parsing here until we know what we have.
+        assert(m_pTables);
+        // This might include EXP if we are hierarchical.
+        m_pTables->ParseTables(io,NULL,m_pParent->isHierarchical());
       }
     }
   } while(true);
@@ -1101,8 +1126,8 @@ void Frame::ExtendImageBuffer(class BufferCtrl *img,class Frame *residual)
     if (m_pBlockHelper == NULL) {
       class BlockBitmapRequester *bb = dynamic_cast<class BlockBitmapRequester *>(img);
       if (bb && m_pTables->ResidualDataOf()) {
-	m_pBlockHelper  = new(m_pEnviron) class ResidualBlockHelper(this,residual);
-	bb->SetBlockHelper(m_pBlockHelper);
+        m_pBlockHelper  = new(m_pEnviron) class ResidualBlockHelper(this,residual);
+        bb->SetBlockHelper(m_pBlockHelper);
       }
     }
     break;
@@ -1110,7 +1135,7 @@ void Frame::ExtendImageBuffer(class BufferCtrl *img,class Frame *residual)
   case ACLossless:
   case JPEG_LS:
     JPG_THROW(MALFORMED_STREAM,"Frame::ExtendImage",
-	      "Lossless codestreams cannot be extended by a residual stream");
+              "Lossless codestreams cannot be extended by a residual stream");
     break;
   case Residual:
   case ACResidual:  
@@ -1119,11 +1144,11 @@ void Frame::ExtendImageBuffer(class BufferCtrl *img,class Frame *residual)
   case ResidualDCT:
   case ACResidualDCT:
     JPG_THROW(MALFORMED_STREAM,"Frame::ExtendImage",
-	      "Residual scans cannot be extended by residuals itself");
+              "Residual scans cannot be extended by residuals itself");
     break;
   default: 
     JPG_THROW(MALFORMED_STREAM,"Frame::ExtendImage",
-	      "Hierarchical codestreams cannot be extended a residual stream");
+              "Hierarchical codestreams cannot be extended a residual stream");
     break;
   }
 }
@@ -1175,10 +1200,10 @@ void Frame::PostImageHeight(ULONG height)
     m_pImage->PostImageHeight(height);
   } else if (m_ulHeight == height) {
     JPG_WARN(MALFORMED_STREAM,"Frame::PostImageHeight",
-	     "found a double DNL marker for a frame, frame size is known already");
+             "found a double DNL marker for a frame, frame size is known already");
   } else {
     JPG_THROW(MALFORMED_STREAM,"Frame::PostImageHeight",
-	      "found a double DNL marker for a frame, indicating an inconsistent frame height");
+              "found a double DNL marker for a frame, indicating an inconsistent frame height");
   }
 }
 ///

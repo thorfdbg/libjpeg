@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This class allows to read individual bits from a stream of bytes.
 ** This class implements the bytestuffing as required.
@@ -25,40 +50,40 @@ void BitStream<bitstuffing>::Fill(void)
       m_pIO->LastUnDo();
       //
       if (bitstuffing) {
-	if (m_pIO->PeekWord() < 0xff80) {
-	  // proper bitstuffing. Remove eight bits
-	  // for now, but...
-	  m_pIO->Get();
-	  if (m_pChk)
-	    m_pChk->Update(dt);
-	  //
-	  // ...the next byte has a filler-bit.
-	  m_ucNextBits = 7;
-	  m_ulB       |= ULONG(dt) << (24 - m_ucBits);
-	  m_ucBits    += 8;
-	} else {
-	  m_bMarker    = true;
-	  m_ucBits    += 8;
-	  break;
-	}
+        if (m_pIO->PeekWord() < 0xff80) {
+          // proper bitstuffing. Remove eight bits
+          // for now, but...
+          m_pIO->Get();
+          if (m_pChk)
+            m_pChk->Update(dt);
+          //
+          // ...the next byte has a filler-bit.
+          m_ucNextBits = 7;
+          m_ulB       |= ULONG(dt) << (24 - m_ucBits);
+          m_ucBits    += 8;
+        } else {
+          m_bMarker    = true;
+          m_ucBits    += 8;
+          break;
+        }
       } else {
-	// Bytestuffing.
-	if (m_pIO->PeekWord() == 0xff00) {
-	  // Proper bytestuffing. Remove the zero-byte
-	  m_pIO->GetWord();
-	  if (m_pChk) {
-	    m_pChk->Update(0xff);
-	    m_pChk->Update(0x00);
-	  }
-	  m_ulB       |= ULONG(dt) << (24 - m_ucBits);
-	  m_ucBits    += 8;
-	} else {
-	  // A marker. Do not advance over the marker, but
-	  // rather stay at it so the logic upwards can fix it.
-	  m_bMarker    = true;
-	  m_ucBits    += 8;
-	  break;
-	}
+        // Bytestuffing.
+        if (m_pIO->PeekWord() == 0xff00) {
+          // Proper bytestuffing. Remove the zero-byte
+          m_pIO->GetWord();
+          if (m_pChk) {
+            m_pChk->Update(0xff);
+            m_pChk->Update(0x00);
+          }
+          m_ulB       |= ULONG(dt) << (24 - m_ucBits);
+          m_ucBits    += 8;
+        } else {
+          // A marker. Do not advance over the marker, but
+          // rather stay at it so the logic upwards can fix it.
+          m_bMarker    = true;
+          m_ucBits    += 8;
+          break;
+        }
       }
     } else if (dt == ByteStream::EOF) {
       m_bEOF       = true;
@@ -88,13 +113,13 @@ void BitStream<bitstuffing>::ReportError(void)
   
   if (m_bEOF)
     JPG_THROW(UNEXPECTED_EOF,"BitStream::ReportError",
-	      "invalid stream, found EOF within entropy coded segment");
+              "invalid stream, found EOF within entropy coded segment");
   if (m_bMarker)
     JPG_THROW(UNEXPECTED_EOF,"BitStream::ReportError",
-	      "invalid stream, found marker in entropy coded segment");
+              "invalid stream, found marker in entropy coded segment");
   
   JPG_THROW(MALFORMED_STREAM,"BitStream::ReportError",
-	    "invalid stream, found invalid huffman code in entropy coded segment");
+            "invalid stream, found invalid huffman code in entropy coded segment");
 }
 ///
 

@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
  * Definition of the bitmap hook class.
  * This hook function is used to pull data out of the
@@ -25,10 +50,10 @@ struct JPG_Hook;
 /// Design
 /** Design
 ******************************************************************
-** class BitMapHook						**
-** Super Class:	none						**
-** Sub Classes: none						**
-** Friends:	none						**
+** class BitMapHook                                             **
+** Super Class: none                                            **
+** Sub Classes: none                                            **
+** Friends:     none                                            **
 ******************************************************************
 
 Using a JPG_Hook as its main ingredience, the bitmap hook defines
@@ -95,11 +120,11 @@ class BitMapHook : public JObject {
   //
   // Fill the tag items for a request call and make the call.
   void Request(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
-	       const RectAngle<LONG> &rect,struct ImageBitMap *ibm,const class Component *comp,bool alpha);
+               const RectAngle<LONG> &rect,struct ImageBitMap *ibm,const class Component *comp,bool alpha);
   //
   // Release the tag items for a release call and make the call.
   void Release(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pixeltype,
-	       const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,const class Component *comp,bool alpha);
+               const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,const class Component *comp,bool alpha);
   //
 public:
   //
@@ -112,24 +137,24 @@ public:
   //
   // Collect data from the user.
   void RequestClientData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-			 const class Component *comp);
+                         const class Component *comp);
   //
   // Release the image portion from the client, called to signal the client
   // that all has gone well.
   void ReleaseClientData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-			 const class Component *comp);
+                         const class Component *comp);
   //
   // Collect alpha channel (opacity) data from the user, either to request the input
   // opacity on encoding, or to request a buffer where the alpha data is placed
   // when decoding. Note that you cannot define dedicated LDR data for alpha. It is
   // always automatically generated with the alpha "tone mapper".
   void RequestClientAlpha(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-			  const class Component *comp);
+                          const class Component *comp);
   //
   // Release the opacity information again. On decoding, this means that opacity is now
   // ready to be used. On encoding it means that the encoder has processed the data.
   void ReleaseClientAlpha(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-			  const class Component *comp);
+                          const class Component *comp);
   //
   // Check whether an LDR image is available (returns true) or whether
   // the caller has to do the tonemapping itself (returns false).
@@ -142,13 +167,13 @@ public:
   // LDR hook function is available, i.e. should only be called if the 
   // providesLDRImage() method above returns true.
   void RequestLDRData(const RectAngle<LONG> &rect,struct ImageBitMap *ibm,
-		      const class Component *comp);
+                      const class Component *comp);
   //
   // Release the requested LDR data. Requires that an LDR hook is available, i.e.
   // providesLDRImage() must have been checked before and must have returned
   // true for this to make sense.
   void ReleaseLDRData(const RectAngle<LONG> &rect,const struct ImageBitMap *ibm,
-		      const class Component *comp);
+                      const class Component *comp);
 };
 ///
 

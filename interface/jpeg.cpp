@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 
 /*
 ** Definition of the library interface
@@ -188,8 +213,8 @@ void JPEG::StopDecoding(void)
     sum = m_pImage->ChecksumOf();
     if (box && sum) {
       if (sum->ValueOf() != box->ValueOf()) {
-	JPG_WARN(PHASE_ERROR,"Frame::StopDecoding",
-		 "Found a mismatching checksum of the legacy stream, HDR reconstructed image may be wrong");
+        JPG_WARN(PHASE_ERROR,"Frame::StopDecoding",
+                 "Found a mismatching checksum of the legacy stream, HDR reconstructed image may be wrong");
       }
     }
   }
@@ -240,59 +265,59 @@ void JPEG::ReadInternal(struct JPG_TagItem *tags)
     if (m_pFrame == NULL) {
       m_pFrame = m_pImage->StartParseFrame(m_pIOStream);
       if (m_pFrame) {
-	m_pDecoder->ParseTags(tags);
-	if (stopflags & JPGFLAG_DECODER_STOP_FRAME)
-	  return;
+        m_pDecoder->ParseTags(tags);
+        if (stopflags & JPGFLAG_DECODER_STOP_FRAME)
+          return;
       }
     }
 
     if (m_pFrame) {
       if (m_pScan == NULL) {
-	m_pScan = m_pFrame->StartParseScan(m_pImage->InputStreamOf(m_pIOStream),m_pImage->ChecksumOf());
-	if (m_pScan && (stopflags & JPGFLAG_DECODER_STOP_SCAN))
-	  return;
-	if (m_pScan == NULL) {
-	  if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
-	    // Frame done, advance to the next frame.
-	    m_pFrame = NULL;
-	    if (!m_pImage->ParseTrailer(m_pIOStream)) {
-	      // Image done, stop decoding, image is now loaded.
-	      StopDecoding();
-	      return;
-	    }
-	  }
-	}
+        m_pScan = m_pFrame->StartParseScan(m_pImage->InputStreamOf(m_pIOStream),m_pImage->ChecksumOf());
+        if (m_pScan && (stopflags & JPGFLAG_DECODER_STOP_SCAN))
+          return;
+        if (m_pScan == NULL) {
+          if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
+            // Frame done, advance to the next frame.
+            m_pFrame = NULL;
+            if (!m_pImage->ParseTrailer(m_pIOStream)) {
+              // Image done, stop decoding, image is now loaded.
+              StopDecoding();
+              return;
+            }
+          }
+        }
       }
 
       if (m_pScan) {
-	if (m_bRow == false) {
-	  m_bRow = m_pScan->StartMCURow();
-	  if (m_bRow) {
-	    if (stopflags & JPGFLAG_DECODER_STOP_ROW)
-	      return;
-	  } else {
-	    // Scan done, advance to the next scan.
-	    m_pFrame->EndParseScan();
-	    m_pScan = NULL;
-	    if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
-	      // Frame done, advance to the next frame.
-	      m_pFrame = NULL;
-	      if (!m_pImage->ParseTrailer(m_pIOStream)) {
-		// Image done, stop decoding, image is now loaded.
-		StopDecoding();
-		return;
-	      }
-	    }
-	  }
-	}
-	
-	if (m_bRow) {
-	  while (m_pScan->ParseMCU()) {
-	    if (stopflags & JPGFLAG_DECODER_STOP_MCU)
-	      return;
-	  } 
-	  m_bRow = false;
-	}
+        if (m_bRow == false) {
+          m_bRow = m_pScan->StartMCURow();
+          if (m_bRow) {
+            if (stopflags & JPGFLAG_DECODER_STOP_ROW)
+              return;
+          } else {
+            // Scan done, advance to the next scan.
+            m_pFrame->EndParseScan();
+            m_pScan = NULL;
+            if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
+              // Frame done, advance to the next frame.
+              m_pFrame = NULL;
+              if (!m_pImage->ParseTrailer(m_pIOStream)) {
+                // Image done, stop decoding, image is now loaded.
+                StopDecoding();
+                return;
+              }
+            }
+          }
+        }
+        
+        if (m_bRow) {
+          while (m_pScan->ParseMCU()) {
+            if (stopflags & JPGFLAG_DECODER_STOP_MCU)
+              return;
+          } 
+          m_bRow = false;
+        }
       }
     }
   }
@@ -367,16 +392,16 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
   if (!m_bOptimized) {
     if (m_bOptimizeHuffman) {
       do {
-	class Frame *frame = m_pImage->StartMeasureFrame();
-	do {
-	  class Scan *scan = frame->StartMeasureScan();
-	  while(scan->StartMCURow()) { 
-	    while(scan->WriteMCU()) {
-	      ;
-	    }
-	  }
-	  scan->Flush();
-	} while(frame->NextScan());
+        class Frame *frame = m_pImage->StartMeasureFrame();
+        do {
+          class Scan *scan = frame->StartMeasureScan();
+          while(scan->StartMCURow()) { 
+            while(scan->WriteMCU()) {
+              ;
+            }
+          }
+          scan->Flush();
+        } while(frame->NextScan());
       } while(m_pImage->NextFrame());
     }
     m_bOptimized = true;
@@ -387,46 +412,46 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
     if (m_pFrame == NULL) {
       m_pFrame = m_pImage->StartWriteFrame(m_pIOStream);
       if (stopflags & JPGFLAG_ENCODER_STOP_FRAME)
-	return;
+        return;
     }
     assert(m_pFrame);
 
     if (m_pScan == NULL) {
       m_pScan = m_pFrame->StartWriteScan(m_pImage->OutputStreamOf(m_pIOStream),m_pImage->ChecksumOf());
       if (stopflags & JPGFLAG_ENCODER_STOP_SCAN)
-	return;
+        return;
     }
     assert(m_pScan);
 
     if (!m_bRow) {
       if (m_pScan->StartMCURow()) {
-	m_bRow = true;
-	if (stopflags & JPGFLAG_ENCODER_STOP_ROW)
-	  return;
+        m_bRow = true;
+        if (stopflags & JPGFLAG_ENCODER_STOP_ROW)
+          return;
       } else {
-	// Scan done, flush it out.
-	m_pFrame->EndWriteScan();
-	//m_pScan->Flush(); included in the above.
-	// This will write the DNL marker.
-	m_pFrame->CompleteRefimentScan(m_pIOStream);
-	m_pFrame->WriteTrailer(m_pImage->OutputStreamOf(m_pIOStream));
-	m_pScan = NULL;
-	if (!m_pFrame->NextScan()) {
-	  m_pFrame = NULL;
-	  if (!m_pImage->NextFrame()) {
-	    m_pImage->WriteTrailer(m_pIOStream);
-	    m_pIOStream->Flush();
-	    m_bEncoding = false;
-	    return;
-	  }
-	}
+        // Scan done, flush it out.
+        m_pFrame->EndWriteScan();
+        //m_pScan->Flush(); included in the above.
+        // This will write the DNL marker.
+        m_pFrame->CompleteRefimentScan(m_pIOStream);
+        m_pFrame->WriteTrailer(m_pImage->OutputStreamOf(m_pIOStream));
+        m_pScan = NULL;
+        if (!m_pFrame->NextScan()) {
+          m_pFrame = NULL;
+          if (!m_pImage->NextFrame()) {
+            m_pImage->WriteTrailer(m_pIOStream);
+            m_pIOStream->Flush();
+            m_bEncoding = false;
+            return;
+          }
+        }
       }
     }
 
     if (m_bRow) {
       while (m_pScan->WriteMCU()) {
-	if (stopflags & JPGFLAG_ENCODER_STOP_MCU)
-	  return;
+        if (stopflags & JPGFLAG_ENCODER_STOP_MCU)
+          return;
       }
       m_bRow = false;
     }
@@ -502,10 +527,10 @@ bool JPEG::RequiresTwoPassEncoding(const struct JPG_TagItem *tags) const
 
     if (alphatags) {
       if (alphatags->GetTagData(JPGTAG_IMAGE_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)
-	return true;
+        return true;
 
       if (alphatags->GetTagData(JPGTAG_RESIDUAL_FRAMETYPE) & JPGFLAG_OPTIMIZE_HUFFMAN)
-	return true;
+        return true;
     }
   }
 
@@ -638,28 +663,28 @@ void JPEG::InternalGetInformation(struct JPG_TagItem *tags)
       BYTE mode = alpha->AlphaModeOf(r,g,b);
       
       if (mode >= 0) {
-	if (alphatag)
-	  alphatag->ti_Data.ti_lData = mode;
-	tags->SetTagData(JPGTAG_ALPHA_MATTE(0),r);
-	tags->SetTagData(JPGTAG_ALPHA_MATTE(1),g);
-	tags->SetTagData(JPGTAG_ALPHA_MATTE(2),b);
-	
-	if (alphalist) {
-	  alphalist = (struct JPG_TagItem *)(alphalist->ti_Data.ti_pPtr);
-	  alphalist->SetTagData(JPGTAG_IMAGE_PRECISION,alphachannel->PrecisionOf());
-	  GetOutputInformation(alpha,alphalist);
-	}
+        if (alphatag)
+          alphatag->ti_Data.ti_lData = mode;
+        tags->SetTagData(JPGTAG_ALPHA_MATTE(0),r);
+        tags->SetTagData(JPGTAG_ALPHA_MATTE(1),g);
+        tags->SetTagData(JPGTAG_ALPHA_MATTE(2),b);
+        
+        if (alphalist) {
+          alphalist = (struct JPG_TagItem *)(alphalist->ti_Data.ti_pPtr);
+          alphalist->SetTagData(JPGTAG_IMAGE_PRECISION,alphachannel->PrecisionOf());
+          GetOutputInformation(alpha,alphalist);
+        }
       } else {
-	if (alphatag) 
-	  alphatag->ti_Tag  = JPGTAG_TAG_IGNORE;
-	if (alphalist)
-	  alphalist->ti_Tag = JPGTAG_TAG_IGNORE;
+        if (alphatag) 
+          alphatag->ti_Tag  = JPGTAG_TAG_IGNORE;
+        if (alphalist)
+          alphalist->ti_Tag = JPGTAG_TAG_IGNORE;
       }
     } else {
       if (alphatag)
-	alphatag->ti_Tag  = JPGTAG_TAG_IGNORE;
+        alphatag->ti_Tag  = JPGTAG_TAG_IGNORE;
       if (alphalist)
-	alphalist->ti_Tag = JPGTAG_TAG_IGNORE;
+        alphalist->ti_Tag = JPGTAG_TAG_IGNORE;
     }
   } else {
     JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::InternalGetInformation","no image created or loaded");

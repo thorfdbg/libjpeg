@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
  * The Art-Deco (MQ) decoder and encoder as specified by the jpeg2000 
  * standard, FDIS, Annex C
@@ -169,7 +194,7 @@ bool MQCoder::Get(UBYTE ctxtidx)
     if (m_ucCT == 0) {
       t = m_pIO->Get();
       if (m_pChk)
-	m_pChk->Update(t);
+        m_pChk->Update(t);
       m_ucCT = 8;
       if (m_ucB == 0xff) {
         if (t < 0x90) {
@@ -209,10 +234,10 @@ void MQCoder::Put(UBYTE ctxtidx,bool bit)
     } else {
       // Context change.
       if (m_ulA < q) {
-	// MPS/LPS exchange.
-	m_ulA  = q;
+        // MPS/LPS exchange.
+        m_ulA  = q;
       } else {
-	m_ulC += q;
+        m_ulC += q;
       }
       ctxt.m_ucIndex = Qe_NextMPS[ctxt.m_ucIndex];
     }
@@ -237,30 +262,30 @@ void MQCoder::Put(UBYTE ctxtidx,bool bit)
     if (--m_ucCT == 0) {
       if (m_ucB < 0xff) {
         if (m_ulC & 0x8000000) {
-	  // Overflow into the b register, remove carry.
-	  m_ucB++;
-	  m_ulC &= 0x7ffffff;
+          // Overflow into the b register, remove carry.
+          m_ucB++;
+          m_ulC &= 0x7ffffff;
         }
       }
       if (m_ucB == 0xff) {
         // We either have an 0xff here, or generated one due to carry.
         // in either case, must have buffered something or the overflow
         // could not have happened.
-	m_pIO->Put(0xff);
-	if (m_pChk)
-	  m_pChk->Update(0xff);
-	m_ucB  = m_ulC >> 20;
-	m_ulC &= 0xfffff;
-	m_ucCT = 7;
+        m_pIO->Put(0xff);
+        if (m_pChk)
+          m_pChk->Update(0xff);
+        m_ucB  = m_ulC >> 20;
+        m_ulC &= 0xfffff;
+        m_ucCT = 7;
       } else {
-	if (m_bF) {
-	  m_pIO->Put(m_ucB);
-	  if (m_pChk)
-	    m_pChk->Update(m_ucB);
-	}
-	m_ucB  = m_ulC >> 19;
-	m_ulC &= 0x7ffff;
-	m_ucCT = 8;
+        if (m_bF) {
+          m_pIO->Put(m_ucB);
+          if (m_pChk)
+            m_pChk->Update(m_ucB);
+        }
+        m_ucB  = m_ulC >> 19;
+        m_ulC &= 0x7ffff;
+        m_ucCT = 8;
       }
       m_bF = true;
     }
@@ -280,22 +305,22 @@ void MQCoder::Flush(void)
   for(k = 12 - m_ucCT;k > 0;k -= m_ucCT,m_ulC <<= m_ucCT) {
     if (m_ucB < 0xff) {
       if (m_ulC & 0x8000000) {
-	m_ucB++;
+        m_ucB++;
         m_ulC &= 0x7ffffff;
       }
     }
     if (m_ucB == 0xff) {
       m_pIO->Put(0xff);
       if (m_pChk)
-	m_pChk->Update(0xff);
+        m_pChk->Update(0xff);
       m_ucB  = m_ulC >> 20;
       m_ulC &= 0xfffff;
       m_ucCT = 7;
     } else {
       if (m_bF) {
-	m_pIO->Put(m_ucB);
-	if (m_pChk)
-	  m_pChk->Update(m_ucB);
+        m_pIO->Put(m_ucB);
+        if (m_pChk)
+          m_pChk->Update(m_ucB);
       }
       m_ucB  = m_ulC >> 19;
       m_ulC &= 0x7ffff;

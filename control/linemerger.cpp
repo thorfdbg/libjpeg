@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class merges the two sources of a differential frame together,
@@ -24,7 +49,7 @@
 // The frame to create the line merger from is the highpass frame as
 // its line dimensions are identical to that of the required output.
 LineMerger::LineMerger(class Frame *frame,class LineAdapter *low,class LineAdapter *high,
-		       bool expandhor,bool expandver)
+                       bool expandhor,bool expandver)
   : LineAdapter(frame)
 #if ACCUSOFT_CODE
   , m_pFrame(frame), 
@@ -78,8 +103,8 @@ LineMerger::~LineMerger(void)
     for(i = 0;i < m_ucCount;i++) {
       struct Line *line;
       while((line = m_ppFirstLine[i])) {
-	m_ppFirstLine[i] = line->m_pNext;
-	FreeLine(line,i);
+        m_ppFirstLine[i] = line->m_pNext;
+        FreeLine(line,i);
       }
     }
     m_pEnviron->FreeMem(m_ppFirstLine,m_ucCount * sizeof(struct Line *));
@@ -243,17 +268,17 @@ struct Line *LineMerger::GetNextExpandedLowPassLine(UBYTE comp)
     // Fetch a next line on the first round, or on odd lines. The last
     // line of the image is replicated.
     if (m_pulY[comp] == 0 ||        // first line
-	((m_pulY[comp] & 1) &&      // or odd
-	 (m_pulPixelHeight[comp] == 0 ||  // and not last line
-	  ((m_pulY[comp] + 1) >> 1) < ((m_pulPixelHeight[comp] + 1) >> 1)))) {
+        ((m_pulY[comp] & 1) &&      // or odd
+         (m_pulPixelHeight[comp] == 0 ||  // and not last line
+          ((m_pulY[comp] + 1) >> 1) < ((m_pulPixelHeight[comp] + 1) >> 1)))) {
       line = GetNextLowpassLine(comp);
       //
       // Buffer for the next line in between if this is the first line.
       if (m_pulY[comp] == 0) {
-	assert(m_ppVBuffer[comp] == NULL);
-	assert(m_ppHBuffer[comp] == line);
-	m_ppVBuffer[comp] = line;
-	m_ppHBuffer[comp] = NULL;
+        assert(m_ppVBuffer[comp] == NULL);
+        assert(m_ppHBuffer[comp] == line);
+        m_ppVBuffer[comp] = line;
+        m_ppHBuffer[comp] = NULL;
       }
     } else {
       // The buffered line will do.
@@ -274,15 +299,15 @@ struct Line *LineMerger::GetNextExpandedLowPassLine(UBYTE comp)
       // Odd line. Final output is composed of: This line (which is the next) 
       // merged with the previous plus the difference.
       do {
-	*dst = (*src1++ + *src2++) >> 1;
+        *dst = (*src1++ + *src2++) >> 1;
       } while(++dst < end);
       //
       // Release the old buffered line which is no longer required
       // and store the new one there. This releases the old VBuffer.
       m_ppHBuffer[comp]   = NULL;
       if (prev != next) {
-	FreeLine(prev,comp);
-	m_ppVBuffer[comp] = next;
+        FreeLine(prev,comp);
+        m_ppVBuffer[comp] = next;
       }
       m_ppIBuffer[comp]   = out;
       //
@@ -412,7 +437,7 @@ void LineMerger::PushLine(struct Line *line,UBYTE comp)
       //
       // Replicate at the edges.
       if (top == NULL)
-	top = bottom;
+        top = bottom;
       assert(top && bottom && center);
       //
       // Now filter.
@@ -422,7 +447,7 @@ void LineMerger::PushLine(struct Line *line,UBYTE comp)
       LONG *cp  = center->m_pData;
       LONG *bp  = bottom->m_pData;
       do {
-	*dst++ = (*tp++ + (*cp++ << 1) + *bp++ + 1) >> 2;
+        *dst++ = (*tp++ + (*cp++ << 1) + *bp++ + 1) >> 2;
       } while(dst < end);
       //
       // The new low pass is ready now in HBuffer. Whether it will be pushed
@@ -441,31 +466,31 @@ void LineMerger::PushLine(struct Line *line,UBYTE comp)
       // Special case if this is the last line of the image: This then generates the
       // last line of the low-pass, otherwise the line is just buffered.
       if (m_pulPixelHeight[comp] && m_pulY[comp] >= m_pulPixelHeight[comp] - 1) {
-	struct Line *center  = m_ppCenter[comp];
-	struct Line *bottom  = m_ppBottom[comp]; // Top line is replicated into bottom.
-	struct Line *top     = m_ppBottom[comp];
-	struct Line *out;
-	//
-	assert(m_ppHBuffer[comp] == NULL);
-	out = AllocLine(comp);
-	m_ppHBuffer[comp] = out;
-	//
-	//
-	if (top && bottom) {
-	  // If there are lines now, filter. In the special case of only having a single
-	  // line, just replicate and set the high-pass to zero.
-	  LONG *dst = out->m_pData;
-	  LONG *end = out->m_pData + m_pulPixelWidth[comp];
-	  LONG *tp  = top->m_pData;
-	  LONG *cp  = center->m_pData;
-	  LONG *bp  = bottom->m_pData;
-	  do {
-	    *dst++ = (*tp++ + (*cp++ << 1) + *bp++ + 1) >> 2;
-	  } while(dst < end);
-	} else {
-	  // Special case single line image: Just copy the data.
-	  memcpy(out->m_pData,center->m_pData,sizeof(LONG) * m_pulPixelWidth[comp]);
-	}
+        struct Line *center  = m_ppCenter[comp];
+        struct Line *bottom  = m_ppBottom[comp]; // Top line is replicated into bottom.
+        struct Line *top     = m_ppBottom[comp];
+        struct Line *out;
+        //
+        assert(m_ppHBuffer[comp] == NULL);
+        out = AllocLine(comp);
+        m_ppHBuffer[comp] = out;
+        //
+        //
+        if (top && bottom) {
+          // If there are lines now, filter. In the special case of only having a single
+          // line, just replicate and set the high-pass to zero.
+          LONG *dst = out->m_pData;
+          LONG *end = out->m_pData + m_pulPixelWidth[comp];
+          LONG *tp  = top->m_pData;
+          LONG *cp  = center->m_pData;
+          LONG *bp  = bottom->m_pData;
+          do {
+            *dst++ = (*tp++ + (*cp++ << 1) + *bp++ + 1) >> 2;
+          } while(dst < end);
+        } else {
+          // Special case single line image: Just copy the data.
+          memcpy(out->m_pData,center->m_pData,sizeof(LONG) * m_pulPixelWidth[comp]);
+        }
       }
     }
   } else {
@@ -487,17 +512,17 @@ void LineMerger::PushLine(struct Line *line,UBYTE comp)
       LONG left        = src[1]; // the left pixel is replicated from the right.
       LONG center,right;
       do {
-	center = src[0];
-	right  = src[1];
-	*dst++ = (left + (center << 1) + right + 1) >> 2;
-	left   = right;
-	src   += 2;
+        center = src[0];
+        right  = src[1];
+        *dst++ = (left + (center << 1) + right + 1) >> 2;
+        left   = right;
+        src   += 2;
       } while(dst < end);
       //
       // Done with it.
       m_pLowPass->PushLine(out,comp);
       if (m_bExpandV)
-	FreeLine(m_ppHBuffer[comp],comp); // was a temporary.
+        FreeLine(m_ppHBuffer[comp],comp); // was a temporary.
       m_ppHBuffer[comp] = NULL;
     } else {
       struct Line *out = m_pLowPass->AllocateLine(comp);
@@ -507,7 +532,7 @@ void LineMerger::PushLine(struct Line *line,UBYTE comp)
       memcpy(out->m_pData,src->m_pData,m_pulPixelWidth[comp] * sizeof(LONG));
       m_pLowPass->PushLine(out,comp); 
       if (m_bExpandV)
-	FreeLine(m_ppHBuffer[comp],comp); // was a temporary.
+        FreeLine(m_ppHBuffer[comp],comp); // was a temporary.
       m_ppHBuffer[comp] = NULL;
     }
   }
@@ -567,37 +592,37 @@ void LineMerger::GenerateDifferentialImage(void)
     // before, probably because we measured in the iteration before.
     if (m_ppFirstLine[comp]) {
       for(y = 0;y < height;y++) {
-	struct Line *low  = GetNextExpandedLowPassLine(comp);
-	struct Line *high = m_pHighPass->AllocateLine(comp);
-	struct Line *top  = m_ppFirstLine[comp]; // Old buffered lines.
-	//
-	if (top == NULL)
-	  JPG_THROW(OBJECT_DOESNT_EXIST,"LineMerger::GenerateDifferentialImage",
-		    "cannot create the next frame of the differential image, the previous frame is still incomplete");
-	//
-	// Now compute the difference. This becomes the high-pass output.
-	LONG *dst = high->m_pData;
-	LONG *end = high->m_pData + m_pulPixelWidth[comp];
-	LONG *rec = low->m_pData;
-	LONG *org = top->m_pData;
-	if (m_pHighPass->isLossless()) {
-	  do {
-	    // The DCT always removes the level shift, so simply add it here.
-	    *dst = ((*org++ >> COLOR_BITS) - ((*rec++ + shift) >> COLOR_BITS)) << COLOR_BITS;
-	  } while(++dst < end);
-	} else {
-	  do {
-	    // The DCT always removes the level shift, so simply add it here.
-	    *dst = *org++ - *rec++ + shift;
-	  } while(++dst < end);
-	}
-	//
-	// Done with it. Also releases high.
-	m_pHighPass->PushLine(high,comp);
-	//
-	// And the corresponding source line can also go.
-	m_ppFirstLine[comp]     = top->m_pNext;
-	FreeLine(top,comp);
+        struct Line *low  = GetNextExpandedLowPassLine(comp);
+        struct Line *high = m_pHighPass->AllocateLine(comp);
+        struct Line *top  = m_ppFirstLine[comp]; // Old buffered lines.
+        //
+        if (top == NULL)
+          JPG_THROW(OBJECT_DOESNT_EXIST,"LineMerger::GenerateDifferentialImage",
+                    "cannot create the next frame of the differential image, the previous frame is still incomplete");
+        //
+        // Now compute the difference. This becomes the high-pass output.
+        LONG *dst = high->m_pData;
+        LONG *end = high->m_pData + m_pulPixelWidth[comp];
+        LONG *rec = low->m_pData;
+        LONG *org = top->m_pData;
+        if (m_pHighPass->isLossless()) {
+          do {
+            // The DCT always removes the level shift, so simply add it here.
+            *dst = ((*org++ >> COLOR_BITS) - ((*rec++ + shift) >> COLOR_BITS)) << COLOR_BITS;
+          } while(++dst < end);
+        } else {
+          do {
+            // The DCT always removes the level shift, so simply add it here.
+            *dst = *org++ - *rec++ + shift;
+          } while(++dst < end);
+        }
+        //
+        // Done with it. Also releases high.
+        m_pHighPass->PushLine(high,comp);
+        //
+        // And the corresponding source line can also go.
+        m_ppFirstLine[comp]     = top->m_pNext;
+        FreeLine(top,comp);
       }
     }
   }

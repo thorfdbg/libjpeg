@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 
 /*
 ** Definition of the Environment.
@@ -129,11 +154,11 @@ public:
   void PrintException(const char *hdr) const
   {
     fprintf(stderr,
-	    "*** %s %ld in %s, line %ld, file %s\n"
-	    "*** Reason is: %s\n\n",
-	    hdr, long(m_lError),  m_pWhat,
-	    long(m_lLineNo), m_pSource,
-	    (m_pDescription)?(m_pDescription):("Internal error"));
+            "*** %s %ld in %s, line %ld, file %s\n"
+            "*** Reason is: %s\n\n",
+            hdr, long(m_lError),  m_pWhat,
+            long(m_lLineNo), m_pSource,
+            (m_pDescription)?(m_pDescription):("Internal error"));
   }
 #else
   void PrintException(const char *) const
@@ -167,13 +192,13 @@ extern void Fatal(const char *msg,const char *file,int line);
 /// Design
 /** Design
 ******************************************************************
-** class ExceptionRoot					        **
-** Super Class:	none						**
-** Sub Classes: none						**
-** Friends:	ExceptionStack, Environ				**
+** class ExceptionRoot                                          **
+** Super Class: none                                            **
+** Sub Classes: none                                            **
+** Friends:     ExceptionStack, Environ                         **
 ******************************************************************
 
-Purposes:	
+Purposes:       
 
 The ExceptionRoot is the root node of the stack of exception
 stack frames. Hence, each time you run a "try" a new 
@@ -238,13 +263,13 @@ class ExceptionRoot {
 /// Design
 /** Design
 ******************************************************************
-** class ExceptionStack					        **
-** Super Class:	none						**
-** Sub Classes: none						**
-** Friends:	Environ				                **
+** class ExceptionStack                                         **
+** Super Class: none                                            **
+** Sub Classes: none                                            **
+** Friends:     Environ                                         **
 ******************************************************************
 
-Purposes:	
+Purposes:       
 
 The ExceptionStack keeps jump-back information for the exception-
 less try-catch emulation within the libjpeg. Hence, each time
@@ -376,13 +401,13 @@ public:
 /// Design
 /** Design
 ******************************************************************
-** class Environ					        **
-** Super Class:	none						**
-** Sub Classes: none						**
-** Friends:	none						**
+** class Environ                                                **
+** Super Class: none                                            **
+** Sub Classes: none                                            **
+** Friends:     none                                            **
 ******************************************************************
 
-Purposes:	
+Purposes:       
 
 The Environ class (short for "Environment" because I'm a lazy
 guy) holds the system togehter. Its purpose is to provide very
@@ -520,7 +545,7 @@ private:
   //
   // Forward a warning or an exception to the supplied hook
   void ForwardMessage(struct JPG_Hook *hook,struct JPG_TagItem *tags,
-		      const class Exception &exc);
+                      const class Exception &exc);
   //
   // Internal memory allocation functions, not for public use.
   inline void *CoreAllocMem(ULONG bytesize,ULONG reqments);
@@ -597,7 +622,7 @@ public:
   //
   // Forward a warning
   void Warn(const LONG error, const char *what,const LONG line, 
-	    const char *where, const char *description);
+            const char *where, const char *description);
   //
   void Warn(const class Exception &ex);
   //
@@ -606,7 +631,7 @@ public:
   //
   // Throw an exception
   void Throw(const LONG error, const char *what, const LONG line,
-	     const char *where, const char *description) NORETURN;
+             const char *where, const char *description) NORETURN;
   //
   // Throw an exception class directly.
   void Throw(const class Exception &ex) NORETURN;
@@ -755,13 +780,13 @@ void ExceptionStack::Link(class Environ *env)
 /// Design
 /** Design
 ******************************************************************
-** class JObject					        **
-** Super Class:	none						**
-** Sub Classes: JKeeper, and lots and lots others		**
-** Friends:	none						**
+** class JObject                                                **
+** Super Class: none                                            **
+** Sub Classes: JKeeper, and lots and lots others               **
+** Friends:     none                                            **
 ******************************************************************
 
-Purposes:	
+Purposes:       
 
 If an object is created by means of "new", a global new operator
 is called. Unfortunately, when overloading this operator to the
@@ -933,10 +958,10 @@ private:
 /// Design
 /** Design
 ******************************************************************
-** class JKeeper					        **
-** Super Class:	JObject						**
-** Sub Classes: lots and lots 					**
-** Friends:	none						**
+** class JKeeper                                                **
+** Super Class: JObject                                         **
+** Sub Classes: lots and lots                                   **
+** Friends:     none                                            **
 ******************************************************************
 
 Purposes:

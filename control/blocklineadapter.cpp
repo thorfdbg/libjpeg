@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class adapts to a block buffer in a way that allows the user
@@ -41,8 +66,8 @@ BlockLineAdapter::~BlockLineAdapter(void)
   if (m_ppTop) {
     for(i = 0;i < m_ucCount;i++) {
       while ((line = m_ppTop[i])) {
-	m_ppTop[i] = line->m_pNext;
-	FreeLine(line,i);
+        m_ppTop[i] = line->m_pNext;
+        FreeLine(line,i);
       }
     }
     m_pEnviron->FreeMem(m_ppTop,m_ucCount * sizeof(struct Line *));
@@ -154,17 +179,17 @@ struct Line *BlockLineAdapter::GetNextLine(UBYTE comp)
       class QuantizedRow *qrow = *m_pppQImage[comp];
       const LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):(NULL);
       if (src) {
-	m_ppDCT[comp]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
-	//
-	// Copy now the buffer temporary buffer into the line. The line is always long enough
-	// to cover all pixels, even those outside of the range.
-	for(l = 0; l < 8;l++) {
-	  memcpy(out[l]->m_pData + (x << 3),&dst[l << 3],8 * sizeof(LONG));
-	}
+        m_ppDCT[comp]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
+        //
+        // Copy now the buffer temporary buffer into the line. The line is always long enough
+        // to cover all pixels, even those outside of the range.
+        for(l = 0; l < 8;l++) {
+          memcpy(out[l]->m_pData + (x << 3),&dst[l << 3],8 * sizeof(LONG));
+        }
       } else {
-	for(l = 0; l < 8;l++) {
-	  memset(out[l]->m_pData + (x << 3),0,8 * sizeof(LONG));
-	}
+        for(l = 0; l < 8;l++) {
+          memset(out[l]->m_pData + (x << 3),0,8 * sizeof(LONG));
+        }
       }
     } // of loop over x
     //
@@ -226,10 +251,10 @@ void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
     if (cludge) { 
       struct Line *line = m_ppTop[comp]; // replicate pixels at the edge
       for(l = 0;l < 8;l++) {
-	for(x = cludge + (maxx << 3);x < (maxx + 1) << 3;x++) {
-	  line->m_pData[x] = line->m_pData[x-1];
-	}
-	if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
+        for(x = cludge + (maxx << 3);x < (maxx + 1) << 3;x++) {
+          line->m_pData[x] = line->m_pData[x-1];
+        }
+        if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
       }
     }
     
@@ -240,14 +265,14 @@ void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
       assert(line);
       // Copy from the line into the temporary buffer.
       for(l = 0;l < 8;l++) {
-	memcpy(&src[l << 3],line->m_pData + (x << 3),8 * sizeof(LONG));
-	if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
+        memcpy(&src[l << 3],line->m_pData + (x << 3),8 * sizeof(LONG));
+        if (line->m_pNext) line = line->m_pNext; // Duplicate the bottom-most line.
       }
       //
       // Create the target if it is not already there.
       if (*m_pppQImage[comp] == NULL) {
-	*m_pppQImage[comp] = new(m_pEnviron) class QuantizedRow(m_pEnviron);
-	(*m_pppQImage[comp])->AllocateRow(m_pulPixelsPerComponent[comp]);
+        *m_pppQImage[comp] = new(m_pEnviron) class QuantizedRow(m_pEnviron);
+        (*m_pppQImage[comp])->AllocateRow(m_pulPixelsPerComponent[comp]);
       }
       LONG *dst = (*m_pppQImage[comp])->BlockAt(x)->m_Data;
       m_ppDCT[comp]->TransformBlock(src,dst,(maxval + 1) >> 1);
@@ -260,8 +285,8 @@ void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
       
       struct Line *line;
       while ((line = m_ppTop[comp])) {
-	m_ppTop[comp]  = line->m_pNext;
-	FreeLine(line,comp);
+        m_ppTop[comp]  = line->m_pNext;
+        FreeLine(line,comp);
       }
       m_pppImage[comp] = m_ppTop + comp;
     }
@@ -302,7 +327,7 @@ bool BlockLineAdapter::isNextMCULineReady(void) const
       // codedlines + comp->SubYOf() << 3 * comp->MCUHeightOf() is the number of
       // lines that must be buffered to encode the next MCU
       if (m_pulReadyLines[i] < codedlines + 8 * comp->MCUHeightOf())
-	return false;
+        return false;
     }
   }
   

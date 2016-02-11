@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** Represents the lossless scan - lines are coded directly with predictive
@@ -62,10 +87,10 @@ class ACLosslessScan : public PredictiveScan {
       //
       void Init(void)
       {
-	S0.Init();
-	SS.Init();
-	SP.Init();
-	SN.Init();
+        S0.Init();
+        SS.Init();
+        SP.Init();
+        SN.Init();
       }
     } SignZeroCoding[5][5];
     //
@@ -76,19 +101,19 @@ class ACLosslessScan : public PredictiveScan {
       //
       void Init(void)
       {
-	for(int i = 0;i < 15;i++) {
-	  X[i].Init();
-	  M[i].Init();
-	}
+        for(int i = 0;i < 15;i++) {
+          X[i].Init();
+          M[i].Init();
+        }
       }
     } MagnitudeLow,MagnitudeHigh;
     //
     void Init(void)
     {
       for(int i = 0;i <5;i++) {
-	for(int j = 0;j < 5;j++) {
-	  SignZeroCoding[i][j].Init();
-	}
+        for(int j = 0;j < 5;j++) {
+          SignZeroCoding[i][j].Init();
+        }
       }
       MagnitudeLow.Init();
       MagnitudeHigh.Init();
@@ -105,9 +130,9 @@ class ACLosslessScan : public PredictiveScan {
     struct MagnitudeSet &ClassifyMagnitude(LONG Db,UBYTE u)
     {
       if (Db > (1 << u) || -Db > (1 << u)) {
-	return MagnitudeHigh;
+        return MagnitudeHigh;
       } else {
-	return MagnitudeLow;
+        return MagnitudeLow;
       }
     }
     //
@@ -117,20 +142,20 @@ class ACLosslessScan : public PredictiveScan {
       LONG abs = (diff > 0)?(diff):(-diff);
   
       if (abs <= ((1 << l) >> 1)) {
-	// the zero cathegory.
-	return 0;
+        // the zero cathegory.
+        return 0;
       }
       if (abs <= (1 << u)) {
-	if (diff < 0) {
-	  return -1;
-	} else {
-	  return 1;
-	}
+        if (diff < 0) {
+          return -1;
+        } else {
+          return 1;
+        }
       }
       if (diff < 0) {
-	return -2;
+        return -2;
       } else {
-	return 2;
+        return 2;
       }
     }
     //
@@ -157,7 +182,7 @@ class ACLosslessScan : public PredictiveScan {
   //
 public:
   ACLosslessScan(class Frame *frame,class Scan *scan,UBYTE predictor,UBYTE lobit,
-		 bool differential = false);
+                 bool differential = false);
   //
   virtual ~ACLosslessScan(void);
   //

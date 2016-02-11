@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class pulls blocks from the frame and reconstructs from those
@@ -124,9 +149,9 @@ void LineBitmapRequester::PrepareForEncoding(void)
       UBYTE sy = comp->SubYOf();
       
       if (sx > 1 || sy > 1) {
-	m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-								m_ulPixelWidth,m_ulPixelHeight);
-	m_bSubsampling     = true;
+        m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
+                                                                m_ulPixelWidth,m_ulPixelHeight);
+        m_bSubsampling     = true;
       }
     }
   }
@@ -151,9 +176,9 @@ void LineBitmapRequester::PrepareForDecoding(void)
       UBYTE sy = comp->SubYOf();
       
       if (sx > 1 || sy > 1) {
-	m_ppUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-							  m_ulPixelWidth,m_ulPixelHeight);
-	m_bSubsampling   = true;
+        m_ppUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
+                                                          m_ulPixelWidth,m_ulPixelHeight);
+        m_bSubsampling   = true;
       }
     }
   }
@@ -274,64 +299,64 @@ void LineBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
     // For that first build the downsampler.
     for(i = 0;i < m_ucCount;i++) {
       if (m_ppDownsampler[i]) {
-	m_ppDownsampler[i]->SetBufferedRegion(region);
+        m_ppDownsampler[i]->SetBufferedRegion(region);
       }
     }
     
     for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
       r.ra_MaxY = (r.ra_MinY & -8) + 7;
       if (r.ra_MaxY > region.ra_MaxY)
-	r.ra_MaxY = region.ra_MaxY;
-	
+        r.ra_MaxY = region.ra_MaxY;
+        
       for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	if (r.ra_MaxX > region.ra_MaxX)
-	  r.ra_MaxX = region.ra_MaxX;
-	
-	for(i = 0;i < m_ucCount;i++) {
-	  // Collect the source data.
-	  ExtractBitmap(m_ppTempIBM[i],r,i);
-	}
-	
-	//
-	// Run the color transformer.
-	ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
-	
-	// Now push the transformed data into either the downsampler, 
-	// or the forward DCT block row.
-	for(i = 0;i < m_ucCount;i++) {
-	  if (m_ppDownsampler[i]) {
-	    // Just collect the data in the downsampler for the time
-	    // being. Will be taken care of as soon as it is complete.
-	    m_ppDownsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
-	  } else { 
-	    DefineRegion(x,Start8Lines(i),m_ppCTemp[i],i);
-	  }
-	}
+        r.ra_MaxX = (r.ra_MinX & -8) + 7;
+        if (r.ra_MaxX > region.ra_MaxX)
+          r.ra_MaxX = region.ra_MaxX;
+        
+        for(i = 0;i < m_ucCount;i++) {
+          // Collect the source data.
+          ExtractBitmap(m_ppTempIBM[i],r,i);
+        }
+        
+        //
+        // Run the color transformer.
+        ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
+        
+        // Now push the transformed data into either the downsampler, 
+        // or the forward DCT block row.
+        for(i = 0;i < m_ucCount;i++) {
+          if (m_ppDownsampler[i]) {
+            // Just collect the data in the downsampler for the time
+            // being. Will be taken care of as soon as it is complete.
+            m_ppDownsampler[i]->DefineRegion(x,y,m_ppCTemp[i]);
+          } else { 
+            DefineRegion(x,Start8Lines(i),m_ppCTemp[i],i);
+          }
+        }
       }
       //
       // Advance the quantized rows for the non-subsampled components,
       // downsampled components will be advanced later.
       for(i = 0;i < m_ucCount;i++) {
-	m_pulReadyLines[i]    += 8; // somehwere in the buffer.
-	if (m_ppDownsampler[i] == NULL) {
-	  Next8Lines(i);
-	} else {
-	  LONG bx,by;
-	  RectAngle<LONG> blocks;
-	  // Collect the downsampled blocks and push that into the DCT.
-	  m_ppDownsampler[i]->GetCollectedBlocks(blocks);
-	  for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-	    struct Line *row = Start8Lines(i);
-	    for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-	      LONG src[64]; // temporary buffer, the DCT requires a 8x8 block
-	      m_ppDownsampler[i]->DownsampleRegion(bx,by,src);
-	      DefineRegion(bx,row,src,i);
-	    }
-	    m_ppDownsampler[i]->RemoveBlocks(by);
-	    Next8Lines(i);
-	  }
-	}
+        m_pulReadyLines[i]    += 8; // somehwere in the buffer.
+        if (m_ppDownsampler[i] == NULL) {
+          Next8Lines(i);
+        } else {
+          LONG bx,by;
+          RectAngle<LONG> blocks;
+          // Collect the downsampled blocks and push that into the DCT.
+          m_ppDownsampler[i]->GetCollectedBlocks(blocks);
+          for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
+            struct Line *row = Start8Lines(i);
+            for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+              LONG src[64]; // temporary buffer, the DCT requires a 8x8 block
+              m_ppDownsampler[i]->DownsampleRegion(bx,by,src);
+              DefineRegion(bx,row,src,i);
+            }
+            m_ppDownsampler[i]->RemoveBlocks(by);
+            Next8Lines(i);
+          }
+        }
       }
     }
   } else { // No downsampling required, residual coding possible.
@@ -345,26 +370,26 @@ void LineBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
     for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
       r.ra_MaxY = (r.ra_MinY & -8) + 7;
       if (r.ra_MaxY > region.ra_MaxY)
-	r.ra_MaxY = region.ra_MaxY;
-	
+        r.ra_MaxY = region.ra_MaxY;
+        
       for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	if (r.ra_MaxX > region.ra_MaxX)
-	  r.ra_MaxX = region.ra_MaxX;
+        r.ra_MaxX = (r.ra_MinX & -8) + 7;
+        if (r.ra_MaxX > region.ra_MaxX)
+          r.ra_MaxX = region.ra_MaxX;
 
-	for(i = 0;i < m_ucCount;i++) {      
-	  ExtractBitmap(m_ppTempIBM[i],r,i);
-	}
-	
-	ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
+        for(i = 0;i < m_ucCount;i++) {      
+          ExtractBitmap(m_ppTempIBM[i],r,i);
+        }
+        
+        ctrafo->RGB2YCbCr(r,m_ppTempIBM,m_ppCTemp);
 
-	for(i = 0;i < m_ucCount;i++) {
-	  DefineRegion(x,Start8Lines(i),m_ppCTemp[i],i);
-	}
+        for(i = 0;i < m_ucCount;i++) {
+          DefineRegion(x,Start8Lines(i),m_ppCTemp[i],i);
+        }
       }
       for(i = 0;i < m_ucCount;i++) {
-	Next8Lines(i);
-	m_pulReadyLines[i]   += 8;
+        Next8Lines(i);
+        m_pulReadyLines[i]   += 8;
       }
     }
   }
@@ -374,7 +399,7 @@ void LineBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
 /// LineBitmapRequester::RequestUserDataForDecoding
 // Pull data buffers from the user data bitmap hook
 void LineBitmapRequester::RequestUserDataForDecoding(class BitMapHook *bmh,RectAngle<LONG> &region,
-						     const struct RectangleRequest *rr,bool alpha)
+                                                     const struct RectangleRequest *rr,bool alpha)
 { 
   int i;
 
@@ -408,30 +433,30 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &region,const 
       // Compute the region of blocks
       assert(subx > 0 && suby > 0);
       if ((up = m_ppUpsampler[i])) {
-	LONG bwidth           = ((m_ulPixelWidth  + subx - 1) / subx + 7) >> 3;
-	LONG bheight          = ((m_ulPixelHeight + suby - 1) / suby + 7) >> 3;
-	LONG rx               = (subx > 1)?(1):(0);
-	LONG ry               = (suby > 1)?(1):(0);
-	// The +/-1 include additional lines required for subsampling expansion
-	blocks.ra_MinX        = ((region.ra_MinX / subx - rx) >> 3);
-	blocks.ra_MaxX        = ((region.ra_MaxX / subx + rx) >> 3);
-	blocks.ra_MinY        = ((region.ra_MinY / suby - ry) >> 3);
-	blocks.ra_MaxY        = ((region.ra_MaxY / suby + ry) >> 3);
-	// Clip.
-	if (blocks.ra_MinX < 0)        blocks.ra_MinX = 0;
-	if (blocks.ra_MaxX >= bwidth)  blocks.ra_MaxX = bwidth - 1;
-	if (blocks.ra_MinY < 0)        blocks.ra_MinY = 0;
-	if (blocks.ra_MaxY >= bheight) blocks.ra_MaxY = bheight - 1;
-	up->SetBufferedRegion(blocks); // also removes the rectangle of blocks already buffered.
-	//
-	for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-	  for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
-	    LONG dst[64];
-	    FetchRegion(bx,*m_pppImage[i],dst);
-	    up->DefineRegion(bx,by,dst);
-	  }
-	  Next8Lines(i);
-	}
+        LONG bwidth           = ((m_ulPixelWidth  + subx - 1) / subx + 7) >> 3;
+        LONG bheight          = ((m_ulPixelHeight + suby - 1) / suby + 7) >> 3;
+        LONG rx               = (subx > 1)?(1):(0);
+        LONG ry               = (suby > 1)?(1):(0);
+        // The +/-1 include additional lines required for subsampling expansion
+        blocks.ra_MinX        = ((region.ra_MinX / subx - rx) >> 3);
+        blocks.ra_MaxX        = ((region.ra_MaxX / subx + rx) >> 3);
+        blocks.ra_MinY        = ((region.ra_MinY / suby - ry) >> 3);
+        blocks.ra_MaxY        = ((region.ra_MaxY / suby + ry) >> 3);
+        // Clip.
+        if (blocks.ra_MinX < 0)        blocks.ra_MinX = 0;
+        if (blocks.ra_MaxX >= bwidth)  blocks.ra_MaxX = bwidth - 1;
+        if (blocks.ra_MinY < 0)        blocks.ra_MinY = 0;
+        if (blocks.ra_MaxY >= bheight) blocks.ra_MaxY = bheight - 1;
+        up->SetBufferedRegion(blocks); // also removes the rectangle of blocks already buffered.
+        //
+        for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
+          for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
+            LONG dst[64];
+            FetchRegion(bx,*m_pppImage[i],dst);
+            up->DefineRegion(bx,by,dst);
+          }
+          Next8Lines(i);
+        }
       }
     }
     // Now push blocks into the color transformer from the upsampler.
@@ -444,42 +469,42 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &region,const 
       ULONG x,y;
       
       if (maxy > m_ulMaxMCU)
-	maxy = m_ulMaxMCU;
+        maxy = m_ulMaxMCU;
 
       for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
-	r.ra_MaxY = (r.ra_MinY & -8) + 7;
-	if (r.ra_MaxY > region.ra_MaxY)
-	  r.ra_MaxY = region.ra_MaxY;
-	
-	for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	  r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	  if (r.ra_MaxX > region.ra_MaxX)
-	    r.ra_MaxX = region.ra_MaxX;
-	  
-	  for(i = 0;i < m_ucCount;i++) {
-	    if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-	      ExtractBitmap(m_ppTempIBM[i],r,i);
-	      if (m_ppUpsampler[i]) {
-		// Upsampled case, take from the upsampler, transform
-		// into the color buffer.
-		m_ppUpsampler[i]->UpsampleRegion(r,m_ppCTemp[i]);
-	      } else {
-		FetchRegion(x,*m_pppImage[i],m_ppCTemp[i]);
-	      }
-	    } else {
-	      // Not requested, zero the buffer.
-	      memset(m_ppCTemp[i],0,sizeof(LONG) * 64);
-	    }
-	  }
-	  ctrafo->YCbCr2RGB(r,m_ppTempIBM,m_ppCTemp,NULL);
-	}
-	//
-	// Advance the quantized rows for the non-subsampled components,
-	// upsampled components have been advanced above.
-	for(i = 0;i < m_ucCount;i++) {
-	  if (m_ppUpsampler[i] == NULL)
-	    Next8Lines(i);
-	}
+        r.ra_MaxY = (r.ra_MinY & -8) + 7;
+        if (r.ra_MaxY > region.ra_MaxY)
+          r.ra_MaxY = region.ra_MaxY;
+        
+        for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
+          r.ra_MaxX = (r.ra_MinX & -8) + 7;
+          if (r.ra_MaxX > region.ra_MaxX)
+            r.ra_MaxX = region.ra_MaxX;
+          
+          for(i = 0;i < m_ucCount;i++) {
+            if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+              ExtractBitmap(m_ppTempIBM[i],r,i);
+              if (m_ppUpsampler[i]) {
+                // Upsampled case, take from the upsampler, transform
+                // into the color buffer.
+                m_ppUpsampler[i]->UpsampleRegion(r,m_ppCTemp[i]);
+              } else {
+                FetchRegion(x,*m_pppImage[i],m_ppCTemp[i]);
+              }
+            } else {
+              // Not requested, zero the buffer.
+              memset(m_ppCTemp[i],0,sizeof(LONG) * 64);
+            }
+          }
+          ctrafo->YCbCr2RGB(r,m_ppTempIBM,m_ppCTemp,NULL);
+        }
+        //
+        // Advance the quantized rows for the non-subsampled components,
+        // upsampled components have been advanced above.
+        for(i = 0;i < m_ucCount;i++) {
+          if (m_ppUpsampler[i] == NULL)
+            Next8Lines(i);
+        }
       }
     }
   } else { // direct case, no upsampling required, residual coding possible.
@@ -497,30 +522,30 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &region,const 
     for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
       r.ra_MaxY = (r.ra_MinY & -8) + 7;
       if (r.ra_MaxY > region.ra_MaxY)
-	r.ra_MaxY = region.ra_MaxY;
-	
+        r.ra_MaxY = region.ra_MaxY;
+        
       for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
-	r.ra_MaxX = (r.ra_MinX & -8) + 7;
-	if (r.ra_MaxX > region.ra_MaxX)
-	  r.ra_MaxX = region.ra_MaxX;
+        r.ra_MaxX = (r.ra_MinX & -8) + 7;
+        if (r.ra_MaxX > region.ra_MaxX)
+          r.ra_MaxX = region.ra_MaxX;
 
-	for(i = 0;i < m_ucCount;i++) {      
-	  LONG *dst = m_ppCTemp[i];
-	  if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-	    ExtractBitmap(m_ppTempIBM[i],r,i);
-	    FetchRegion(x,*m_pppImage[i],dst);
-	  } else {
-	    memset(dst,0,sizeof(LONG) * 64);
-	  }
-	}
-	//
-	// Perform the color transformation now.
-	ctrafo->YCbCr2RGB(r,m_ppTempIBM,m_ppCTemp,NULL);
+        for(i = 0;i < m_ucCount;i++) {      
+          LONG *dst = m_ppCTemp[i];
+          if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+            ExtractBitmap(m_ppTempIBM[i],r,i);
+            FetchRegion(x,*m_pppImage[i],dst);
+          } else {
+            memset(dst,0,sizeof(LONG) * 64);
+          }
+        }
+        //
+        // Perform the color transformation now.
+        ctrafo->YCbCr2RGB(r,m_ppTempIBM,m_ppCTemp,NULL);
       } // of loop over x
       //
       // Advance the rows.
       for(i = 0;i < m_ucCount;i++) {
-	Next8Lines(i);
+        Next8Lines(i);
       }
     }
   }
@@ -541,7 +566,7 @@ bool LineBitmapRequester::isNextMCULineReady(void) const
       // codedlines + comp->SubYOf() << 3 * comp->MCUHeightOf() is the number of 
       // lines that must be buffered to encode the next MCU
       if (m_pulReadyLines[i] < codedlines + (comp->SubYOf() << 3) * comp->MCUHeightOf())
-	return false;
+        return false;
     }
   }
 

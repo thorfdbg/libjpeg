@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This class builds the proper color transformer from the information
 ** in the MergingSpecBox
@@ -52,75 +77,46 @@ class ColorTransformerFactory : public JKeeper {
   //
   // Build transformations that require only L and R.
   class IntegerTrafo *BuildIntegerTransformation(UBYTE etype,class Frame *frame,class Frame *residualframe,
-						 class MergingSpecBox *specs,
-						 UBYTE ocflags,int ltrafo,int rtrafo);
+                                                 class MergingSpecBox *specs,
+                                                 UBYTE ocflags,int ltrafo,int rtrafo);
   // 
-#if ISO_CODE
-  // Build transformations in the floating point transformations A and B.
-  class FloatTrafo *BuildFloatTransformation(UBYTE etype,class Frame *frame,class Frame *residualframe,
-					     class MergingSpecBox *specs,bool diagonal,
-					     UBYTE ocflags,int ltrafo,int rtrafo);
-#endif
   //
   // Build a transformation using the JPEG-LS color transformation back-end.
   // This works only without a residual (why a residual anyhow?)
   class ColorTrafo *BuildLSTransformation(UBYTE type,
-					  class Frame *frame,class Frame *residualframe,
-					  class MergingSpecBox *,
-					  UBYTE ocflags,int ltrafo,int rtrafo);
+                                          class Frame *frame,class Frame *residualframe,
+                                          class MergingSpecBox *,
+                                          UBYTE ocflags,int ltrafo,int rtrafo);
   //
   //
   // More helpers to cut down the possibilities a bit.
   template<int count,typename type>
   IntegerTrafo *BuildIntegerTransformationSimple(class Frame *frame,class Frame *residualframe,
-						       class MergingSpecBox *specs,
-						       UBYTE ocflags,int ltrafo,int rtrafo);
+                                                       class MergingSpecBox *specs,
+                                                       UBYTE ocflags,int ltrafo,int rtrafo);
   //
   template<int count,typename type>
   IntegerTrafo *BuildIntegerTransformationExtensive(class Frame *frame,class Frame *residualframe,
-							  class MergingSpecBox *specs,
-							  UBYTE ocflags,int ltrafo,int rtrafo);
+                                                          class MergingSpecBox *specs,
+                                                          UBYTE ocflags,int ltrafo,int rtrafo);
   //
   // Install the parameters to fully define a profile C encoder/decoder
   void InstallIntegerParameters(class IntegerTrafo *trafo,
-				class MergingSpecBox *specs,
-				int count,bool encoding,bool residual,
-				UBYTE inbpp,UBYTE outbpp,UBYTE resbpp,UBYTE rbits,
-				MergingSpecBox::DecorrelationType ltrafo,
-				MergingSpecBox::DecorrelationType rtrafo,
-				MergingSpecBox::DecorrelationType ctrafo);
+                                class MergingSpecBox *specs,
+                                int count,bool encoding,bool residual,
+                                UBYTE inbpp,UBYTE outbpp,UBYTE resbpp,UBYTE rbits,
+                                MergingSpecBox::DecorrelationType ltrafo,
+                                MergingSpecBox::DecorrelationType rtrafo,
+                                MergingSpecBox::DecorrelationType ctrafo);
   //
-#if ISO_CODE
-  // Install all the coding parameters for a profile A encoder or decoder.
-  // Get all the parameters from the MergingSpecBox.
-  void InstallProfileAParameters(class FloatTrafo *trafo,
-				 class Frame *frame,class Frame *residualframe,
-				 class MergingSpecBox *specs,
-				 int count,bool encoding);
-  //
-  // Install all the coding parameters for a profile B encoder or decoder.
-  // Get all the parameters from the MergingSpecBox.
-  void InstallProfileBParameters(class FloatTrafo *trafo,
-				 class Frame *frame,class Frame *residualframe,
-				 class MergingSpecBox *specs,
-				 int count,bool encoding);
-#endif
   //
   // Fill in a default matrix from its decorrelation type. This is the fixpoint version.
   void GetStandardMatrix(MergingSpecBox::DecorrelationType dt,LONG matrix[9]);
   //
-#if ISO_CODE
-  // Fill in a default matrix from its decorrelation type. This is the floating point version.
-  void GetStandardMatrix(MergingSpecBox::DecorrelationType dt,FLOAT matrix[9]);
-#endif
   //
   // Return the inverse of a standard matrix in fixpoint.
   void GetInverseStandardMatrix(MergingSpecBox::DecorrelationType dt,LONG matrix[9]);
   //
-#if ISO_CODE
-  // Return the inverse of a standard matrix in floating point.
-  void GetInverseStandardMatrix(MergingSpecBox::DecorrelationType dt,FLOAT matrix[9]);
-#endif
   //
   //
 public:
@@ -142,9 +138,9 @@ public:
   // dctbits is the number of bits "closer to the DCT side", i.e. on decoding, the input bits,
   // spatialbits is the bit precision "closer to the image", i.e. on decoding, the output bits.
   class ColorTrafo *BuildColorTransformer(class Frame *frame,class Frame *residual,
-					  class MergingSpecBox *specs,
-					  UBYTE dctbits,UBYTE spatialbits,
-					  UBYTE external_type,bool encoding);
+                                          class MergingSpecBox *specs,
+                                          UBYTE dctbits,UBYTE spatialbits,
+                                          UBYTE external_type,bool encoding);
   //
 };
 ///

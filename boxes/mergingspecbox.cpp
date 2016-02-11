@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This box defines the parameters for the LDR/residual merging process.
 **
@@ -71,85 +96,85 @@ class Box *MergingSpecBox::CreateBox(class Box *&boxlist,ULONG tbox)
   case RefinementSpecBox::Type:
     if (m_pRefinementSpec != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double refinement specification box");
+                "Malformed JPEG stream - found a double refinement specification box");
     return m_pRefinementSpec = new(m_pEnviron) class RefinementSpecBox(m_pEnviron,boxlist);
   case OutputConversionBox::Type:
     if (m_pOutputConversion != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double output conversion box");
+                "Malformed JPEG stream - found a double output conversion box");
     return m_pOutputConversion = new (m_pEnviron) class OutputConversionBox(m_pEnviron,boxlist);
     //
   case DCTBox::Base_Type:
     if (m_pBaseDCT != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double base DCT box");
+                "Malformed JPEG stream - found a double base DCT box");
     return m_pBaseDCT = new (m_pEnviron) class DCTBox(m_pEnviron,boxlist,tbox);
   case ColorTrafoBox::Base_Type:
     if (m_pBaseTransformation != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double base transformation box");
+                "Malformed JPEG stream - found a double base transformation box");
     return m_pBaseTransformation = new (m_pEnviron) class ColorTrafoBox(m_pEnviron,boxlist,tbox);
   case NonlinearTrafoBox::Base_Type:
     if (m_pBaseNonlinearity != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double base non-linear point transformation box");
+                "Malformed JPEG stream - found a double base non-linear point transformation box");
     return m_pBaseNonlinearity = new (m_pEnviron) class NonlinearTrafoBox(m_pEnviron,boxlist,tbox);
   case ColorTrafoBox::Color_Type:
     if (m_pColorTransformation != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double color transformation box");
+                "Malformed JPEG stream - found a double color transformation box");
     return m_pColorTransformation = new (m_pEnviron) class ColorTrafoBox(m_pEnviron,boxlist,tbox);
   case NonlinearTrafoBox::Base2_Type:
     if (m_p2ndBaseNonlinearity != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double secondary base non-linear point transformation box");
+                "Malformed JPEG stream - found a double secondary base non-linear point transformation box");
     return m_p2ndBaseNonlinearity = new (m_pEnviron) class NonlinearTrafoBox(m_pEnviron,boxlist,tbox);
     //
   case DCTBox::Residual_Type:
     if (m_pResidualDCT != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double residual DCT box");
+                "Malformed JPEG stream - found a double residual DCT box");
     return m_pResidualDCT = new (m_pEnviron) class DCTBox(m_pEnviron,boxlist,tbox);
   case NonlinearTrafoBox::Residual_Type:
     if (m_pResidualNonlinearity != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double residual non-linear point transformation box");
+                "Malformed JPEG stream - found a double residual non-linear point transformation box");
     return m_pResidualNonlinearity = new (m_pEnviron) class NonlinearTrafoBox(m_pEnviron,boxlist,tbox);
   case ColorTrafoBox::Residual_Type:
     if (m_pResidualTransformation != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double residual transformation box");
+                "Malformed JPEG stream - found a double residual transformation box");
     return m_pResidualTransformation = new (m_pEnviron) class ColorTrafoBox(m_pEnviron,boxlist,tbox);
   case NonlinearTrafoBox::ResidualI_Type:
     if (m_pIntermediateResidualNonlinearity != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double intermediate residual non-linear point transformation box");
+                "Malformed JPEG stream - found a double intermediate residual non-linear point transformation box");
     return m_pIntermediateResidualNonlinearity = new (m_pEnviron) class NonlinearTrafoBox(m_pEnviron,boxlist,tbox);
   case ColorTrafoBox::ResidualColor_Type:
     if (m_pResidualColorTransformation != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double residual transformation box");
+                "Malformed JPEG stream - found a double residual transformation box");
     return m_pResidualColorTransformation = new (m_pEnviron) class ColorTrafoBox(m_pEnviron,boxlist,tbox);
   case NonlinearTrafoBox::Residual2_Type:
     if (m_p2ndResidualNonlinearity != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double secondary residual non-linear point transformation box");
+                "Malformed JPEG stream - found a double secondary residual non-linear point transformation box");
     return m_p2ndResidualNonlinearity = new (m_pEnviron) class NonlinearTrafoBox(m_pEnviron,boxlist,tbox);  
     //
   case ColorTrafoBox::Prescaling_Type:
     if (m_pPrescalingTransformation != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double prescaling transformation box");
+                "Malformed JPEG stream - found a double prescaling transformation box");
     return m_pPrescalingTransformation = new (m_pEnviron) class ColorTrafoBox(m_pEnviron,boxlist,tbox);
   case NonlinearTrafoBox::Prescaling_Type:
     if (m_pPrescalingNonlinearity != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double prescaling non-linear point transformation box");
+                "Malformed JPEG stream - found a double prescaling non-linear point transformation box");
     return m_pPrescalingNonlinearity = new (m_pEnviron) class NonlinearTrafoBox(m_pEnviron,boxlist,tbox);
   case NonlinearTrafoBox::Postscaling_Type:
     if (m_pPostscalingNonlinearity != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double postscaling non-linear point transformation box");
+                "Malformed JPEG stream - found a double postscaling non-linear point transformation box");
     return m_pPostscalingNonlinearity = new (m_pEnviron) class NonlinearTrafoBox(m_pEnviron,boxlist,tbox);
     //
   case ParametricToneMappingBox::Type:
@@ -162,11 +187,11 @@ class Box *MergingSpecBox::CreateBox(class Box *&boxlist,ULONG tbox)
   case AlphaBox::Type:
     if (m_pAlphaMode != NULL)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found a double alpha channel composition box");
+                "Malformed JPEG stream - found a double alpha channel composition box");
     if (BoxTypeOf() != AlphaType)
       JPG_THROW(MALFORMED_STREAM,"SuperBox::CreateBox",
-		"Malformed JPEG stream - found an alpha channel composition box outside of "
-		"the alpha channel merging specification box");
+                "Malformed JPEG stream - found an alpha channel composition box outside of "
+                "the alpha channel merging specification box");
     return m_pAlphaMode = new(m_pEnviron) class AlphaBox(m_pEnviron,boxlist);
   default:
     // All other box types are ignored.
@@ -195,8 +220,8 @@ void MergingSpecBox::AcknowledgeBox(class Box *box,ULONG tbox)
       //
       // Note that the box is already enqueued in the box list, thus it is not lost.
       if (!m_pNameSpace->isUniqueNonlinearity(idx))
-	JPG_THROW(MALFORMED_STREAM,"SuperBox::AcknowledgeBox",
-		  "Malformed JPEG stream - found an double parametric curve box for the same index");
+        JPG_THROW(MALFORMED_STREAM,"SuperBox::AcknowledgeBox",
+                  "Malformed JPEG stream - found an double parametric curve box for the same index");
     }
     break;
   case LinearTransformationBox::Type:
@@ -206,8 +231,8 @@ void MergingSpecBox::AcknowledgeBox(class Box *box,ULONG tbox)
       UBYTE idx = matrix->IdOf();
       //
       if (!m_pNameSpace->isUniqueMatrix(idx))
-	JPG_THROW(MALFORMED_STREAM,"SuperBox::AcknowledgeBox",
-		  "Malformed JPEG stream - found an double linear transformation for the same index");
+        JPG_THROW(MALFORMED_STREAM,"SuperBox::AcknowledgeBox",
+                  "Malformed JPEG stream - found an double linear transformation for the same index");
     }
     break;
   default:
@@ -946,7 +971,7 @@ UBYTE MergingSpecBox::CreateIdentity(UBYTE rounding_mode)
 // This call will create an appropriate LinearTransformationBox and will return its ID, to be
 // put into the MergingSpecBox.
 MergingSpecBox::DecorrelationType MergingSpecBox::ParseFreeFormTransformation(const struct JPG_TagItem *tags,
-									      ULONG tagbase)
+                                                                              ULONG tagbase)
 { 
   class LinearTransformationBox *lbox;
   UBYTE nextid         = m_pNameSpace->AllocateMatrixID();
@@ -957,13 +982,13 @@ MergingSpecBox::DecorrelationType MergingSpecBox::ParseFreeFormTransformation(co
     const struct JPG_TagItem *entry = tags->FindTagItem(tagbase + i);
     if (entry == NULL) {
       JPG_THROW(OBJECT_DOESNT_EXIST,"MergingSpecBox::ParseFreeFormTransformation",
-		"not all entries of a free-form linear transformation are given, cannot create the matrix");
+                "not all entries of a free-form linear transformation are given, cannot create the matrix");
     } else {
       entries[i] = entry->ti_Data.ti_lData;
       if (entries[i] < MIN_WORD || entries[i] > MAX_WORD)
-	JPG_THROW(OVERFLOW_PARAMETER,"MergingSpecBox::ParseFreeFormTransformation",
-		  "matrix entries of the linear transformation are out of range, "
-		  "absolute value must be smaller than four");
+        JPG_THROW(OVERFLOW_PARAMETER,"MergingSpecBox::ParseFreeFormTransformation",
+                  "matrix entries of the linear transformation are out of range, "
+                  "absolute value must be smaller than four");
     }
   }
 
@@ -982,7 +1007,7 @@ MergingSpecBox::DecorrelationType MergingSpecBox::ParseFreeFormTransformation(co
 // Build a floating point version of a matrix and place it here. This is similar to the above
 // except that the coefficients are not fixpoint numbers.
 MergingSpecBox::DecorrelationType MergingSpecBox::ParseFreeFormFloatTransformation(const struct JPG_TagItem *tags,
-										   ULONG tagbase)
+                                                                                   ULONG tagbase)
 { 
   class FloatTransformationBox *lbox;
   UBYTE nextid         = m_pNameSpace->AllocateMatrixID();
@@ -993,13 +1018,13 @@ MergingSpecBox::DecorrelationType MergingSpecBox::ParseFreeFormFloatTransformati
     const struct JPG_TagItem *entry = tags->FindTagItem(tagbase + i);
     if (entry == NULL) {
       JPG_THROW(OBJECT_DOESNT_EXIST,"MergingSpecBox::ParseFreeFormTransformation",
-		"not all entries of a free-form linear transformation are given, cannot create the matrix");
+                "not all entries of a free-form linear transformation are given, cannot create the matrix");
     } else {
       entries[i] = entry->ti_Data.ti_lData;
       if (entries[i] < MIN_WORD || entries[i] > MAX_WORD)
-	JPG_THROW(OVERFLOW_PARAMETER,"MergingSpecBox::ParseFreeFormTransformation",
-		  "matrix entries of the linear transformation are out of range, "
-		  "absolute value must be smaller than four");
+        JPG_THROW(OVERFLOW_PARAMETER,"MergingSpecBox::ParseFreeFormTransformation",
+                  "matrix entries of the linear transformation are out of range, "
+                  "absolute value must be smaller than four");
     }
   }
 

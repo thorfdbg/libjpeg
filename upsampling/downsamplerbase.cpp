@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** Base class for all upsamplers, common for all upsampling processes
@@ -122,9 +147,9 @@ void DownsamplerBase::DefineRegion(LONG x,LONG y,const LONG *data)
       // Overlab at the boundary, extend to the right to keep the downsampling simple
       memcpy(dst + ofs,data,8 * sizeof(LONG));
       for(i = 0; i < ovl;i++) {
-	// Mirror-extend. Actually, any type of extension is suitable as long as the
-	// mean is sensible.
-	dst[m_ulWidth + i] = dst[(m_ulWidth > i)?(m_ulWidth - 1 - i):0]; 
+        // Mirror-extend. Actually, any type of extension is suitable as long as the
+        // mean is sensible.
+        dst[m_ulWidth + i] = dst[(m_ulWidth > i)?(m_ulWidth - 1 - i):0]; 
       }
       line  = line->m_pNext;
       data += 8;
@@ -153,10 +178,10 @@ void DownsamplerBase::RemoveBlocks(ULONG by)
     if (row) {
       m_pInputBuffer = row->m_pNext;
       if (m_pInputBuffer == NULL) {
-	assert(row == m_pLastRow); 
-	assert(m_lHeight == 1);
-	// it hopefully is as it has no following line
-	m_pLastRow = NULL;
+        assert(row == m_pLastRow); 
+        assert(m_lHeight == 1);
+        // it hopefully is as it has no following line
+        m_pLastRow = NULL;
       }
       row->m_pNext = m_pFree;
       m_pFree      = row;

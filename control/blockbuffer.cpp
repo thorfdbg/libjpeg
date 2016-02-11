@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class pulls blocks from the frame and reconstructs from those
@@ -59,8 +84,8 @@ BlockBuffer::~BlockBuffer(void)
   if (m_ppQTop) {
     for(i = 0;i < m_ucCount;i++) {
       while((row = m_ppQTop[i])) {
-	m_ppQTop[i] = row->NextOf();
-	delete row;
+        m_ppQTop[i] = row->NextOf();
+        delete row;
       }
     }
     m_pEnviron->FreeMem(m_ppQTop,m_ucCount * sizeof(class QuantizedRow *));
@@ -69,8 +94,8 @@ BlockBuffer::~BlockBuffer(void)
   if (m_ppRTop) {
     for(i = 0;i < m_ucCount;i++) {
       while((row = m_ppRTop[i])) {
-	m_ppRTop[i] = row->NextOf();
-	delete row;
+        m_ppRTop[i] = row->NextOf();
+        delete row;
       }
     }
     m_pEnviron->FreeMem(m_ppRTop,m_ucCount * sizeof(class QuantizedRow *));
@@ -106,25 +131,25 @@ void BlockBuffer::BuildCommon(void)
 
   if (m_ppQTop == NULL) {
     m_ppQTop      = (class QuantizedRow **)m_pEnviron->AllocMem(sizeof(class QuantizedRow *) * 
-							      m_ucCount);
+                                                              m_ucCount);
     memset(m_ppQTop,0,sizeof(class QuantizedRow *) * m_ucCount);
   }
 
   if (m_ppRTop == NULL) {
     m_ppRTop      = (class QuantizedRow **)m_pEnviron->AllocMem(sizeof(class QuantizedRow *) * 
-								m_ucCount);
+                                                                m_ucCount);
     memset(m_ppRTop,0,sizeof(class QuantizedRow *) * m_ucCount);
   }
 
   if (m_pppQStream == NULL) {
     m_pppQStream  = (class QuantizedRow ***)m_pEnviron->AllocMem(sizeof(class QuantizedRow **) * 
-								 m_ucCount);
+                                                                 m_ucCount);
     memset(m_pppQStream,0,m_ucCount * sizeof(class QuantizedRow **));
   }
 
   if (m_pppRStream == NULL) {
     m_pppRStream  = (class QuantizedRow ***)m_pEnviron->AllocMem(sizeof(class QuantizedRow **) * 
-								 m_ucCount);
+                                                                 m_ucCount);
     memset(m_pppRStream,0,m_ucCount * sizeof(class QuantizedRow **));
   }
 }
@@ -143,8 +168,8 @@ void BlockBuffer::ResetToStartOfScan(class Scan *scan)
       class Component *comp = scan->ComponentOf(i);
       UBYTE idx             = comp->IndexOf(); 
       if (m_ppDCT[idx] == NULL)
-	m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp,m_ucCount,
-							     m_pFrame->HiddenPrecisionOf());
+        m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp,m_ucCount,
+                                                             m_pFrame->HiddenPrecisionOf());
 
       m_pulY[idx]           = 0;
       m_pulCurrentY[idx]    = 0;
@@ -156,8 +181,8 @@ void BlockBuffer::ResetToStartOfScan(class Scan *scan)
     for(UBYTE idx = 0;idx < m_ucCount;idx++) { 
       class Component *comp = m_pFrame->ComponentOf(idx);
       if (m_ppDCT[idx] == NULL)
-	m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp,m_ucCount,
-							     m_pFrame->HiddenPrecisionOf());
+        m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp,m_ucCount,
+                                                             m_pFrame->HiddenPrecisionOf());
       
       m_pulY[idx]           = 0;
       m_pulCurrentY[idx]    = 0;
@@ -199,23 +224,23 @@ bool BlockBuffer::StartMCUQuantizerRow(class Scan *scan)
       //
       // Skip all the lines in the MCU
       if (last) {
-	while(mcuheight) {
-	  assert(*last);
-	  last = &((*last)->NextOf());
-	  mcuheight--;
-	}
+        while(mcuheight) {
+          assert(*last);
+          last = &((*last)->NextOf());
+          mcuheight--;
+        }
       } else {
-	last = &m_ppQTop[idx];
+        last = &m_ppQTop[idx];
       }
 
       for(y = ymin;y < ymax;y+=8) {
-	if (*last == NULL) {
-	  *last = new(m_pEnviron) class QuantizedRow(m_pEnviron);
-	}
-	(*last)->AllocateRow(width);
-	if (y == ymin)
-	  m_pppQStream[idx] = last;
-	last = &((*last)->NextOf());
+        if (*last == NULL) {
+          *last = new(m_pEnviron) class QuantizedRow(m_pEnviron);
+        }
+        (*last)->AllocateRow(width);
+        if (y == ymin)
+          m_pppQStream[idx] = last;
+        last = &((*last)->NextOf());
       }
     } else {
       more = false;
@@ -278,23 +303,23 @@ bool BlockBuffer::StartMCUResidualRow(class Scan *scan)
       m_pulCurrentY[i] = m_pulY[i];
 
       if (last) {
-	while(mcuheight) {
-	  assert(*last);
-	  last = &((*last)->NextOf());
-	  mcuheight--;
-	}
+        while(mcuheight) {
+          assert(*last);
+          last = &((*last)->NextOf());
+          mcuheight--;
+        }
       } else {
-	last = &m_ppRTop[i];
+        last = &m_ppRTop[i];
       }
 
       for(y = ymin;y < ymax;y+=8) {
-	if (*last == NULL) {
-	  *last = new(m_pEnviron) class QuantizedRow(m_pEnviron);
-	}
-	(*last)->AllocateRow(width);
-	if (y == ymin)
-	  m_pppRStream[i] = last;
-	last = &((*last)->NextOf());
+        if (*last == NULL) {
+          *last = new(m_pEnviron) class QuantizedRow(m_pEnviron);
+        }
+        (*last)->AllocateRow(width);
+        if (y == ymin)
+          m_pppRStream[i] = last;
+        last = &((*last)->NextOf());
       }
     } else {
       more = false;

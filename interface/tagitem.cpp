@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
  * Tag item definitions
  * 
@@ -40,14 +65,14 @@ struct JPG_TagItem *JPG_TagItem::NextTagItem(void)
       // go to the next list
       current = (struct JPG_TagItem *)(current->ti_Data.ti_pPtr); 
       if (current == NULL)
-	return NULL;
+        return NULL;
       continue;
     case JPGTAG_TAG_SKIP:
       current = current + 1 + current->ti_Data.ti_lData; // skip this and the next n items
       continue;
     default: 
       if (current->ti_Tag & JPGTAG_TAG_USER)
-	return current;
+        return current;
       // Runs into the following
     case JPGTAG_TAG_IGNORE:    
       current++;
@@ -75,15 +100,15 @@ struct JPG_TagItem *JPG_TagItem::FindTagItem(JPG_Tag id)
       // go to the next list
       current = (struct JPG_TagItem *)(current->ti_Data.ti_pPtr); 
       if (current == NULL)
-	return NULL;
+        return NULL;
       continue;
     case JPGTAG_TAG_SKIP:
       current = current + 1 + current->ti_Data.ti_lData; // skip this and the next n items
       continue;
     default: 
       if (current->ti_Tag & JPGTAG_TAG_USER) {
-	if (current->ti_Tag == id)
-	  return current;
+        if (current->ti_Tag == id)
+          return current;
       }
       // Runs into the following
     case JPGTAG_TAG_IGNORE:    
@@ -204,7 +229,7 @@ void JPG_TagItem::ClearTagSets()
 // new taglist. If the target taglist is NULL, it is not
 // filled in, but tags are just counted.
 JPG_LONG JPG_TagItem::FilterTags(struct JPG_TagItem *target,const struct JPG_TagItem *source,
-				 const struct JPG_TagItem *defaults,const struct JPG_TagItem *drop)
+                                 const struct JPG_TagItem *defaults,const struct JPG_TagItem *drop)
 {
   LONG count = 0;
   const struct JPG_TagItem *parse = source;
@@ -213,7 +238,7 @@ JPG_LONG JPG_TagItem::FilterTags(struct JPG_TagItem *target,const struct JPG_Tag
     if (parse->ti_Tag & JPGTAG_TAG_USER) {
       // Got a setting tag, carry it over.
       if (target) {
-	*target++ = *parse;
+        *target++ = *parse;
       }
       count++;
     }
@@ -227,13 +252,13 @@ JPG_LONG JPG_TagItem::FilterTags(struct JPG_TagItem *target,const struct JPG_Tag
       // Check whether there are any tags we shall not add from
       // the defaults.
       if (drop == NULL || drop->FindTagItem(defaults->ti_Tag) == NULL) {
-	if (source == NULL || source->FindTagItem(defaults->ti_Tag) == NULL) {
-	  // Ok, we know nothing about this value, attach.
-	  if (target) {
-	    *target++ = *defaults;
-	  }
-	  count++;
-	}
+        if (source == NULL || source->FindTagItem(defaults->ti_Tag) == NULL) {
+          // Ok, we know nothing about this value, attach.
+          if (target) {
+            *target++ = *defaults;
+          }
+          count++;
+        }
       }
     }
     defaults = defaults->NextTagItem();

@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
  * Base class for all IO support functions, the abstract ByteStream
  * class.
@@ -99,8 +124,8 @@ LONG ByteStream::Write(const UBYTE *buffer,ULONG size)
 // to resynchronize.
 // Returns the detected marker, or EOF.
 LONG ByteStream::SkipToMarker(UWORD marker1,UWORD marker2,
-			      UWORD marker3,UWORD marker4,
-			      UWORD marker5)
+                              UWORD marker3,UWORD marker4,
+                              UWORD marker5)
 {
   LONG byte;
 
@@ -118,9 +143,9 @@ LONG ByteStream::SkipToMarker(UWORD marker1,UWORD marker2,
       // And now seek for the marker.
       byte = PeekWord();
       if ((byte == marker1) || (byte == marker2) || 
-	  (byte == marker3) || (byte == marker4) ||
-	  (byte == marker5))
-	return byte;
+          (byte == marker3) || (byte == marker4) ||
+          (byte == marker5))
+        return byte;
       //
       // otherwise, not the marker we seek for. Skip, and don't forget
       // to pull the 0xff we put back.
@@ -202,10 +227,10 @@ void ByteStream::SkipBytes(ULONG offset)
     // or refill the buffer.
     if (avail == 0) {
       if (Fill() == 0 && offset) {
-	// If this happens, and there's still something to skip,
-	// then something's wrong because we should never seek 
-	// over all data. If we do, the stream is most likely corrupt.
-	JPG_THROW(UNEXPECTED_EOF,"ByteStream::SkipBytes","unexpectedly hit the end of the stream while skipping bytes");
+        // If this happens, and there's still something to skip,
+        // then something's wrong because we should never seek 
+        // over all data. If we do, the stream is most likely corrupt.
+        JPG_THROW(UNEXPECTED_EOF,"ByteStream::SkipBytes","unexpectedly hit the end of the stream while skipping bytes");
       }
       // Update the number of available bytes.
       avail = m_pucBufEnd - m_pucBufPtr;

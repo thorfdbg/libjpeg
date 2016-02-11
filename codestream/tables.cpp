@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
@@ -137,8 +162,8 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
   UBYTE hiddenbits = tags->GetTagData(JPGTAG_IMAGE_HIDDEN_DCTBITS,0);
   UBYTE hiddenresidualbits= tags->GetTagData(JPGTAG_RESIDUAL_HIDDEN_DCTBITS,0);
   ULONG colortrafo = tags->GetTagData(JPGTAG_MATRIX_LTRAFO,
-				     (depth > 1)?JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-				     JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE);
+                                     (depth > 1)?JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
+                                     JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE);
   ULONG rtrafo     = tags->GetTagData(JPGTAG_MATRIX_RTRAFO,colortrafo);
   bool residual    = (frametype & JPGFLAG_RESIDUAL_CODING)?true:false;
   LONG resflags    = tags->GetTagData(JPGTAG_RESIDUAL_FRAMETYPE,JPGFLAG_RESIDUAL);
@@ -165,8 +190,8 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
   // If any of these are set, we arein profile B likely.
   for(comp = 0;comp < depth;comp++) {
     if ((tags->FindTagItem(JPGTAG_TONEMAPPING_R2_TYPE(comp)) && 
-	 (tags->GetTagData(JPGTAG_TONEMAPPING_R2_TYPE(comp)) != JPGFLAG_TONEMAPPING_LINEAR)) ||
-	tags->FindTagItem(JPGTAG_TONEMAPPING_L2_TYPE(comp))) {
+         (tags->GetTagData(JPGTAG_TONEMAPPING_R2_TYPE(comp)) != JPGFLAG_TONEMAPPING_LINEAR)) ||
+        tags->FindTagItem(JPGTAG_TONEMAPPING_L2_TYPE(comp))) {
       profileb = true;
       break;
     }
@@ -184,23 +209,23 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
     case JPGFLAG_RESIDUALDCT:
       dopart8 = true;
       if (profileb || profilea)
-	JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-		  "residual coding modes are not available in profiles A and B");
+        JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
+                  "residual coding modes are not available in profiles A and B");
       break;
     }
   }
   
   if (quality > 100)
     JPG_THROW(OVERFLOW_PARAMETER,"Tables::InstallDefaultTables",
-	      "image quality can be at most 100");
+              "image quality can be at most 100");
 
   if (hdrquality != MAX_ULONG && hdrquality > 100)
     JPG_THROW(OVERFLOW_PARAMETER,"Tables::InstallDefaultTables",
-	      "quality of the extensions layer can be at most 100");
+              "quality of the extensions layer can be at most 100");
 
   if (maxerr < 0 || maxerr > MAX_UBYTE)
     JPG_THROW(OVERFLOW_PARAMETER,"Tables::InstallDefaultTables",
-	      "The maximum error must be non-negative and can be at most 255");
+              "The maximum error must be non-negative and can be at most 255");
 
   if (m_pQuant != NULL || m_pHuffman != NULL || m_pColorInfo != NULL || m_pResolutionInfo != NULL ||
       m_pRestart != NULL)
@@ -245,35 +270,35 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
       // No longer make this decision depending on the DCT.
       // DCT works now also in the lossless mode.
       {
-	// DCT is off in the residual domain.
-	if (dopart8) {
-	  if (depth == 3 && tags->GetTagData(JPGTAG_RESIDUAL_DCT,false) == false) {
-	    // Note that we cannot use the range extension if the DCT is on because
-	    // it is not exactly linear, due to approximations, which would
-	    // create loss.
-	    rct     = true;
-	  }
-	}
+        // DCT is off in the residual domain.
+        if (dopart8) {
+          if (depth == 3 && tags->GetTagData(JPGTAG_RESIDUAL_DCT,false) == false) {
+            // Note that we cannot use the range extension if the DCT is on because
+            // it is not exactly linear, due to approximations, which would
+            // create loss.
+            rct     = true;
+          }
+        }
       }
     }
     {
       LONG matrix = tags->GetTagData((m_pParent)?
-				     JPGTAG_RESIDUALQUANT_MATRIX:
-				     JPGTAG_QUANTIZATION_MATRIX ,JPGFLAG_QUANTIZATION_ANNEX_K);
+                                     JPGTAG_RESIDUALQUANT_MATRIX:
+                                     JPGTAG_QUANTIZATION_MATRIX ,JPGFLAG_QUANTIZATION_ANNEX_K);
       const LONG *lumatable = (const LONG *)tags->GetTagPtr((m_pParent)?
-							    JPGTAG_QUANTIZATION_LUMATABLE:
-							    JPGTAG_RESIDUALQUANT_LUMATABLE, NULL);
+                                                            JPGTAG_QUANTIZATION_LUMATABLE:
+                                                            JPGTAG_RESIDUALQUANT_LUMATABLE, NULL);
       const LONG *chromatable = (const LONG *)tags->GetTagPtr((m_pParent)?
-							      JPGTAG_QUANTIZATION_CHROMATABLE:
-							      JPGTAG_RESIDUALQUANT_CHROMATABLE,NULL);
+                                                              JPGTAG_QUANTIZATION_CHROMATABLE:
+                                                              JPGTAG_RESIDUALQUANT_CHROMATABLE,NULL);
       if (m_pParent) {
-	m_pQuant->InitDefaultTables(quality,hdrquality,
-				    rtrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
-				    false,true,rct,matrix,lumatable,chromatable);
+        m_pQuant->InitDefaultTables(quality,hdrquality,
+                                    rtrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
+                                    false,true,rct,matrix,lumatable,chromatable);
       } else {
-	m_pQuant->InitDefaultTables(quality,hdrquality,
-				    colortrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
-				    false,false,rct,matrix,lumatable,chromatable);
+        m_pQuant->InitDefaultTables(quality,hdrquality,
+                                    colortrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
+                                    false,false,rct,matrix,lumatable,chromatable);
       }
     }
     break;
@@ -289,16 +314,16 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
       case JPGFLAG_BASELINE:
       case JPGFLAG_SEQUENTIAL:
       case JPGFLAG_PROGRESSIVE:
-	profile = new(m_pEnviron) class FileTypeBox(m_pEnviron,m_pBoxList);
-	break;
+        profile = new(m_pEnviron) class FileTypeBox(m_pEnviron,m_pBoxList);
+        break;
       }
     }
     //
     switch(colortrafo) {
     case JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE:
       if (m_pMaster == NULL) {
-	m_pColorInfo = new(m_pEnviron) AdobeMarker(m_pEnviron);
-	m_pColorInfo->SetColorSpace(AdobeMarker::None);
+        m_pColorInfo = new(m_pEnviron) AdobeMarker(m_pEnviron);
+        m_pColorInfo->SetColorSpace(AdobeMarker::None);
       }
       ltrafo = MergingSpecBox::Identity; // THOR: Fix. Must remain at none, the marker is only here for legacy decoders.
       break;
@@ -310,14 +335,14 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
       // channel and we are in a mode that is acceptable for JFIF, 
       // also generate a JFIF marker.
       if (m_pMaster == NULL) {
-	switch(frametype & 0x3f) {
-	case JPGFLAG_BASELINE:
-	case JPGFLAG_SEQUENTIAL:
-	case JPGFLAG_PROGRESSIVE:
-	  m_pResolutionInfo = new(m_pEnviron) JFIFMarker(m_pEnviron);
-	  m_pResolutionInfo->SetImageResolution(96,96);
-	  break;
-	}
+        switch(frametype & 0x3f) {
+        case JPGFLAG_BASELINE:
+        case JPGFLAG_SEQUENTIAL:
+        case JPGFLAG_PROGRESSIVE:
+          m_pResolutionInfo = new(m_pEnviron) JFIFMarker(m_pEnviron);
+          m_pResolutionInfo->SetImageResolution(96,96);
+          break;
+        }
       }
       ltrafo = MergingSpecBox::YCbCr;
       break;
@@ -331,7 +356,7 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
       break;
     default:
       JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-		"the selected color transformation in the legacy decoding path is not valid");
+                "the selected color transformation in the legacy decoding path is not valid");
       break;
     }
     //
@@ -358,17 +383,17 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
   // All the testing here just checks whether this is some part of JPEG XT and
   // requires further support to setup all the boxes.
   if (m_pParent == NULL && (residual || hiddenbits || hiddenresidualbits || losslessdct || dopart8 || dopart9 ||
-			    profilea || profileb || (((frametype & 0x07) != JPGFLAG_JPEG_LS  &&
-						      (frametype & 0x07) != JPGFLAG_LOSSLESS &&
-						      levels == 0 &&
-						      (frametype & JPGFLAG_PYRAMIDAL) ==0) && 
-						     (ltrafo != MergingSpecBox::YCbCr ||
-						      ctrafo != MergingSpecBox::Identity)))) {
+                            profilea || profileb || (((frametype & 0x07) != JPGFLAG_JPEG_LS  &&
+                                                      (frametype & 0x07) != JPGFLAG_LOSSLESS &&
+                                                      levels == 0 &&
+                                                      (frametype & JPGFLAG_PYRAMIDAL) ==0) && 
+                                                     (ltrafo != MergingSpecBox::YCbCr ||
+                                                      ctrafo != MergingSpecBox::Identity)))) {
     //
     // Here we are a bit more constrained.
     if (depth != 1 && depth != 3)
       JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-		"JPEG XT only supports one or three component images");
+                "JPEG XT only supports one or three component images");
     //
     //
     if (m_pMaster == NULL) {
@@ -378,48 +403,38 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
       //
       // Create alpha
       if (dopart9) {
-	assert(m_pAlphaSpecs == NULL);
-	m_pAlphaSpecs = new(m_pEnviron) class MergingSpecBox(this,m_pBoxList,MergingSpecBox::AlphaType);
+        assert(m_pAlphaSpecs == NULL);
+        m_pAlphaSpecs = new(m_pEnviron) class MergingSpecBox(this,m_pBoxList,MergingSpecBox::AlphaType);
       }
     }
     //
     // Filter a couple of impossible settings for profile A.
     if (profilea || profileb) {
       if (!residual)
-	JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-		  "Profiles A and B require a residual codestream");
+        JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
+                  "Profiles A and B require a residual codestream");
       if (dopart8)
-	JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-		  "Profiles A and B do not allow lossless coding");
+        JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
+                  "Profiles A and B do not allow lossless coding");
       //
       // This type of profile cannot be put into an alpha image. Thus, test whether we are the
       // alpha channel by testing whether we have a master image and warn.
       if (m_pMaster)
-	JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-		  "JPEG XT part 9 does not support JPEG XT part 7 profile A and B as alpha channel.");
+        JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
+                  "JPEG XT part 9 does not support JPEG XT part 7 profile A and B as alpha channel.");
       //
       //
       // Further refine the settings.
       if (profilea) {
-	if ((depth == 1 && ltrafo != MergingSpecBox::Identity) || 
-	    (depth == 3 && (ltrafo != MergingSpecBox::YCbCr && ltrafo != MergingSpecBox::Identity))) 
-	  JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
-		    "Profile A requires the identity or the YCbCr transformation in the legacy codestream");
-#if ISO_CODE
-	// Ok, do all the work for profile A.
-	CreateProfileASettings(tags,profile);
-#else
-	JPG_THROW(NOT_IMPLEMENTED,"Tables::InstallDefaultTables",
-		  "Profile A support not available due to patented IPRs");
-#endif
+        if ((depth == 1 && ltrafo != MergingSpecBox::Identity) || 
+            (depth == 3 && (ltrafo != MergingSpecBox::YCbCr && ltrafo != MergingSpecBox::Identity))) 
+          JPG_THROW(INVALID_PARAMETER,"Tables::InstallDefaultTables",
+                    "Profile A requires the identity or the YCbCr transformation in the legacy codestream");
+        JPG_THROW(NOT_IMPLEMENTED,"Tables::InstallDefaultTables",
+                  "Profile A support not available due to patented IPRs");
       } else {
-#if ISO_CODE
-	// Otherwise, we are in B.
-	CreateProfileBSettings(tags,profile,precision,ltrafo);
-#else
-	JPG_THROW(NOT_IMPLEMENTED,"Tables::InstallDefaultTables",
-		  "Profile B support not available due to patented IPRs");
-#endif
+        JPG_THROW(NOT_IMPLEMENTED,"Tables::InstallDefaultTables",
+                  "Profile B support not available due to patented IPRs");
       }
     } else {
       // Ok, then we're in profile C.
@@ -436,554 +451,17 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
 
 /// Tables::CreateProfileASettings
 // Parse off the tags for a profile A encoder.
-#if ISO_CODE
-void Tables::CreateProfileASettings(const struct JPG_TagItem *tags,class FileTypeBox *profile)
-{
-  ULONG component;
-  ULONG depth                  = tags->GetTagData(JPGTAG_IMAGE_DEPTH,3);  
-  UBYTE hiddenbits             = tags->GetTagData(JPGTAG_IMAGE_HIDDEN_DCTBITS,0);
-  UBYTE hiddenresidualbits     = tags->GetTagData(JPGTAG_RESIDUAL_HIDDEN_DCTBITS,0);  
-  ULONG ltrafo                 = tags->GetTagData(JPGTAG_MATRIX_LTRAFO,
-						   (depth > 1)?JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-						   JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE);
-  ULONG rtrafo                 = tags->GetTagData(JPGTAG_MATRIX_RTRAFO,ltrafo);
-  class MergingSpecBox *merger = m_pResidualSpecs;
-  //
-  // Not for alpha
-  assert(m_pMaster == NULL);
-  //
-  // The standard says that R_b = 8.
-  merger->DefineResidualBits(8);
-  if (hiddenbits > 0 || hiddenresidualbits > 0) {
-    JPG_WARN(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-	     "Refinement coding not available in profile A, writing full profile");
-    profile = NULL;
-  }
-  merger->DefineHiddenBits(hiddenbits); 
-  merger->DefineHiddenResidualBits(hiddenresidualbits);
-  //
-  // First go for the L-tables. These must be parametric for profile A. If there are no special
-  // parameters, pick the sRGB curve automatically.
-  for(component = 0;component < depth;component++) {
-    const struct JPG_TagItem *flut;
-    FLOAT p1,p2,p3;
-    if (tags->FindTagItem(JPGTAG_TONEMAPPING_L_LUT(component)))
-      JPG_THROW(NOT_IN_PROFILE,"Tables::CreateProfileASettings",
-		"Profile A does not allow integer lookup tables as base transformation");
-    flut = tags->FindTagItem(JPGTAG_TONEMAPPING_L_FLUT(component));
-    if (flut) {
-      const class ToneMapperBox *tmo;
-      tmo = BuildToneMapping(tags,JPGTAG_TONEMAPPING_L_TYPE(component),8 + hiddenbits,8 + 8);
-      if (tmo) {
-	// Define the L-table. Note that the default is no table, thus identity (or scaling).
-	merger->DefineLTable(component,tmo->TableDestinationOf());
-      }
-      JPG_WARN(NOT_IN_PROFILE,"Tables::CreateProfileASettings",
-	       "Profile A does not allow lookup tables as base transformation, writing full profile");
-      // Do not write profile information...  because we are not.
-      profile = NULL;
-    } else {
-      if (tags->GetTagData(JPGTAG_TONEMAPPING_L_TYPE(component),JPGFLAG_TONEMAPPING_GAMMA) !=
-	  JPGFLAG_TONEMAPPING_GAMMA)
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		  "Profile A requires a gamma with knee value");
-      if (tags->GetTagData(JPGTAG_TONEMAPPING_L_ROUNDING(component),1) != 1)
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		  "Profile A requires a rounding parameter of one for the Base NLT box");
-      //
-      p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,0),0.04045f);
-      p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,1),2.4f);
-      p3 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,2),0.055f);
-      if (p1 != 0.04045f || p2 != 2.4f || p3 != 0.055f) {
-	JPG_WARN(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		 "Profile A requires an sRGB nonlinearity, writing full profile");
-	profile = NULL;
-      }
-      // Create the sRGB non-linearity and reference it.
-      merger->DefineLTable(component,merger->CreatesRGBCurve(1,p1,p2,p3));
-    }
-  }
-  //
-  // Define the C transformation if we have. Otherwise, leave the box undefined as identity
-  // is the default anyhow.
-  if (tags->FindTagItem(JPGTAG_MATRIX_CFMATRIX(0,0))) {
-    // Define a custom transformation as well.
-    if (depth == 3) {
-      merger->DefineCTransformation(merger->ParseFreeFormFloatTransformation(tags,JPGTAG_MATRIX_CFMATRIX(0,0)));
-    } else {
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"Free form transformations are only available for three-component images");
-    }
-  }
-  //
-  // There is no D-matrix in profile A
-  if (tags->FindTagItem(JPGTAG_MATRIX_DFMATRIX(0,0)))
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"profile A does not allow a residual color transformation");
-  //
-  // Make sure the L-trafo is sane and the rtrafo equals the ltrafo.
-  if ((depth == 1 && (ltrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE  || ltrafo != rtrafo)) ||
-      (depth == 3 && (rtrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR || 
-		      (ltrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR &&
-		       ltrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE)))) {
-    JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-	      "the base and residual transformations can only be identity or YCbCr");
-  }
-  //
-  // Write the information on the LTrafo. This goes only for depth != 1.
-  if (depth == 3) {
-    switch(ltrafo) {
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE:
-      merger->DefineLTransformation(MergingSpecBox::Identity);
-      break;
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-      merger->DefineLTransformation(MergingSpecBox::YCbCr);
-      break;
-    default:
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"the base transformations can only be identity or YCbCr");
-      break;
-    }
-    switch(rtrafo) {
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE:
-      merger->DefineRTransformation(MergingSpecBox::Identity);
-      break;
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-      merger->DefineRTransformation(MergingSpecBox::YCbCr);
-      break;  
-    default:
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"the residual transformations can only be identity or YCbCr");
-      break;
-    }
-  }
-  //
-  // Make sure we don't have L2-tables or R2-tables, or R-tables.
-  for(component = 0;component < depth;component++) {
-    if (tags->FindTagItem(JPGTAG_TONEMAPPING_L2_TYPE(component)))
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"Profile A does not allow secondary base transformations");
-    if (tags->FindTagItem(JPGTAG_TONEMAPPING_R2_TYPE(component)))
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"Profile A does not allow secondary residual transformations");
-    if (tags->FindTagItem(JPGTAG_TONEMAPPING_R_TYPE(component)))
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"Profile A does not allow intermediate residual transformations");
-  }
-  //
-  // Parse the Q transformations. These are always linear ramp and must be present.
-  // For component #0, we assume the default 1/2 (constant).
-  for(component = 0;component < depth;component++) {
-    FLOAT p1,p2;
-    //
-    if (tags->GetTagData(JPGTAG_TONEMAPPING_Q_ROUNDING(component),1) != 1)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"Profile A requires a rounding parameter of one for the residual NLT box");
-    //
-    if (tags->GetTagData(JPGTAG_TONEMAPPING_Q_TYPE(component),JPGFLAG_TONEMAPPING_LINEAR) !=
-	JPGFLAG_TONEMAPPING_LINEAR)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"Profile A residual non-linear transformation has to be a linear ramp");
-    if (component == 0) {
-      // Assume constant 1/2.
-      p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_Q_P(component,0),0.5);
-      p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_Q_P(component,1),0.5);
-      if (p1 != 0.5f || p2 != 0.5f)
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		  "Profile A linear ramp for the first component must be constant 0.5");
-    } else {
-      const struct JPG_TagItem *t1,*t2;
-      t1 = tags->FindTagItem(JPGTAG_TONEMAPPING_Q_P(component,0));
-      t2 = tags->FindTagItem(JPGTAG_TONEMAPPING_Q_P(component,1));
-      if (t1 == NULL || t2 == NULL)
-	JPG_THROW(MISSING_PARAMETER,"Tables::CreateProfileASettings",
-		  "Profile A encoding requires to define the range sizes of the chroma residual "
-		  "for components 1 and 2");
-      p1 = t1->ti_Data.ti_fData;
-      p2 = t2->ti_Data.ti_fData;
-    }
-    merger->DefineQTable(component,merger->CreateLinearRamp(1,p1,p2));
-  }
-  //
-  // Check for the prescaling transformation. This only exists for three components.
-  if (depth == 3) {
-    switch(tags->GetTagData(JPGTAG_MATRIX_PTRAFO,JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR)) {
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-      merger->DefinePTransformation(MergingSpecBox::YCbCr);
-      break;
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_FREEFORM:
-      merger->DefinePTransformation(merger->ParseFreeFormFloatTransformation(tags,JPGTAG_MATRIX_PFMATRIX(0,0)));
-      break;
-    default:
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"the prescaling transformation must be either free-form or YCbCr");
-      break;
-    }
-  }
-  //
-  // Check for the P mapping. This must be a linear ramp.
-  if (depth == 3) {
-    if (tags->GetTagData(JPGTAG_TONEMAPPING_P_TYPE,JPGFLAG_TONEMAPPING_LINEAR) != JPGFLAG_TONEMAPPING_LINEAR)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"profile A requires a linear map for the prescaling non-linear point transformation");
-    //
-    // Get parameters for the tonemapping. Use a noise floor of 0.1 by default.
-    FLOAT p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_P_P(0),float(0.1 + 1/65535.0));
-    FLOAT p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_P_P(1),float(0.1 + 1.0));
-    merger->DefinePTable(merger->CreateLinearRamp(1,p1,p2));
-  }
-  //
-  // Check for the S mapping. This can be a LUT or an exponential curve.
-  if (tags->GetTagPtr(JPGTAG_TONEMAPPING_S_FLUT) != NULL) {
-    class ToneMapperBox *tmo       = BuildToneMapping(tags,JPGTAG_TONEMAPPING_S_TYPE,8,0);
-    class FloatToneMappingBox *ftm = dynamic_cast<FloatToneMappingBox *>(tmo);
-    //
-    if (ftm == NULL) {
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"profile A requires a floating point type lookup, not an integer lookup");
-    } else {
-      merger->DefineSTable(ftm->TableDestinationOf());
-    }
-  } else {
-    switch(tags->GetTagData(JPGTAG_TONEMAPPING_S_TYPE,JPGFLAG_TONEMAPPING_EXPONENTIAL)) {
-    case JPGFLAG_TONEMAPPING_EXPONENTIAL:
-      {
-	FLOAT p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_S_P(0),1.0);
-	FLOAT p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_S_P(1),0.0);
-	FLOAT p3 = tags->GetTagFloat(JPGTAG_TONEMAPPING_S_P(2),1.0);
-	FLOAT p4 = tags->GetTagFloat(JPGTAG_TONEMAPPING_S_P(3),0.0);
-	merger->DefineSTable(merger->CreateExponentialRamp(1,p1,p2,p3,p4));
-      }
-      break;
-    default:
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"profile A requires either a floating point lookup table or an exponential map for the postscaling map");
-    }
-  }
-  //
-  // Create the output transformation. These are linear scales that scale the data down from the nominal range
-  // of 2^16 to 1.
-  for(component = 0;component < depth;component++) {
-    if (tags->GetTagData(JPGTAG_TONEMAPPING_O_TYPE(component),JPGFLAG_TONEMAPPING_LINEAR) ==
-	JPGFLAG_TONEMAPPING_LINEAR) {
-      FLOAT sc = float(1.0 / 65535.0);
-      FLOAT p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_O_P(component,0),0.0f);
-      FLOAT p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_O_P(component,1),sc);
-      if (p1 != 0.0 || p2 != sc)
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		  "the output conversion of profile A must be a linear scale to unit range");
-      merger->DefineOutputConversionTable(component,merger->CreateLinearRamp(1,p1,p2));
-    } else {
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileASettings",
-		"the output conversion of profile A must be a linear ramp");
-    }
-  }
-  merger->DefineOutputConversion(false);
-  merger->DefineClipping(false);
-  merger->DefineLossless(false);
-
-  // Create the container where the data goes.
-  m_pResidualData   = new(m_pEnviron) class DataBox(m_pEnviron,m_pBoxList,DataBox::ResidualType);
-  
-  if (profile)
-    profile->addCompatibility(FileTypeBox::XT_HDR_A);
-}
-#endif
 ///
 
 /// Tables::CreateProfileBSettings
 // Parse off the tags for a profile B encoder.
-#if ISO_CODE
-void Tables::CreateProfileBSettings(const struct JPG_TagItem *tags,class FileTypeBox *profile,
-				    UBYTE precision,MergingSpecBox::DecorrelationType ltrafo)
-{
-  ULONG component;
-  ULONG depth                   = tags->GetTagData(JPGTAG_IMAGE_DEPTH,3);
-  UBYTE hiddenbits              = tags->GetTagData(JPGTAG_IMAGE_HIDDEN_DCTBITS,0);
-  UBYTE hiddenresidualbits      = tags->GetTagData(JPGTAG_RESIDUAL_HIDDEN_DCTBITS,0);  
-  class MergingSpecBox *merger  = m_pResidualSpecs;
-  ULONG rtrafo                  = tags->GetTagData(JPGTAG_MATRIX_RTRAFO,
-						   (ltrafo == MergingSpecBox::Identity)?
-						   JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE:
-						   JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR);
-  //
-  // Not for alpha.
-  assert(m_pMaster == NULL);
-  //
-  // The standard says that R_b = 8.
-  merger->DefineResidualBits(8);
-  if (hiddenbits > 0 || hiddenresidualbits > 0) {
-    JPG_WARN(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-	     "Refinement coding not available in profile B, writing full profile");
-    profile = NULL;
-  }
-  merger->DefineHiddenBits(hiddenbits); 
-  merger->DefineHiddenResidualBits(hiddenresidualbits);
-  //
-  // First go for the L-tables. These must be either floating point tables or parametric curves.
-  for(component = 0;component < depth;component++) {
-    FLOAT p1,p2,p3;
-    const class ToneMapperBox *tmo;
-    //
-    if (tags->GetTagData(JPGTAG_TONEMAPPING_L_ROUNDING(component),1) != 1)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B requires a rounding parameter of one for the base NLT box");
-    //
-    switch(tags->GetTagData(JPGTAG_TONEMAPPING_L_TYPE(component),JPGFLAG_TONEMAPPING_GAMMA)) {
-    case JPGFLAG_TONEMAPPING_GAMMA:
-      // Ok, this is an sRGB gamma by default, but can also be a different gamma.
-      p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,0),0.04045f);
-      p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,1),2.4f);
-      p3 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,2),0.055f);
-      // Create the sRGB non-linearity and reference it.
-      merger->DefineLTable(component,merger->CreatesRGBCurve(1,p1,p2,p3));
-      break;
-    case JPGFLAG_TONEMAPPING_LUT:
-      // This must be a floating point table.
-      if (tags->GetTagPtr(JPGTAG_TONEMAPPING_L_LUT(component)))
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		  "the lookup tables for the base nonlinearity of profile B must be floating point");
-      if (tags->GetTagPtr(JPGTAG_TONEMAPPING_L_FLUT(component)) == NULL)
-	JPG_THROW(MISSING_PARAMETER,"Tables::CreateProfileBSettings",
-		  "the lookup table for the profile B base transformation is missing");
-      //
-      tmo = BuildToneMapping(tags,JPGTAG_TONEMAPPING_L_TYPE(component),precision + hiddenbits,8 + 8);
-      if (tmo) {
-	// Define the L-table. Note that the default is no table, thus identity (or scaling).
-	merger->DefineLTable(component,tmo->TableDestinationOf());
-      }
-      JPG_WARN(NOT_IN_PROFILE,"Tables::CreateProfileASettings",
-	       "Profile B does not allow lookup tables as base transformation, writing full profile");
-      // Do not write profile information...  because we are not.
-      profile = NULL;
-      break;
-    default:
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B base nonlinearity must be either sRGB or a floating point lookup table");
-      break;
-    }
-  }
-  //
-  // Install the LTransformation
-  if (ltrafo == MergingSpecBox::FreeForm) {
-    // Define a custom transformation (if we would support it).
-    JPG_THROW(NOT_IMPLEMENTED,"Tables::CreateProfileBSettings",
-	      "sorry, free-form base transformations are not implemented for profile B");
-    //
-    if (depth == 3) {
-      merger->DefineLTransformation(merger->ParseFreeFormFloatTransformation(tags,JPGTAG_MATRIX_LFMATRIX(0,0)));
-    } else {
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Free form transformations are only available for three-component images");
-    }
-  } else if (depth == 3) {
-    if (ltrafo != MergingSpecBox::YCbCr && ltrafo != MergingSpecBox::Identity)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"The linear base transformation for profile B can be either identity, YCbCr or free-form");
-    // Must be YCbCr, even if it is disabled. THOR FIX: Nope. Specs say that the MergingSpecBox takes priority.
-    merger->DefineLTransformation(ltrafo);
-  }
-  //
-  // Define the C transformation if we have. Otherwise, leave the box undefined as identity
-  // is the default anyhow.
-  if (tags->FindTagItem(JPGTAG_MATRIX_CFMATRIX(0,0))) {
-    // Define a custom transformation as well.
-    if (depth == 3) {
-      MergingSpecBox::DecorrelationType idx;
-      //
-      idx = merger->ParseFreeFormTransformation(tags,JPGTAG_MATRIX_CFMATRIX(0,0));
-      //
-      merger->DefineCTransformation(idx);
-      // D and C are identical.
-      merger->DefineDTransformation(idx);
-    } else {
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Free form color transformations are only available for three-component images");
-    }
-  }
-  //
-  // Create the second base transformation.
-  for(component = 0;component < depth;component++) {
-    FLOAT p1,p2,p3,p4;
-    //
-    if (tags->GetTagData(JPGTAG_TONEMAPPING_L2_TYPE(component),JPGFLAG_TONEMAPPING_GAMMA) != 
-	JPGFLAG_TONEMAPPING_LOGARITHMIC)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B requires a logarithmic map as secondary base transformation");
-    p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,0),1.0);
-    p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,1),1.0);
-    p3 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,2),0.0); // This is epsilon
-    p4 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,3),0.0);
-    if (p1 != 1.0f || p2 != 1.0f || p4 != 0.0f)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B requires a plain logarithm as secondary base transformation");
-    //
-    merger->DefineL2Table(component,merger->CreateLogarithmicMap(1,p1,p2,p3,p4));
-  }
-  //
-  // Go for the Q-tables. These must be not present.
-  for(component = 0;component < depth;component++) {
-    if (tags->FindTagItem(JPGTAG_TONEMAPPING_Q_TYPE(component)))
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B does not allow a nonlinear residual transformation");
-  }
-  //
-  // Go for the R-transformation. This is either free-form or YCbCr.
-  if (rtrafo == JPGFLAG_MATRIX_COLORTRANSFORMATION_FREEFORM) {
-    // Define a custom transformation
-    if (depth == 3) {
-      merger->DefineRTransformation(merger->ParseFreeFormFloatTransformation(tags,JPGTAG_MATRIX_RFMATRIX(0,0)));
-    } else {
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Free form transformations are only available for three-component images");
-    }
-  } else if (depth == 3) {
-    switch(rtrafo) {
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-      merger->DefineRTransformation(MergingSpecBox::YCbCr);
-      break;
-    case JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE:
-      merger->DefineRTransformation(MergingSpecBox::Identity);
-      break;
-    default:
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"The linear residualtransformation for profile B can be either identity, YCbCr or free-form");
-      break;
-    }
-  }
-  //
-  // Go for the R-transformation. This must be gamma-type (exponential), though the gamma and min and
-  // max are yet to be determined.
-  for(component = 0;component < depth;component++) {
-    FLOAT p1,p2,p3;
-    LONG type = tags->GetTagData(JPGTAG_TONEMAPPING_R_TYPE(component),JPGFLAG_TONEMAPPING_POWER);
-    // This is usually a power map. We also allow linear here as an extension.
-    if (type == JPGFLAG_TONEMAPPING_POWER) {
-      // Fill in some suitable defaults, full range 0..1 with a  power of 2.4
-      p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R_P(component,0),0.0f);
-      p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R_P(component,1),1.0f);
-      p3 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R_P(component,2),2.4f);
-      merger->DefineRTable(component,merger->CreatePowerMap(1,p1,p2,p3));
-    } else if (type == JPGFLAG_TONEMAPPING_LINEAR) {
-      p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R_P(component,0),0.0f);
-      p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R_P(component,1),1.0f);
-      merger->DefineRTable(component,merger->CreateLinearRamp(1,p1,p2));
-      JPG_WARN(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-	       "The intermediate residual transformation of profile B must be a power map");
-      // Do not write a profile indicator because we are not in profile.
-      profile = NULL;
-    } else if (type == JPGFLAG_TONEMAPPING_IDENTITY) {
-      merger->DefineRTable(component,merger->CreateIdentity(1));
-      JPG_WARN(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-	       "The intermediate residual transformation of profile B must be a power map");
-      // Do not write a profile indicator because we are not in profile.
-      profile = NULL;
-    } else {
-      // Everything else we do not yet support here...
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"The intermediate residual transformation of profile B must be a power map");
-    }
-  }
-  //
-  // Define the D transformation if we have. Otherwise, leave the box undefined as identity
-  // is the default anyhow.
-  if (tags->FindTagItem(JPGTAG_MATRIX_DFMATRIX(0,0))) {
-    // Define a custom transformation as well.
-    JPG_THROW(NOT_IMPLEMENTED,"Tables::CreateProfileBSettings",
-	      "sorry, the residual color ransformation is automatically identical to the "
-	      "D transformation");
-  }
-  //
-  // Define the R2-transformation. This must always be logarithmic.
-  for(component = 0;component < depth;component++) {
-    FLOAT p1,p2,p3,p4;
-    LONG type = tags->GetTagData(JPGTAG_TONEMAPPING_R2_TYPE(component),JPGFLAG_TONEMAPPING_LOGARITHMIC);
-    //
-    if (type == JPGFLAG_TONEMAPPING_LOGARITHMIC) {
-      p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R2_P(component,0),-1.0);
-      p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R2_P(component,1),1.0);
-      p3 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R2_P(component,2),0.0); // This is epsilon
-      p4 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R2_P(component,3),0.5);
-      if (p1 != -1.0f || p2 != 1.0f || p4 != 0.5f) {
-	JPG_WARN(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-		 "Profile B requires a negative logarithm with offset 0.5 "
-		 "as secondary residual transformation");
-	profile = NULL;
-      }
-      merger->DefineR2Table(component,merger->CreateLogarithmicMap(1,p1,p2,p3,p4));
-    } else if (type == JPGFLAG_TONEMAPPING_LINEAR) {
-      p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R2_P(component,0),0.0f);
-      p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_R2_P(component,1),1.0f);
-      merger->DefineR2Table(component,merger->CreateLinearRamp(1,p1,p2));
-      JPG_WARN(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-	       "Profile B requires a negative logarithm with offset 0.5 "
-	       "as secondary residual transformation");
-      // Do not write a profile indicator because we are not in profile.
-      profile = NULL;
-    } else if (type == JPGFLAG_TONEMAPPING_IDENTITY) {
-      merger->DefineR2Table(component,merger->CreateIdentity(1));
-      JPG_WARN(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-	       "Profile B requires a logarithmic map as secondary residual transformation");
-      profile = NULL;
-    } else {
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B requires a logarithmic map as secondary residual transformation");
-    }
-  }
-  //
-  // Define the output transformation. This must be an exponential map mapping everything back to
-  // unit range.
-  for(component = 0;component < depth;component++) {
-    FLOAT p1,p2,p3,p4;
-    FLOAT sc = float(1.0/65535.0);
-    //
-    if (tags->GetTagData(JPGTAG_TONEMAPPING_O_TYPE(component),JPGFLAG_TONEMAPPING_EXPONENTIAL) != 
-	JPGFLAG_TONEMAPPING_EXPONENTIAL)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B requires an exponential map as output transformation");
-    //
-    p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_O_P(component,0),0.0);
-    p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_O_P(component,1),sc);
-    p3 = tags->GetTagFloat(JPGTAG_TONEMAPPING_O_P(component,2),1.0); // default exposure value is 1.0
-    p4 = tags->GetTagFloat(JPGTAG_TONEMAPPING_O_P(component,3),0.0);
-    //
-    if (p2 != sc || p1 != 0.0f || p4 != 0.0f)
-      JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileBSettings",
-		"Profile B requires a scaled exponential map as output that maps the data to "
-		"unit range");
-    //
-    merger->DefineOutputConversionTable(component,merger->CreateExponentialRamp(1,p1,p2,p3,p4));
-  }
-  merger->DefineOutputConversion(false);
-  merger->DefineClipping(false);
-  merger->DefineLossless(false);
-  //
-  // Check for the absense of all the parameters for profile A.
-  if (tags->FindTagItem(JPGTAG_TONEMAPPING_S_TYPE))
-    JPG_THROW(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-	      "profile B does not support a postscaling transformation");
-  if (tags->FindTagItem(JPGTAG_TONEMAPPING_P_TYPE))
-    JPG_THROW(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-	      "profile B does not support a prescaling transformation");
-  if (tags->FindTagItem(JPGTAG_MATRIX_PFMATRIX(0,0)))
-    JPG_THROW(NOT_IN_PROFILE,"Tables::CreateProfileBSettings",
-	      "profile B does not support a prescaling transformation");
-  // 
-  // Create the container where the data goes.
-  m_pResidualData   = new(m_pEnviron) class DataBox(m_pEnviron,m_pBoxList,DataBox::ResidualType);
-  
-  // Finally, install the profile level.
-  if (profile)
-    profile->addCompatibility(FileTypeBox::XT_HDR_B);
-}
-#endif
 ///
 
 /// Tables::CreateProfileCSettings
 // Parse off the tags for a profile C encoder
 void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTypeBox *profile,
-				    UBYTE precision,UBYTE rangebits,MergingSpecBox::DecorrelationType ltrafo,
-				    bool dopart8,bool dopart9)
+                                    UBYTE precision,UBYTE rangebits,MergingSpecBox::DecorrelationType ltrafo,
+                                    bool dopart8,bool dopart9)
 {    
   ULONG component;
   LONG frametype    = tags->GetTagData(JPGTAG_IMAGE_FRAMETYPE);
@@ -993,8 +471,8 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
   ULONG depth       = tags->GetTagData(JPGTAG_IMAGE_DEPTH,(m_pMaster)?1:3);  // Default depth is 1 for alpha
   ULONG hdrquality  = tags->GetTagData(JPGTAG_RESIDUAL_QUALITY,MAX_ULONG);
   ULONG colortrafo  = tags->GetTagData(JPGTAG_MATRIX_LTRAFO,
-				       (depth > 1)?JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-				       JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE);
+                                       (depth > 1)?JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
+                                       JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE);
   bool noiseshaping = tags->GetTagData(JPGTAG_IMAGE_ENABLE_NOISESHAPING,false)?true:false;
   bool losslessdct  = tags->GetTagData(JPGTAG_IMAGE_LOSSLESSDCT,false)?true:false;
   bool residual     = (frametype & JPGFLAG_RESIDUAL_CODING)?true:false;
@@ -1040,47 +518,47 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
     // Filter out variations we cannot handle.
     if (tags->FindTagItem(JPGTAG_TONEMAPPING_L_FLUT(component)))
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"parts 6,8,9 and part 7 profile C does not support floating point lookup tables");
+                "parts 6,8,9 and part 7 profile C does not support floating point lookup tables");
     //
     if (tags->FindTagItem(JPGTAG_TONEMAPPING_O_TYPE(component)))
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"parts 6,8,9 and part 7 profile C does not support output conversion curves");
+                "parts 6,8,9 and part 7 profile C does not support output conversion curves");
     //
     switch (tags->GetTagData(JPGTAG_TONEMAPPING_L_TYPE(component),JPGFLAG_TONEMAPPING_LUT)) {
     case JPGFLAG_TONEMAPPING_LUT:
       lut = BuildToneMapping(tags,JPGTAG_TONEMAPPING_L_TYPE(component),precision + hiddenbits,rangebits + 8);
       // If no LUT, use a linear scaling.
       if (lut) {
-	// Define the L-table. Note that the default is no table, thus identity (or scaling).
-	merger->DefineLTable(component,lut->TableDestinationOf());
+        // Define the L-table. Note that the default is no table, thus identity (or scaling).
+        merger->DefineLTable(component,lut->TableDestinationOf());
       }
       break;
     case JPGFLAG_TONEMAPPING_IDENTITY:
       if (m_pMaster) { // If this is part of an alpha codestream, we may use parametric.
-	assert(component == 0);
-	merger->DefineLTable(component,merger->CreateIdentity(1));
+        assert(component == 0);
+        merger->DefineLTable(component,merger->CreateIdentity(1));
       } else {
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		  "part 7 profile C requires a lookup table as base non-linear transformation");
+        JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                  "part 7 profile C requires a lookup table as base non-linear transformation");
       }
       break;
     case JPGFLAG_TONEMAPPING_LINEAR:
       if (m_pMaster) { // Only allowed if part of alpha codestream.
-	FLOAT p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,0),0.0);
-	FLOAT p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,1),1.0);
-	merger->DefineLTable(component,merger->CreateLinearRamp(1,p1,p2));
+        FLOAT p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,0),0.0);
+        FLOAT p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,1),1.0);
+        merger->DefineLTable(component,merger->CreateLinearRamp(1,p1,p2));
       } else {
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		  "part 7 profile C requires a lookup table as base non-linear transformation");
+        JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                  "part 7 profile C requires a lookup table as base non-linear transformation");
       }
       break;
     default:
       if (m_pMaster) {
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		  "alpha channel coding only allows table lookup, identity and linear ramp as L table");
+        JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                  "alpha channel coding only allows table lookup, identity and linear ramp as L table");
       } else {
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		  "part 7 profile C requires a lookup table as base non-linear transformation");
+        JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                  "part 7 profile C requires a lookup table as base non-linear transformation");
       }
       break;
     }
@@ -1091,33 +569,33 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
     if (ttag) {
       switch(ttag->ti_Data.ti_lData) {
       case JPGFLAG_TONEMAPPING_LINEAR: // That's the only allowable type for Q.
-	if (!dopart8) {
-	  FLOAT p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,0),0.0);
-	  FLOAT p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,1),1.0);
-	  merger->DefineQTable(component,merger->CreateLinearRamp(0,p1,p2));
-	} else {
-	  JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSetting",
-		    "part 8 does not allow the usage of a residual non-linear point transformation");
-	}
-	profiled = false;
-	break;
+        if (!dopart8) {
+          FLOAT p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,0),0.0);
+          FLOAT p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L_P(component,1),1.0);
+          merger->DefineQTable(component,merger->CreateLinearRamp(0,p1,p2));
+        } else {
+          JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSetting",
+                    "part 8 does not allow the usage of a residual non-linear point transformation");
+        }
+        profiled = false;
+        break;
       default:
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		  "parts 6,8,9 and part 7 profile C only allow linear ramps as residual NLT transformations");
-	break;
+        JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                  "parts 6,8,9 and part 7 profile C only allow linear ramps as residual NLT transformations");
+        break;
       }
     }
     //
     // Ditto for R-tables = DPTS, secondary NLT tables
     if (tags->FindTagItem(JPGTAG_TONEMAPPING_R_TYPE(component)))
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"parts 6,8,9 and part 7 profile C do not allow an intermediate residual non-linear point transformation");
+                "parts 6,8,9 and part 7 profile C do not allow an intermediate residual non-linear point transformation");
     //
     /*
     // Ditto for R2-tables: NO, these can now be used.
     if (tags->FindTagItem(JPGTAG_TONEMAPPING_R2_TYPE(component)))
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"Profile C does not allow a secondary residual non-linear point transformation");
+                "Profile C does not allow a secondary residual non-linear point transformation");
     */
   }
   //
@@ -1127,7 +605,7 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
       merger->DefineLTransformation(merger->ParseFreeFormTransformation(tags,JPGTAG_MATRIX_LMATRIX(0,0)));
     } else {
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"Free form transformations are only available for three-component images");
+                "Free form transformations are only available for three-component images");
     }
   } else if (depth == 3) {
     // Must be YCbCr, even if it is disabled. THOR FIX: Nope. Specs say that the MergingSpecBox takes priority.
@@ -1142,7 +620,7 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
       merger->DefineCTransformation(merger->ParseFreeFormTransformation(tags,JPGTAG_MATRIX_CMATRIX(0,0)));
     } else {
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"Free form color transformations are only available for three-component images");
+                "Free form color transformations are only available for three-component images");
     }
     // Not in profile D
     profiled = false;
@@ -1170,46 +648,46 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
       rtrafo = colortrafo;
     } else {
       if (depth == 3) {
-	// No longer depending on the DCT.
-	if (dopart8 == false) {
-	  // DCT is ON. As this is not lossless anyhow, the
-	  // imprecise transformation works, too.
-	  rtrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR;
-	} else {
-	  // Here we are encoding in part-8. YCbCr is not a
-	  // valid option here.
-	  rtrafo   = JPGFLAG_MATRIX_COLORTRANSFORMATION_RCT;
-	}
+        // No longer depending on the DCT.
+        if (dopart8 == false) {
+          // DCT is ON. As this is not lossless anyhow, the
+          // imprecise transformation works, too.
+          rtrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR;
+        } else {
+          // Here we are encoding in part-8. YCbCr is not a
+          // valid option here.
+          rtrafo   = JPGFLAG_MATRIX_COLORTRANSFORMATION_RCT;
+        }
       } else {
-	rtrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE;
+        rtrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE;
       }
     }
     rtrafo = tags->GetTagData(JPGTAG_MATRIX_RTRAFO,rtrafo);
     if (depth == 3) {
       switch(rtrafo) {
       case JPGFLAG_MATRIX_COLORTRANSFORMATION_RCT:
-	merger->DefineRTransformation(MergingSpecBox::RCT);
-	break;
+        merger->DefineRTransformation(MergingSpecBox::RCT);
+        break;
       case JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE:
-	merger->DefineRTransformation(MergingSpecBox::Identity);
-	break;
+        merger->DefineRTransformation(MergingSpecBox::Identity);
+        break;
       case JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR:
-	merger->DefineRTransformation(MergingSpecBox::YCbCr);
-	clipping = true; // creates loss.
-	break;
+        merger->DefineRTransformation(MergingSpecBox::YCbCr);
+        clipping = true; // creates loss.
+        break;
       case JPGFLAG_MATRIX_COLORTRANSFORMATION_FREEFORM:
-	// Experimental!
-	merger->DefineRTransformation(merger->ParseFreeFormTransformation(tags,JPGTAG_MATRIX_RMATRIX(0,0)));
-	clipping = true;
-	break;
+        // Experimental!
+        merger->DefineRTransformation(merger->ParseFreeFormTransformation(tags,JPGTAG_MATRIX_RMATRIX(0,0)));
+        clipping = true;
+        break;
       default:
-	JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		  "the selected color transformation is not available for the residual transformation");
-	break;
+        JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                  "the selected color transformation is not available for the residual transformation");
+        break;
       }
     } else if (rtrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE) {
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"The R-Transformation must be the identity for one-component images and the alpha channel");
+                "The R-Transformation must be the identity for one-component images and the alpha channel");
     }
     // 
     // Define the R2-transformation. This must always be linear.
@@ -1220,21 +698,21 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
       // Find the R2-table.
       jtag = tags->FindTagItem(JPGTAG_TONEMAPPING_R2_TYPE(component));
       if (jtag) {
-	if (dopart8)
-	  JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		    "Part 8 does not support the secondary non-linearity");
-	if (jtag->ti_Data.ti_lData != JPGFLAG_TONEMAPPING_LINEAR)
-	  JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		    "Part 9 and part 7 profile C only supports linear transformations as secondary non-linearity");
-	// Assume that *if* this beast is 
-	p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,0),-0.5);
-	p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,1),+1.5);
-	if (p2 <= p1)
-	  JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		    "The start of the linear ramp for profile C secondary non-residual must be "
-		    "below the end parameter");
-	//
-	merger->DefineR2Table(component,merger->CreateLinearRamp(0,p1,p2));
+        if (dopart8)
+          JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                    "Part 8 does not support the secondary non-linearity");
+        if (jtag->ti_Data.ti_lData != JPGFLAG_TONEMAPPING_LINEAR)
+          JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                    "Part 9 and part 7 profile C only supports linear transformations as secondary non-linearity");
+        // Assume that *if* this beast is 
+        p1 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,0),-0.5);
+        p2 = tags->GetTagFloat(JPGTAG_TONEMAPPING_L2_P(component,1),+1.5);
+        if (p2 <= p1)
+          JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
+                    "The start of the linear ramp for profile C secondary non-residual must be "
+                    "below the end parameter");
+        //
+        merger->DefineR2Table(component,merger->CreateLinearRamp(0,p1,p2));
       }
     }
     //
@@ -1244,12 +722,12 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
     // We may also write this box in part-9 for the alpha channel.
     if (dopart8) {
       if (tags->GetTagData(JPGTAG_RESIDUAL_DCT,dodct)) {
-	// Enable the DCT. This must be the lossless dct if we want to do lossless
-	// compression.
-	merger->DefineRDCTProcess(DCTBox::IDCT);
+        // Enable the DCT. This must be the lossless dct if we want to do lossless
+        // compression.
+        merger->DefineRDCTProcess(DCTBox::IDCT);
       } else {
-	// Or the regular bypass mode for part-8.
-	merger->DefineRDCTProcess(DCTBox::Bypass);
+        // Or the regular bypass mode for part-8.
+        merger->DefineRDCTProcess(DCTBox::Bypass);
       }
     } else if (m_pMaster) {
       // Enable the DCT.
@@ -1262,7 +740,7 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
     if (m_pMaster) {
       // Part of the alpha codestream. Note that the box needs to be represented top-level.
       m_pResidualData = new(m_pEnviron) class DataBox(m_pEnviron,m_pMaster->m_pBoxList,
-						      DataBox::AlphaResidualType);
+                                                      DataBox::AlphaResidualType);
     } else {
       // Part of the regular image data.
       m_pResidualData = new(m_pEnviron) class DataBox(m_pEnviron,m_pBoxList,DataBox::ResidualType);
@@ -1310,7 +788,7 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
     ULONG b   = tags->GetTagData(JPGTAG_ALPHA_MATTE(2),0);
     if (mode < JPGFLAG_ALPHA_OPAQUE || mode > JPGFLAG_ALPHA_MATTEREMOVAL)
       JPG_THROW(INVALID_PARAMETER,"Tables::CreateProfileCSettings",
-		"the specified compositing mode for the alpha channel is invalid");
+                "the specified compositing mode for the alpha channel is invalid");
     merger->SetAlphaMode(AlphaBox::Method(mode),r,g,b);
   }
   //
@@ -1320,10 +798,10 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
       profile->addCompatibility(FileTypeBox::XT_LS);
     } else if (isoc) {
       if (profiled) {
-	// Refinement only
-	profile->addCompatibility(FileTypeBox::XT_HDR_D);
+        // Refinement only
+        profile->addCompatibility(FileTypeBox::XT_HDR_D);
       } else { // We do have residual scans.
-	profile->addCompatibility(FileTypeBox::XT_HDR_C);
+        profile->addCompatibility(FileTypeBox::XT_HDR_C);
       }
     } else {
       // Integer profile.
@@ -1331,12 +809,12 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
     }
     if (dopart9) {
       if (isfloat || residual || losslessdct || noiseshaping || 
-	  (hdrquality > 0 && hdrquality != MAX_ULONG) || rangebits > 0 || hiddenbits > 0 || hiddenresidualbits > 0) {
-	// Anything fancy requires full profile alpha
-	profile->addCompatibility(FileTypeBox::XT_ALPHA_FULL);
+          (hdrquality > 0 && hdrquality != MAX_ULONG) || rangebits > 0 || hiddenbits > 0 || hiddenresidualbits > 0) {
+        // Anything fancy requires full profile alpha
+        profile->addCompatibility(FileTypeBox::XT_ALPHA_FULL);
       } else {
-	// Just base profile alpha
-	profile->addCompatibility(FileTypeBox::XT_ALPHA_BASE);
+        // Just base profile alpha
+        profile->addCompatibility(FileTypeBox::XT_ALPHA_BASE);
       }
     }
   }
@@ -1381,7 +859,7 @@ class DataBox *Tables::RefinementDataOf(UWORD index,ULONG boxtype) const
     
   while(box) {
     if (box->BoxTypeOf()    == boxtype &&
-	box->EnumeratorOf() == index) {
+        box->EnumeratorOf() == index) {
       return (DataBox *)(box);
     }
     box = box->NextOf();
@@ -1482,324 +960,324 @@ void Tables::ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp)
     switch(marker) {
     case 0xffdb: // DQT
       if (m_pQuant == NULL)
-	m_pQuant = new(m_pEnviron) Quantization(m_pEnviron);
+        m_pQuant = new(m_pEnviron) Quantization(m_pEnviron);
       if (chk && ChecksumTables()) {
-	class ChecksumAdapter csa(io,chk,false);
-	csa.GetWord();
-	m_pQuant->ParseMarker(&csa);
+        class ChecksumAdapter csa(io,chk,false);
+        csa.GetWord();
+        m_pQuant->ParseMarker(&csa);
       } else {
-	io->GetWord();
-	m_pQuant->ParseMarker(io);
+        io->GetWord();
+        m_pQuant->ParseMarker(io);
       }
       break;
     case 0xffc4: // DHT 
       if (m_pHuffman == NULL)
-	m_pHuffman = new(m_pEnviron) HuffmanTable(m_pEnviron);
+        m_pHuffman = new(m_pEnviron) HuffmanTable(m_pEnviron);
       if (chk && ChecksumTables()) {
-	class ChecksumAdapter csa(io,chk,false);
-	csa.GetWord();
-	m_pHuffman->ParseMarker(&csa);
+        class ChecksumAdapter csa(io,chk,false);
+        csa.GetWord();
+        m_pHuffman->ParseMarker(&csa);
       } else {
-	io->GetWord();
-	m_pHuffman->ParseMarker(io);
+        io->GetWord();
+        m_pHuffman->ParseMarker(io);
       }
       break;
     case 0xffcc: // DAC
       if (m_pConditioner == NULL)
-	m_pConditioner = new(m_pEnviron) class ACTable(m_pEnviron);
+        m_pConditioner = new(m_pEnviron) class ACTable(m_pEnviron);
       if (chk && ChecksumTables()) {
-	class ChecksumAdapter csa(io,chk,false);
-	csa.GetWord();
-	m_pConditioner->ParseMarker(&csa);
+        class ChecksumAdapter csa(io,chk,false);
+        csa.GetWord();
+        m_pConditioner->ParseMarker(&csa);
       } else {
-	io->GetWord();
-	m_pConditioner->ParseMarker(io);
+        io->GetWord();
+        m_pConditioner->ParseMarker(io);
       }
       break;
     case 0xffdd: // DRI
       if (m_pRestart == NULL)
-	m_pRestart = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron);
+        m_pRestart = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron);
       if (chk && ChecksumTables()) {
-	class ChecksumAdapter csa(io,chk,false);
-	csa.GetWord();
-	m_pRestart->ParseMarker(&csa);
+        class ChecksumAdapter csa(io,chk,false);
+        csa.GetWord();
+        m_pRestart->ParseMarker(&csa);
       } else {
-	io->GetWord();
-	m_pRestart->ParseMarker(io);
+        io->GetWord();
+        m_pRestart->ParseMarker(io);
       }
       break;
     case 0xfffe: // COM
       { // The COM-Marker is never checksummed.
-	LONG size; 
-	io->GetWord();
-	size = io->GetWord();
-	// Application marker.
-	if (size == ByteStream::EOF)
-	  JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","COM marker incomplete, stream truncated");
-	//
-	if (size <= 0x02)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","COM marker size out of range");
-	//
-	// Just skip the contents. For now. More later on.
-	io->SkipBytes(size - 2);
+        LONG size; 
+        io->GetWord();
+        size = io->GetWord();
+        // Application marker.
+        if (size == ByteStream::EOF)
+          JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","COM marker incomplete, stream truncated");
+        //
+        if (size <= 0x02)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","COM marker size out of range");
+        //
+        // Just skip the contents. For now. More later on.
+        io->SkipBytes(size - 2);
       }
       break; 
     case 0xfff8: // LSE: JPEG LS extensions marker.
       { // Not part of a XT stream, thus checksumming is not required.
-	io->GetWord();
-	LONG len = io->GetWord();
-	if (len > 3) {
-	  UBYTE id = io->Get();
-	  if (id == 1) {
-	    // Thresholds marker.
-	    if (m_pThresholds == NULL)
-	      m_pThresholds = new(m_pEnviron) class Thresholds(m_pEnviron);
-	    m_pThresholds->ParseMarker(io,len);
-	    break;
-	  } else if (id == 2 || id == 3) {
-	    JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
-		      "JPEG LS mapping tables are not implemented by this code, sorry");
-	  } else if (id == 4) {
-	    JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
-		      "JPEG LS size extensions are not implemented by this code, sorry");
-	  } else if (id == 0x0d) {
-	    // LS Reversible Color transformation
-	    if (m_pLSColorTrafo)
-	      JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			"found duplicate JPEG LS color transformation specification");
-	    m_pLSColorTrafo = new(m_pEnviron) class LSColorTrafo(m_pEnviron);
-	    m_pLSColorTrafo->ParseMarker(io,len);
-	    break;
-	  } else {
-	    JPG_WARN(NOT_IMPLEMENTED,"Tables::ParseMarker",
-		     "skipping over unknown JPEG LS extensions marker");
-	  }
-	}
-	if (len <= 0x02)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-	//
-	// Just skip the contents. For now. More later on.
-	io->SkipBytes(len - 2);
+        io->GetWord();
+        LONG len = io->GetWord();
+        if (len > 3) {
+          UBYTE id = io->Get();
+          if (id == 1) {
+            // Thresholds marker.
+            if (m_pThresholds == NULL)
+              m_pThresholds = new(m_pEnviron) class Thresholds(m_pEnviron);
+            m_pThresholds->ParseMarker(io,len);
+            break;
+          } else if (id == 2 || id == 3) {
+            JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
+                      "JPEG LS mapping tables are not implemented by this code, sorry");
+          } else if (id == 4) {
+            JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
+                      "JPEG LS size extensions are not implemented by this code, sorry");
+          } else if (id == 0x0d) {
+            // LS Reversible Color transformation
+            if (m_pLSColorTrafo)
+              JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                        "found duplicate JPEG LS color transformation specification");
+            m_pLSColorTrafo = new(m_pEnviron) class LSColorTrafo(m_pEnviron);
+            m_pLSColorTrafo->ParseMarker(io,len);
+            break;
+          } else {
+            JPG_WARN(NOT_IMPLEMENTED,"Tables::ParseMarker",
+                     "skipping over unknown JPEG LS extensions marker");
+          }
+        }
+        if (len <= 0x02)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+        //
+        // Just skip the contents. For now. More later on.
+        io->SkipBytes(len - 2);
       }
       break;
     case 0xffe0: // APP0: Maybe the JFIF marker.
       { // APPx markers are not checksummed.
-	io->GetWord();
-	LONG len = io->GetWord();
-	if (len >= 2 + 5 + 2 + 1 + 2 + 2 + 1 + 1) { 
-	  const char *id = "JFIF";
-	  while(*id) {
-	    len--;
-	    if (io->Get() != *id)
-	      break;
-	    id++;
-	  }
-	  if (*id == 0) {
-	    len--;
-	    if (io->Get() == 0) {
-	      if (m_pResolutionInfo == NULL)
-		m_pResolutionInfo = new(m_pEnviron) class JFIFMarker(m_pEnviron);
-	      m_pResolutionInfo->ParseMarker(io,len + 5);
-	      break;
-	    }
-	  }
-	}
-	if (len <= 0x02)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-	//
-	// Just skip the contents. For now. More later on.
-	io->SkipBytes(len - 2);
+        io->GetWord();
+        LONG len = io->GetWord();
+        if (len >= 2 + 5 + 2 + 1 + 2 + 2 + 1 + 1) { 
+          const char *id = "JFIF";
+          while(*id) {
+            len--;
+            if (io->Get() != *id)
+              break;
+            id++;
+          }
+          if (*id == 0) {
+            len--;
+            if (io->Get() == 0) {
+              if (m_pResolutionInfo == NULL)
+                m_pResolutionInfo = new(m_pEnviron) class JFIFMarker(m_pEnviron);
+              m_pResolutionInfo->ParseMarker(io,len + 5);
+              break;
+            }
+          }
+        }
+        if (len <= 0x02)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+        //
+        // Just skip the contents. For now. More later on.
+        io->SkipBytes(len - 2);
       }
       break;  
     case 0xffe1: // APP1: Maybe the EXIF marker.
       { // APPx markers are not checksummed.
-	io->GetWord();
-	LONG len = io->GetWord();
-	if (len >= 2 + 4 + 2 + 2 + 2 + 4 + 2) { 
-	  const char *id = "Exif";
-	  while(*id) {
-	    len--;
-	    if (io->Get() != *id)
-	      break;
-	    id++;
-	  }
-	  if (*id == 0) {
-	    len -= 2;
-	    if (io->GetWord() == 0) {
-	      if (m_pCameraInfo == NULL)
-		m_pCameraInfo = new(m_pEnviron) class EXIFMarker(m_pEnviron);
-	      m_pCameraInfo->ParseMarker(io,len + 4 + 2);
-	      break;
-	    }
-	  }
-	}
-	if (len < 2)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-	//
-	// Just skip the contents. For now. More later on.
-	io->SkipBytes(len - 2);
+        io->GetWord();
+        LONG len = io->GetWord();
+        if (len >= 2 + 4 + 2 + 2 + 2 + 4 + 2) { 
+          const char *id = "Exif";
+          while(*id) {
+            len--;
+            if (io->Get() != *id)
+              break;
+            id++;
+          }
+          if (*id == 0) {
+            len -= 2;
+            if (io->GetWord() == 0) {
+              if (m_pCameraInfo == NULL)
+                m_pCameraInfo = new(m_pEnviron) class EXIFMarker(m_pEnviron);
+              m_pCameraInfo->ParseMarker(io,len + 4 + 2);
+              break;
+            }
+          }
+        }
+        if (len < 2)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+        //
+        // Just skip the contents. For now. More later on.
+        io->SkipBytes(len - 2);
       }
       break;
     case 0xffeb: // APP11: Maybe the box marker.
       { // APPx markers are not checksummed.
-	io->GetWord();
-	LONG len = io->GetWord();
-	if (len >= 2 + 2 + 2 + 4 + 4 + 4) { // At least the box header must be present.
-	  LONG ci = io->PeekWord();
-	  if (ci == 0x4a50) { 
-	    class Box *box;
-	    // Is the correct CI, assume it is a box.
-	    io->GetWord();
-	    // 
-	    // The rest of the logic is part of the boxing.
-	    if (m_pParent)
-	      JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			"Found a box in the residual codestream.");
-	    box = Box::ParseBoxMarker(this,m_pBoxList,io,len);
-	    //
-	    // If the box is complete, check whether we can short-cut the box-search
-	    // by storing the data here as soon as the box is ready.
-	    if (box) {
-	      switch(box->BoxTypeOf()) {
-	      case MergingSpecBox::SpecType:
-		if (m_pResidualSpecs)
-		  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			    "Found a duplicate Merging Specification Box, there must be at most one.");
-		m_pResidualSpecs  = (class MergingSpecBox *)box;
-		break;
-	      case MergingSpecBox::AlphaType:
-		if (m_pAlphaSpecs)
-		  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			    "Found a duplicate Alpha Merging Specification Box, there must be at most one.");
-		m_pAlphaSpecs = (class MergingSpecBox *)box;
-		break;
-	      case ChecksumBox::Type:
-		if (m_pChecksumBox)
-		  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			    "Found a duplicate Checksum Box, there must be at most one.");
-		m_pChecksumBox = (class ChecksumBox *)box;
-		break;
-	      case DataBox::AlphaType:
-		{
-		  class Tables *alpha = CreateAlphaTables();
-		  if (alpha->m_pAlphaData)
-		    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			      "Found a duplicate Alpha Data Box, there must be at most one.");
-		  alpha->m_pAlphaData = (class DataBox *)box;
-		}
-		break;
-	      case DataBox::ResidualType:
-		if (m_pResidualData)
-		  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			    "Found a duplicate Residual Data Box, there must be at most one.");
-		m_pResidualData   = (class DataBox *)box;
-		break;
-	      case DataBox::AlphaResidualType:
-		{
-		  class Tables *alpha = CreateAlphaTables();
-		  if (alpha->m_pResidualData)
-		    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			      "Found a duplicate Residual Alpha Data Box, there must be at most one.");
-		  alpha->m_pResidualData = (class DataBox *)box;
-		}
-		break;
-	      case DataBox::RefinementType:
-		m_bRefinement = true;
-		break;
-	      case DataBox::ResidualRefinementType:
-		CreateResidualTables()->m_bRefinement = true;
-		break;
-	      case DataBox::AlphaRefinementType:
-		CreateAlphaTables()->m_bRefinement = true;
-		break;
-	      case DataBox::AlphaResidualRefinementType:
-		CreateAlphaTables()->CreateResidualTables()->m_bRefinement = true;
-		break;
-	      case InverseToneMappingBox::Type:
-	      case FloatToneMappingBox::Type:
-		{
-		  class ToneMapperBox *tmo = dynamic_cast<ToneMapperBox *>(box);
-		  assert(tmo);
-		  if (!m_NameSpace.isUniqueNonlinearity(tmo->TableDestinationOf()))
-		    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			      "Malformed JPEG stream - found a doubly used table destination for a nonlinearity box");
-		}
-		break;
-	      case LinearTransformationBox::Type:
-	      case FloatTransformationBox::Type:
-		{
-		  class MatrixBox *matrix = dynamic_cast<MatrixBox *>(box);
-		  assert(matrix);
-		  if (!m_NameSpace.isUniqueMatrix(matrix->IdOf()))
-		    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-			      "Malformed JPEG stream - found a doubly used table destination for a matrix box");
-		}
-		break;
-	      }
-	    }
-	    break;
-	  }
-	}
-	if (len < 2)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-	
-	io->SkipBytes(len - 2);
+        io->GetWord();
+        LONG len = io->GetWord();
+        if (len >= 2 + 2 + 2 + 4 + 4 + 4) { // At least the box header must be present.
+          LONG ci = io->PeekWord();
+          if (ci == 0x4a50) { 
+            class Box *box;
+            // Is the correct CI, assume it is a box.
+            io->GetWord();
+            // 
+            // The rest of the logic is part of the boxing.
+            if (m_pParent)
+              JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                        "Found a box in the residual codestream.");
+            box = Box::ParseBoxMarker(this,m_pBoxList,io,len);
+            //
+            // If the box is complete, check whether we can short-cut the box-search
+            // by storing the data here as soon as the box is ready.
+            if (box) {
+              switch(box->BoxTypeOf()) {
+              case MergingSpecBox::SpecType:
+                if (m_pResidualSpecs)
+                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                            "Found a duplicate Merging Specification Box, there must be at most one.");
+                m_pResidualSpecs  = (class MergingSpecBox *)box;
+                break;
+              case MergingSpecBox::AlphaType:
+                if (m_pAlphaSpecs)
+                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                            "Found a duplicate Alpha Merging Specification Box, there must be at most one.");
+                m_pAlphaSpecs = (class MergingSpecBox *)box;
+                break;
+              case ChecksumBox::Type:
+                if (m_pChecksumBox)
+                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                            "Found a duplicate Checksum Box, there must be at most one.");
+                m_pChecksumBox = (class ChecksumBox *)box;
+                break;
+              case DataBox::AlphaType:
+                {
+                  class Tables *alpha = CreateAlphaTables();
+                  if (alpha->m_pAlphaData)
+                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                              "Found a duplicate Alpha Data Box, there must be at most one.");
+                  alpha->m_pAlphaData = (class DataBox *)box;
+                }
+                break;
+              case DataBox::ResidualType:
+                if (m_pResidualData)
+                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                            "Found a duplicate Residual Data Box, there must be at most one.");
+                m_pResidualData   = (class DataBox *)box;
+                break;
+              case DataBox::AlphaResidualType:
+                {
+                  class Tables *alpha = CreateAlphaTables();
+                  if (alpha->m_pResidualData)
+                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                              "Found a duplicate Residual Alpha Data Box, there must be at most one.");
+                  alpha->m_pResidualData = (class DataBox *)box;
+                }
+                break;
+              case DataBox::RefinementType:
+                m_bRefinement = true;
+                break;
+              case DataBox::ResidualRefinementType:
+                CreateResidualTables()->m_bRefinement = true;
+                break;
+              case DataBox::AlphaRefinementType:
+                CreateAlphaTables()->m_bRefinement = true;
+                break;
+              case DataBox::AlphaResidualRefinementType:
+                CreateAlphaTables()->CreateResidualTables()->m_bRefinement = true;
+                break;
+              case InverseToneMappingBox::Type:
+              case FloatToneMappingBox::Type:
+                {
+                  class ToneMapperBox *tmo = dynamic_cast<ToneMapperBox *>(box);
+                  assert(tmo);
+                  if (!m_NameSpace.isUniqueNonlinearity(tmo->TableDestinationOf()))
+                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                              "Malformed JPEG stream - found a doubly used table destination for a nonlinearity box");
+                }
+                break;
+              case LinearTransformationBox::Type:
+              case FloatTransformationBox::Type:
+                {
+                  class MatrixBox *matrix = dynamic_cast<MatrixBox *>(box);
+                  assert(matrix);
+                  if (!m_NameSpace.isUniqueMatrix(matrix->IdOf()))
+                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                              "Malformed JPEG stream - found a doubly used table destination for a matrix box");
+                }
+                break;
+              }
+            }
+            break;
+          }
+        }
+        if (len < 2)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+        
+        io->SkipBytes(len - 2);
       }
       break;
     case 0xffee: // APP14: Maybe the adobe marker.
       { // APPx markers are not checksummed.
-	io->GetWord();
-	LONG len = io->GetWord();
-	if (len == 2 + 5 + 2 + 2 + 2 + 1) { 
-	  const char *id = "Adobe";
-	  while(*id) {
-	    len--;
-	    if (io->Get() != *id)
-	      break;
-	    id++;
-	  }
-	  if (*id == 0) {
-	    if (m_pColorInfo == NULL)
-	      m_pColorInfo = new(m_pEnviron) class AdobeMarker(m_pEnviron);
-	    m_pColorInfo->ParseMarker(io,len + 5);
-	    break;
-	  }
-	}
-	if (len < 2)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-	//
-	// Just skip the contents. For now. More later on.
-	io->SkipBytes(len - 2);
+        io->GetWord();
+        LONG len = io->GetWord();
+        if (len == 2 + 5 + 2 + 2 + 2 + 1) { 
+          const char *id = "Adobe";
+          while(*id) {
+            len--;
+            if (io->Get() != *id)
+              break;
+            id++;
+          }
+          if (*id == 0) {
+            if (m_pColorInfo == NULL)
+              m_pColorInfo = new(m_pEnviron) class AdobeMarker(m_pEnviron);
+            m_pColorInfo->ParseMarker(io,len + 5);
+            break;
+          }
+        }
+        if (len < 2)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+        //
+        // Just skip the contents. For now. More later on.
+        io->SkipBytes(len - 2);
       }
       break;
     case 0xffdf: 
       // EXP marker.    
       if (m_bFoundExp) {
-	JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","found a double EXP marker between frames");
+        JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","found a double EXP marker between frames");
       } else {
-	LONG len;
-	UBYTE ehv,evv;
-	//
-	// This is so simple, no need to have a separate class.
-	io->GetWord(); // remove the marker
-	len = io->GetWord();
-	if (len != 3)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","EXP marker size is invalid, must be three");
-	len = io->Get();
-	if (len == ByteStream::EOF)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","unexpected EOF while parsing the EXP marker");
-	ehv = len >> 4;
-	evv = len & 0x0f;
-	if (ehv > 1 || evv > 1)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-		    "invalid EXP marker, horizontal and vertical expansion "
-		    "may be at most one");  
-	if (!allowexp)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-		    "found an EXP marker outside a hierarchical process");
-	m_bFoundExp            = true;
-	m_bHorizontalExpansion = (ehv)?true:false;
-	m_bVerticalExpansion   = (evv)?true:false;
+        LONG len;
+        UBYTE ehv,evv;
+        //
+        // This is so simple, no need to have a separate class.
+        io->GetWord(); // remove the marker
+        len = io->GetWord();
+        if (len != 3)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","EXP marker size is invalid, must be three");
+        len = io->Get();
+        if (len == ByteStream::EOF)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","unexpected EOF while parsing the EXP marker");
+        ehv = len >> 4;
+        evv = len & 0x0f;
+        if (ehv > 1 || evv > 1)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                    "invalid EXP marker, horizontal and vertical expansion "
+                    "may be at most one");  
+        if (!allowexp)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                    "found an EXP marker outside a hierarchical process");
+        m_bFoundExp            = true;
+        m_bHorizontalExpansion = (ehv)?true:false;
+        m_bVerticalExpansion   = (evv)?true:false;
       }
       break;
     case 0xffc0:
@@ -1843,35 +1321,35 @@ void Tables::ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp)
       break;
     default: 
       if (marker >= 0xffc0 && (marker < 0xffd0 || marker >= 0xffd8) && marker < 0xfff0) {
-	LONG size;
-	io->GetWord();
-	size = io->GetWord();
-	// Application marker.
-	if (size == ByteStream::EOF)
-	  JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","marker incomplete, stream truncated");
-	//
-	if (size <= 0x02)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-	//
-	// Just skip the contents. For now. More later on.
-	// APPx is not checksummed.
-	io->SkipBytes(size - 2);
+        LONG size;
+        io->GetWord();
+        size = io->GetWord();
+        // Application marker.
+        if (size == ByteStream::EOF)
+          JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","marker incomplete, stream truncated");
+        //
+        if (size <= 0x02)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+        //
+        // Just skip the contents. For now. More later on.
+        // APPx is not checksummed.
+        io->SkipBytes(size - 2);
       } else {
-	LONG dt;
-	//
-	JPG_WARN(MALFORMED_STREAM,"Tables::ParseTables",
-		 "found invalid marker, probably a marker size is out of range");
-	// Advance to the next marker manually.
-	io->Get();
-	do {
-	  dt = io->Get();
-	} while(dt != 0xff && dt != ByteStream::EOF);
-	//
-	if (dt == 0xff) {
-	  io->LastUnDo();
-	} else {
-	  return;
-	}
+        LONG dt;
+        //
+        JPG_WARN(MALFORMED_STREAM,"Tables::ParseTables",
+                 "found invalid marker, probably a marker size is out of range");
+        // Advance to the next marker manually.
+        io->Get();
+        do {
+          dt = io->Get();
+        } while(dt != 0xff && dt != ByteStream::EOF);
+        //
+        if (dt == 0xff) {
+          io->LastUnDo();
+        } else {
+          return;
+        }
       }
     }
   } while(true);
@@ -1971,9 +1449,9 @@ class ColorTrafo *Tables::ColorTrafoOf(class Frame *frame,class Frame *residualf
       //
       // Bits per pixel must then be eight by the specs.
       if (m_pRefinementData || m_pResidualData) {
-	if (bpp != 8)
-	  JPG_THROW(MALFORMED_STREAM,"Tables::ColorTrafoOf",
-		    "Residual or refinement coding requires a coding precision of 8 bits per sample");
+        if (bpp != 8)
+          JPG_THROW(MALFORMED_STREAM,"Tables::ColorTrafoOf",
+                    "Residual or refinement coding requires a coding precision of 8 bits per sample");
       }
     } else {
       dctbits     = bpp;
@@ -1982,8 +1460,8 @@ class ColorTrafo *Tables::ColorTrafoOf(class Frame *frame,class Frame *residualf
     
     assert(!m_bTruncateColor);
     m_pColorTrafo = m_pColorFactory->BuildColorTransformer(frame,residualframe,
-							   specs,dctbits,spatialbits,
-							   type,encoding);
+                                                           specs,dctbits,spatialbits,
+                                                           type,encoding);
   }
   
   return m_pColorTrafo;
@@ -2171,69 +1649,69 @@ class DCT *Tables::BuildDCT(class Component *comp,UBYTE count,UBYTE precision) c
       // and hence the preshift should not be removed.
       assert(fractional == 0 || fractional == 1);
       if (fractional + precision + 12 + 3 > 31) {
-	if (m_bDeadZone)
-	  dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,true>(m_pEnviron);
-	else
-	  dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,false>(m_pEnviron);
+        if (m_bDeadZone)
+          dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,true>(m_pEnviron);
+        else
+          dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,false>(m_pEnviron);
       } else {
-	if (m_bDeadZone)
-	  dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true>(m_pEnviron);
-	else
-	  dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false>(m_pEnviron);
+        if (m_bDeadZone)
+          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true>(m_pEnviron);
+        else
+          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false>(m_pEnviron);
       }
     } else {
       switch(fractional) {
       case 0:
-	if (m_bDeadZone)
-	  dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true>(m_pEnviron);
-	else
-	  dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false>(m_pEnviron);
-	break;
+        if (m_bDeadZone)
+          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true>(m_pEnviron);
+        else
+          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false>(m_pEnviron);
+        break;
       case 1:
-	if (m_bDeadZone)
-	  dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,true>(m_pEnviron);
-	else
-	  dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,false>(m_pEnviron);
-	break;
+        if (m_bDeadZone)
+          dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,true>(m_pEnviron);
+        else
+          dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,false>(m_pEnviron);
+        break;
       case ColorTrafo::COLOR_BITS:
-	if (m_bDeadZone)
-	  dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,true>(m_pEnviron);
-	else
-	  dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,false>(m_pEnviron);
-	break;
+        if (m_bDeadZone)
+          dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,true>(m_pEnviron);
+        else
+          dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,false>(m_pEnviron);
+        break;
       default:
-	JPG_THROW(INVALID_PARAMETER,"Tables::BuildDCT",
-		  "invalid combination of color transformation and DCT");
-	dct = NULL;
-	break;
+        JPG_THROW(INVALID_PARAMETER,"Tables::BuildDCT",
+                  "invalid combination of color transformation and DCT");
+        dct = NULL;
+        break;
       }
     }
   } else {
     switch(fractional) {
     case 0:
       if (m_bDeadZone)
-	dct = new(m_pEnviron) class LOSSYDCT<0,LONG,true>(m_pEnviron);
+        dct = new(m_pEnviron) class LOSSYDCT<0,LONG,true>(m_pEnviron);
       else
-	dct = new(m_pEnviron) class LOSSYDCT<0,LONG,false>(m_pEnviron);
+        dct = new(m_pEnviron) class LOSSYDCT<0,LONG,false>(m_pEnviron);
       break;
     case 1: // This is for the RCT which is range-extending.
       if (m_bDeadZone)
-	dct = new(m_pEnviron) class LOSSYDCT<1,LONG,true>(m_pEnviron);
+        dct = new(m_pEnviron) class LOSSYDCT<1,LONG,true>(m_pEnviron);
       else
-	dct = new(m_pEnviron) class LOSSYDCT<1,LONG,false>(m_pEnviron);
+        dct = new(m_pEnviron) class LOSSYDCT<1,LONG,false>(m_pEnviron);
       break;
     case ColorTrafo::COLOR_BITS:
       if (precision > 12) {
-	// This might be 20 bits large, so be careful.
-	if (m_bDeadZone)
-	  dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,true>(m_pEnviron);
-	else
-	  dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,false>(m_pEnviron);
+        // This might be 20 bits large, so be careful.
+        if (m_bDeadZone)
+          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,true>(m_pEnviron);
+        else
+          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,false>(m_pEnviron);
       } else {
-	if (m_bDeadZone)
-	  dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,true>(m_pEnviron);
-	else
-	  dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,false>(m_pEnviron);
+        if (m_bDeadZone)
+          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,true>(m_pEnviron);
+        else
+          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,false>(m_pEnviron);
       }
       break;
     }
@@ -2264,7 +1742,7 @@ UWORD Tables::RestartIntervalOf(void) const
 // Build a tone mapping for the type (base-tag) and the given tag list
 // The base tag is the tag-id for the type of the box. All others are offsets.
 class ToneMapperBox *Tables::BuildToneMapping(const struct JPG_TagItem *tags,
-					      JPG_Tag basetag,UBYTE inbits,UBYTE outbits)
+                                              JPG_Tag basetag,UBYTE inbits,UBYTE outbits)
 {
   UBYTE idx = 0;
   class Box *box = m_pBoxList;
@@ -2291,10 +1769,10 @@ class ToneMapperBox *Tables::BuildToneMapping(const struct JPG_TagItem *tags,
     ftm = dynamic_cast<FloatToneMappingBox *>(box);
     if (itm != NULL && lut != NULL) {
       if (itm->CompareTable(lut,1UL << inbits,outbits - 8))
-	return itm;
+        return itm;
     } else if (ftm != NULL && flut != NULL) {
       if (ftm->CompareTable(flut,1UL << inbits,outbits - 8))
-	return ftm;
+        return ftm;
     }
     box = box->NextOf();
   }
@@ -2330,14 +1808,14 @@ MergingSpecBox::DecorrelationType Tables::LTrafoTypeOf(UBYTE components) const
     //
     if (components == 1 && ltrafo != MAX_UBYTE) // this should simply not exist in this case!
       JPG_THROW(MALFORMED_STREAM,"Tables::LTrafoTypeOf",
-		"Base transformation box exists even though the number of components is one");
+                "Base transformation box exists even though the number of components is one");
     //
     switch(ltrafo) {
     case MergingSpecBox::Zero:
     case MergingSpecBox::JPEG_LS:
     case MergingSpecBox::RCT: // These choices are invalid.
       JPG_THROW(MALFORMED_STREAM,"Tables::LTrafoTypeOf",
-		"Found an invalid base transformation, must be YCbCr, identity or free-form");
+                "Found an invalid base transformation, must be YCbCr, identity or free-form");
       break;
     case MergingSpecBox::YCbCr:
     case MergingSpecBox::Identity:
@@ -2374,22 +1852,22 @@ MergingSpecBox::DecorrelationType Tables::RTrafoTypeOf(UBYTE components) const
     case MergingSpecBox::Zero:
     case MergingSpecBox::JPEG_LS:
       JPG_THROW(MALFORMED_STREAM,"Tables::LTrafoTypeOf",
-		"Found an invalid residual transformation");
+                "Found an invalid residual transformation");
     case MergingSpecBox::YCbCr:
     case MergingSpecBox::Identity:
     case MergingSpecBox::RCT:
       return rtrafo;
     case MergingSpecBox::Undefined:
       if (m_pParent || m_pResidualData) {
-	// Ok, there is a residual. Either because we are the parent, or because we have one.
-	// For one component, the box simply does not exist.
-	if (components == 1) {
-	  return MergingSpecBox::Identity;
-	} else {
-	  return MergingSpecBox::YCbCr;
-	}
+        // Ok, there is a residual. Either because we are the parent, or because we have one.
+        // For one component, the box simply does not exist.
+        if (components == 1) {
+          return MergingSpecBox::Identity;
+        } else {
+          return MergingSpecBox::YCbCr;
+        }
       } else {
-	return MergingSpecBox::Zero;
+        return MergingSpecBox::Zero;
       }
     default:
       // Free form.
@@ -2415,13 +1893,13 @@ MergingSpecBox::DecorrelationType Tables::CTrafoTypeOf(UBYTE components) const
     //
     if (components == 1 && ctrafo != MergingSpecBox::Undefined) // this should simply not exist in this case!
       JPG_THROW(MALFORMED_STREAM,"Tables::CTrafoTypeOf",
-		"Color transformation box exists even though the number of components is one");
+                "Color transformation box exists even though the number of components is one");
     
     if (components == 1 || ctrafo == MergingSpecBox::Undefined) {
       ctrafo = MergingSpecBox::Identity;
     } else if (ctrafo != MergingSpecBox::Identity && ctrafo < MergingSpecBox::FreeForm) {
       if (ctrafo < MergingSpecBox::FreeForm)
-	JPG_THROW(MALFORMED_STREAM,"Tables::CTrafoTypeOf","Found an invalid color space conversion");
+        JPG_THROW(MALFORMED_STREAM,"Tables::CTrafoTypeOf","Found an invalid color space conversion");
     }
   }
     

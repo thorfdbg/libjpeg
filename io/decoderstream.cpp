@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** DecoderStream: Another implementation of the ByteStream class,
 ** this time used mostly by the decoder. The idea behind this class
@@ -54,8 +79,8 @@ LONG DecoderStream::Fill(void)
       next = m_pCurrent->NextOf();
       //
       if (m_pParent == NULL) {
-	m_pCurrent->Remove(m_pBufferList);
-	delete m_pCurrent;
+        m_pCurrent->Remove(m_pBufferList);
+        delete m_pCurrent;
       }
       m_uqCounter += m_pucBufPtr - m_pucBuffer;
       m_pCurrent   = next;
@@ -106,12 +131,12 @@ bool DecoderStream::Append(class ByteStream *from,ULONG read_size,ULONG index)
     size = from->Read(bn->bn_pucBuffer,read_size);
     if (size != read_size) {
       if (size < read_size) {
-	// fill the remaining part with zeros.
-	memset(bn->bn_pucBuffer + size,0,read_size - size);
+        // fill the remaining part with zeros.
+        memset(bn->bn_pucBuffer + size,0,read_size - size);
       }
       // Support truncated streams, but warn!
       JPG_WARN(UNEXPECTED_EOF, "DecoderStream::Append",
-	       "unexpected EOF on pulling encoded data");
+               "unexpected EOF on pulling encoded data");
       return false;
     }
   }
@@ -147,8 +172,8 @@ LONG DecoderStream::PeekWord(void)
     if (byte1 != EOF) {
       byte2 = temp.Get();
       if (byte2 != EOF) {
-	// Ok, pack the marker into a word and deliver.
-	return ((byte1<<8) | byte2);
+        // Ok, pack the marker into a word and deliver.
+        return ((byte1<<8) | byte2);
       }
     }
   }
@@ -178,13 +203,13 @@ void DecoderStream::CleanUp(void)
       //
       // Can we potentially discard this buffer?
       if (m_pParent == NULL && m_pCurrent == m_pBufferList) {
-	// Proceed further only if we are the first and only buffer in the list.
-	// If we are the only node, then new nodes become the first one,
-	// this is identically to the behaivour if we would keep this
-	// node since the next fill would discard us.
-	m_pBufferList = m_pCurrent->NextOf();
-	delete m_pCurrent;
-	m_pCurrent    = NULL;
+        // Proceed further only if we are the first and only buffer in the list.
+        // If we are the only node, then new nodes become the first one,
+        // this is identically to the behaivour if we would keep this
+        // node since the next fill would discard us.
+        m_pBufferList = m_pCurrent->NextOf();
+        delete m_pCurrent;
+        m_pCurrent    = NULL;
       }
     }
   } 

@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 **
 ** This class represents the image as a whole, consisting either of a single
@@ -115,7 +140,7 @@ class BufferCtrl *Image::CreateResidualBuffer(class BufferCtrl *img)
       m_pResidualImage = new(m_pEnviron) class ResidualBuffer(req);
     } else {
       JPG_THROW(INVALID_PARAMETER,"Image::CreateResidualBuffer",
-		"Line based coding modes do not support residual coding");
+                "Line based coding modes do not support residual coding");
 
     }
   }
@@ -146,17 +171,17 @@ class Tables *Image::TablesOf(void)
 // Levels is the number of decomposition levels for the hierarchical mode. It is zero
 // for the regular "flat" mode.
 void Image::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
-				     UBYTE precision,ScanType type,UBYTE levels,
-				     bool scale,bool writednl,
-				     const UBYTE *subx,const UBYTE *suby,
-				     ULONG tagoffset,
-				     const struct JPG_TagItem *tags)
+                                     UBYTE precision,ScanType type,UBYTE levels,
+                                     bool scale,bool writednl,
+                                     const UBYTE *subx,const UBYTE *suby,
+                                     ULONG tagoffset,
+                                     const struct JPG_TagItem *tags)
 {
   ScanType followup; // follow-up frame type.
   //
   if (m_pDimensions || m_pImageBuffer)
     JPG_THROW(OBJECT_EXISTS,"Image::InstallDefaultParameters",
-	      "image parameters have been already established");
+              "image parameters have been already established");
   //
   switch(type) {
     // All valid frame types.
@@ -183,7 +208,7 @@ void Image::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
     followup = DifferentialLossless; // Actually, not really.
     if (scale || levels)
       JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
-		"JPEG-LS does not support hierarchical coding");
+                "JPEG-LS does not support hierarchical coding");
     break;
   case Residual:
   case ACResidual:
@@ -194,17 +219,17 @@ void Image::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
     followup = type; // Actually, not really.
     if (scale || levels)
       JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
-		"Residual coding does not support hierarchical coding");
+                "Residual coding does not support hierarchical coding");
     break;
   default:
     JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
-	      "initial frame type must be non-differential");
+              "initial frame type must be non-differential");
   }
   //
   // Build the frame for the DHP marker segment - or for the only frame here.
   m_pDimensions = new(m_pEnviron) class Frame(this,m_pTables,(levels > 0)?(Dimensions):(type));
   m_pDimensions->InstallDefaultParameters(width,height,depth,precision,
-					  writednl,subx,suby,tagoffset,tags);
+                                          writednl,subx,suby,tagoffset,tags);
   //
   // Build the image the user data goes into if we need one.
   // Note that the residual image does not require one, but the alpha
@@ -221,41 +246,41 @@ void Image::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
       UBYTE down = levels;
       // Several levels, scale one after another, start with the smallest.
       do {
-	class Frame *frame;
-	UBYTE t = --down;
-	ULONG w = width;
-	ULONG h = height;
-	//
-	// Compute the dimension of the downscaled frame.
-	while(t) {
-	  // This makes really little sense if the image becomes degenerated.
-	  if (w < 2 || h < 2) {
-	    JPG_THROW(OVERFLOW_PARAMETER,"Image::InstallDefaultParameters",
-		      "image dimensions become too small for resonable hierarchical coding "
-		      "reduce the number of levels");
-	  }
-	  w = (w + 1) >> 1; // always scaled in both dimensions in this program.
-	  h = (h + 1) >> 1;
-	  t--;
-	}
-	frame = new(m_pEnviron) class Frame(this,m_pTables,(down == levels - 1)?type:followup);
-	if (m_pSmallest == NULL) {
-	  assert(m_pLast == NULL);
-	  m_pSmallest = frame;
-	} else {
-	  assert(m_pLast);
-	  m_pLast->TagOn(frame);
-	}
-	m_pLast = frame;
-	frame->InstallDefaultParameters(w,h,depth,precision,writednl,subx,suby,tagoffset,tags);
-	if (m_pLast == m_pSmallest) {
-	  // The first and smallest frame, no expansion.
-	  hr->AddImageScale(frame,false,false);
-	} else {
-	  hr->AddImageScale(frame,true,true);
-	}
-	//
-	// Until the original image size is reached.
+        class Frame *frame;
+        UBYTE t = --down;
+        ULONG w = width;
+        ULONG h = height;
+        //
+        // Compute the dimension of the downscaled frame.
+        while(t) {
+          // This makes really little sense if the image becomes degenerated.
+          if (w < 2 || h < 2) {
+            JPG_THROW(OVERFLOW_PARAMETER,"Image::InstallDefaultParameters",
+                      "image dimensions become too small for resonable hierarchical coding "
+                      "reduce the number of levels");
+          }
+          w = (w + 1) >> 1; // always scaled in both dimensions in this program.
+          h = (h + 1) >> 1;
+          t--;
+        }
+        frame = new(m_pEnviron) class Frame(this,m_pTables,(down == levels - 1)?type:followup);
+        if (m_pSmallest == NULL) {
+          assert(m_pLast == NULL);
+          m_pSmallest = frame;
+        } else {
+          assert(m_pLast);
+          m_pLast->TagOn(frame);
+        }
+        m_pLast = frame;
+        frame->InstallDefaultParameters(w,h,depth,precision,writednl,subx,suby,tagoffset,tags);
+        if (m_pLast == m_pSmallest) {
+          // The first and smallest frame, no expansion.
+          hr->AddImageScale(frame,false,false);
+        } else {
+          hr->AddImageScale(frame,true,true);
+        }
+        //
+        // Until the original image size is reached.
       } while(down);
     } else {
       class Frame *residual;
@@ -263,24 +288,24 @@ void Image::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
       // and the second lossless. This is another way of implementing a lossless process,
       // though not one that is backwards compatible to sequential.
       if (levels > 2)
-	JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
-		  "image parameters are not sensible, unscaled operation should use only "
-		  "two frames");
+        JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
+                  "image parameters are not sensible, unscaled operation should use only "
+                  "two frames");
       //
       // And it only makes sense if the first is not lossless.
       if (type == Lossless || type == ACLossless)
-	JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
-		  "image parameters are not sensible, unscaled operation should use a "
-		  "lossy initial frame type");
+        JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
+                  "image parameters are not sensible, unscaled operation should use a "
+                  "lossy initial frame type");
       //
       m_pSmallest = new(m_pEnviron) class Frame(this,m_pTables,type);
       m_pLast     = m_pSmallest;
       if (levels == 1) {
-	m_pSmallest->InstallDefaultParameters(width,height,depth,precision,
-					      writednl,subx,suby,tagoffset,tags);
+        m_pSmallest->InstallDefaultParameters(width,height,depth,precision,
+                                              writednl,subx,suby,tagoffset,tags);
       } else {
-	m_pSmallest->InstallDefaultParameters((width + 1) >> 1,(height + 1) >> 1,depth,
-					      precision,writednl,subx,suby,tagoffset,tags);
+        m_pSmallest->InstallDefaultParameters((width + 1) >> 1,(height + 1) >> 1,depth,
+                                              precision,writednl,subx,suby,tagoffset,tags);
       }
       hr->AddImageScale(m_pSmallest,false,false);
       //
@@ -290,29 +315,29 @@ void Image::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
       case Sequential:
       case Progressive:
       case JPEG_LS:
-	residual = new(m_pEnviron) class Frame(this,m_pTables,DifferentialLossless);
-	break;
+        residual = new(m_pEnviron) class Frame(this,m_pTables,DifferentialLossless);
+        break;
       case ACSequential:
       case ACProgressive:
-	residual = new(m_pEnviron) class Frame(this,m_pTables,ACDifferentialLossless);
-	break;
+        residual = new(m_pEnviron) class Frame(this,m_pTables,ACDifferentialLossless);
+        break;
       default:
-	JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
-		  "invalid initial frame type, must be a non-differential type");
+        JPG_THROW(INVALID_PARAMETER,"Image::InstallDefaultParameters",
+                  "invalid initial frame type, must be a non-differential type");
       }
       assert(m_pLast);
       m_pLast->TagOn(residual);
       residual->InstallDefaultParameters(width,height,depth,precision,writednl,subx,suby,tagoffset,tags);
       if (levels == 1) {
-	hr->AddImageScale(residual,false,false);
+        hr->AddImageScale(residual,false,false);
       } else {
-	hr->AddImageScale(residual,true,true);
+        hr->AddImageScale(residual,true,true);
       }
     }
 #else
     NOREF(followup);
     JPG_THROW(NOT_IMPLEMENTED,"Image::InstallDefaultParameters",
-	      "Hierarchical JPEG not available in your code release, please contact Accusoft for a full version");
+              "Hierarchical JPEG not available in your code release, please contact Accusoft for a full version");
 #endif
   } else if (m_pParent) {
     m_pDimensions->SetImageBuffer(CreateResidualBuffer(m_pParent->m_pImageBuffer));
@@ -423,7 +448,7 @@ ScanType Image::FrameMarkerToScanType(LONG marker) const
     break;
   default:
     JPG_THROW(MALFORMED_STREAM,"Image::FrameMarkerToScanType",
-	      "unexpected marker while parsing the image, decoder out of sync");
+              "unexpected marker while parsing the image, decoder out of sync");
     break; 
   }
 
@@ -456,7 +481,7 @@ class Frame *Image::CreateFrameBuffer(class ByteStream *io,ScanType type)
     // All differential types. This only works if a non-differential first frame is available.
     if (m_pSmallest == NULL)
       JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
-		"found a differential frame outside a hierarchical image process");
+                "found a differential frame outside a hierarchical image process");
     //
     // Tag onto the linked frame hierarchy.
     assert(m_pLast && m_pDimensions);
@@ -468,33 +493,33 @@ class Frame *Image::CreateFrameBuffer(class ByteStream *io,ScanType type)
     //
     // Make a couple of consistency checks.
     if (frame->DepthOf()     != m_pDimensions->DepthOf() ||
-	frame->PrecisionOf() != m_pDimensions->PrecisionOf()) {
+        frame->PrecisionOf() != m_pDimensions->PrecisionOf()) {
       JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
-		"image properties indicated in the DHP marker are incompatible with the "
-		"frame properties, stream is damaged");
+                "image properties indicated in the DHP marker are incompatible with the "
+                "frame properties, stream is damaged");
     }
     //
     // Check whether the frame dimensions work all right.
     if ((!eh && prev->WidthOf()  != frame->WidthOf())             ||
-	( eh && prev->WidthOf()  != (frame->WidthOf() + 1) >> 1)  ||
-	(( frame->HeightOf()       != 0) &&
-	 ((!ev && prev->HeightOf() != frame->HeightOf())            ||
-	  ( ev && prev->HeightOf() != (frame->HeightOf() + 1) >> 1))
-	 )) {
+        ( eh && prev->WidthOf()  != (frame->WidthOf() + 1) >> 1)  ||
+        (( frame->HeightOf()       != 0) &&
+         ((!ev && prev->HeightOf() != frame->HeightOf())            ||
+          ( ev && prev->HeightOf() != (frame->HeightOf() + 1) >> 1))
+         )) {
       JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
-		"frame dimensions are not compatible with the the expansion factors");
+                "frame dimensions are not compatible with the the expansion factors");
     }
     //
     // This should have been created before. Or rather, we should better be a non-residual frame.
     if (m_pImageBuffer == NULL)
       JPG_THROW(NOT_IMPLEMENTED,"Image::ParseFrameHeader",
-		"hierarchical scan types cannot be combined with residual coding");
+                "hierarchical scan types cannot be combined with residual coding");
     //
     // Setup the image buffer to include the new resolution level.
     ((class HierarchicalBitmapRequester *)m_pImageBuffer)->AddImageScale(frame,eh,ev); 
 #else
     JPG_THROW(NOT_IMPLEMENTED,"Image::CreateFrameBuffer",
-	      "Hierarchical JPEG not available in your code release, please contact Accusoft for a full version");
+              "Hierarchical JPEG not available in your code release, please contact Accusoft for a full version");
 #endif    
   } else {
     // Here create a non-differential frame or start a new frame hierarchy. The DHP header and
@@ -530,31 +555,31 @@ class Frame *Image::CreateFrameBuffer(class ByteStream *io,ScanType type)
       type   = FrameMarkerToScanType(marker);
       //
       if (isDifferentialType(type))
-	JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
-		  "the first frame of a hierarchical encoded JPEG must be non-differential");
+        JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
+                  "the first frame of a hierarchical encoded JPEG must be non-differential");
       if (type == Dimensions)
-	JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
-		  "found a double DHP marker in a hierarchical scan");
+        JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
+                  "found a double DHP marker in a hierarchical scan");
       //
       m_pSmallest = new(m_pEnviron) class Frame(this,m_pTables,type);
       m_pLast     = m_pSmallest;
       m_pSmallest->ParseMarker(io);
       if (m_pSmallest->DepthOf()     != m_pDimensions->DepthOf() ||
-	  m_pSmallest->PrecisionOf() != m_pDimensions->PrecisionOf()) {
-	JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
-		  "image properties indicated in the DHP marker are incompatible with the "
-		  "frame properties, stream is damaged");
+          m_pSmallest->PrecisionOf() != m_pDimensions->PrecisionOf()) {
+        JPG_THROW(MALFORMED_STREAM,"Image::CreateFrameBuffer",
+                  "image properties indicated in the DHP marker are incompatible with the "
+                  "frame properties, stream is damaged");
       }
       if (m_pImageBuffer == NULL) {
-	JPG_THROW(NOT_IMPLEMENTED,"Image::CreateFrameBuffer",
-		  "hierarchical scan types cannot be combined with residual coding");
+        JPG_THROW(NOT_IMPLEMENTED,"Image::CreateFrameBuffer",
+                  "hierarchical scan types cannot be combined with residual coding");
       } else {
-	((class HierarchicalBitmapRequester *)m_pImageBuffer)->AddImageScale(m_pSmallest,false,false);
-	frame = m_pSmallest;
+        ((class HierarchicalBitmapRequester *)m_pImageBuffer)->AddImageScale(m_pSmallest,false,false);
+        frame = m_pSmallest;
       }
 #else
       JPG_THROW(NOT_IMPLEMENTED,"Image::CreateFrameBuffer",
-		"Hierarchical JPEG not available in your code release, please contact Accusoft for a full version");
+                "Hierarchical JPEG not available in your code release, please contact Accusoft for a full version");
 #endif
     } else {
       frame = m_pDimensions;
@@ -591,16 +616,16 @@ class Frame *Image::ParseFrameHeader(class ByteStream *io)
       //
       // For non-differential-types: Just create the dimension/frame
       if (m_pChecksum && m_pMaster == NULL && m_pParent == NULL && TablesOf()->ChecksumTables()) {
-	UBYTE tmp[2];
-	class ChecksumAdapter csa(io,m_pChecksum,false);
-	// The SOF_x requires checksumming, starting with the marker itself.
-	// Fiddle the marker into the checksum.
-	tmp[0] = marker >> 8;
-	tmp[1] = marker;
-	m_pChecksum->Update(tmp,sizeof(tmp));
-	return CreateFrameBuffer(&csa,type);
+        UBYTE tmp[2];
+        class ChecksumAdapter csa(io,m_pChecksum,false);
+        // The SOF_x requires checksumming, starting with the marker itself.
+        // Fiddle the marker into the checksum.
+        tmp[0] = marker >> 8;
+        tmp[1] = marker;
+        m_pChecksum->Update(tmp,sizeof(tmp));
+        return CreateFrameBuffer(&csa,type);
       } else {
-	return CreateFrameBuffer(io,type);
+        return CreateFrameBuffer(io,type);
       }
       break; // code never goes here.
     }
@@ -688,19 +713,19 @@ void Image::WriteImageAndFrameHeader(class Frame *frame,class ByteStream *target
       UBYTE v = 0;
       //
       if (hr) {
-	// Otherwise, we need to generate an EXP marker here.
-	// Get the exp marker and transfer the differential data into the current frame.
-	hr->GenerateDifferentialImage(m_pCurrent,hexp,vexp);
-	//
-	// Now write the EXP marker.
-	target->PutWord(0xffdf);
-	target->PutWord(0x0003);
-	if (hexp) v |= 0x10;
-	if (vexp) v |= 0x01;
-	target->Put(v);
+        // Otherwise, we need to generate an EXP marker here.
+        // Get the exp marker and transfer the differential data into the current frame.
+        hr->GenerateDifferentialImage(m_pCurrent,hexp,vexp);
+        //
+        // Now write the EXP marker.
+        target->PutWord(0xffdf);
+        target->PutWord(0x0003);
+        if (hexp) v |= 0x10;
+        if (vexp) v |= 0x01;
+        target->Put(v);
       } else {
-	JPG_THROW(NOT_IMPLEMENTED,"Image::WriteImageAndFrameHeader",
-		  "cannot use hierarchical encoding in the residual domain");
+        JPG_THROW(NOT_IMPLEMENTED,"Image::WriteImageAndFrameHeader",
+                  "cannot use hierarchical encoding in the residual domain");
       }
     }
   }
@@ -782,42 +807,42 @@ class Frame *Image::StartWriteFrame(class ByteStream *io)
       // We are in the regular image stream. Check whether we need the checksum information.
       // This happens whenever we create JPEG XT files.
       if (m_pTables->ResidualSpecsOf() || m_pTables->AlphaSpecsOf()) {
-	if (m_pChecksum == NULL) {
-	  assert(m_pLegacyStream == NULL); 
-	  m_pChecksum     = new(m_pEnviron) class Checksum();
-	  m_pLegacyStream = new(m_pEnviron) class MemoryStream(m_pEnviron,MAX_UWORD);
-	}
+        if (m_pChecksum == NULL) {
+          assert(m_pLegacyStream == NULL); 
+          m_pChecksum     = new(m_pEnviron) class Checksum();
+          m_pLegacyStream = new(m_pEnviron) class MemoryStream(m_pEnviron,MAX_UWORD);
+        }
       }
       //
       // Write now either into the memory buffer (for checksumming) or into the real IO
       {
-	// Do we checksum the tables as well?
-	if (m_pLegacyStream && TablesOf()->ChecksumTables()) {
-	  class ChecksumAdapter adapter(io,m_pChecksum,true);
-	  // Also create the adaptor for the main stream.
-	  m_pAdapter = new(m_pEnviron) class ChecksumAdapter(m_pLegacyStream,m_pChecksum,true);
-	  // Also generate the image and frame header now.
-	  // Its data is included in the checksum.
-	  WriteImageAndFrameHeader(m_pCurrent,&adapter);
-	  adapter.Close();
-	} else {
-	  // Also generate the image and frame header now. They are not checksum'd here
-	  // and data goes directly to disk.
-	  WriteImageAndFrameHeader(m_pCurrent,io);
-	}
-	//
-	// Finally, write out all residuals/side channels
-	// If there are still side information channels pending pending, complete it now.
-	// This is only required if there is really something to flush, i.e. when we
-	// write the smallest dimension of a hierarchical, or a flat image.
-	if (m_pSmallest == NULL || m_pCurrent == m_pSmallest) {
-	  if (m_pAlphaChannel && m_pAlphaChannel->m_pResidual)
-	    m_pAlphaChannel->m_pResidual->FlushSideChannel(io);
-	  if (m_pAlphaChannel)
-	    m_pAlphaChannel->FlushSideChannel(io);
-	  if (m_pResidual)
-	    m_pResidual->FlushSideChannel(io);
-	}
+        // Do we checksum the tables as well?
+        if (m_pLegacyStream && TablesOf()->ChecksumTables()) {
+          class ChecksumAdapter adapter(io,m_pChecksum,true);
+          // Also create the adaptor for the main stream.
+          m_pAdapter = new(m_pEnviron) class ChecksumAdapter(m_pLegacyStream,m_pChecksum,true);
+          // Also generate the image and frame header now.
+          // Its data is included in the checksum.
+          WriteImageAndFrameHeader(m_pCurrent,&adapter);
+          adapter.Close();
+        } else {
+          // Also generate the image and frame header now. They are not checksum'd here
+          // and data goes directly to disk.
+          WriteImageAndFrameHeader(m_pCurrent,io);
+        }
+        //
+        // Finally, write out all residuals/side channels
+        // If there are still side information channels pending pending, complete it now.
+        // This is only required if there is really something to flush, i.e. when we
+        // write the smallest dimension of a hierarchical, or a flat image.
+        if (m_pSmallest == NULL || m_pCurrent == m_pSmallest) {
+          if (m_pAlphaChannel && m_pAlphaChannel->m_pResidual)
+            m_pAlphaChannel->m_pResidual->FlushSideChannel(io);
+          if (m_pAlphaChannel)
+            m_pAlphaChannel->FlushSideChannel(io);
+          if (m_pResidual)
+            m_pResidual->FlushSideChannel(io);
+        }
       }
     }
   }
@@ -852,13 +877,13 @@ class Frame *Image::StartMeasureFrame(void)
     if (m_pCurrent != current->m_pSmallest) { 
       class HierarchicalBitmapRequester *hr = (class HierarchicalBitmapRequester *)m_pImageBuffer;
       if (hr) {
-	bool hexp,vexp;
-	//
-	// Get the exp marker and transfer the differential data into the current frame.
-	hr->GenerateDifferentialImage(m_pCurrent,hexp,vexp);
+        bool hexp,vexp;
+        //
+        // Get the exp marker and transfer the differential data into the current frame.
+        hr->GenerateDifferentialImage(m_pCurrent,hexp,vexp);
       } else {
-	JPG_THROW(NOT_IMPLEMENTED,"Image::StartMeasureFrame",
-		  "cannot combine hierarchical coding and residual coding");
+        JPG_THROW(NOT_IMPLEMENTED,"Image::StartMeasureFrame",
+                  "cannot combine hierarchical coding and residual coding");
       }
     }
   }
@@ -943,7 +968,7 @@ class ByteStream *Image::InputStreamOf(class ByteStream *legacy) const
       // searching for an EOI because it might not be there. Instead, just
       // abort and continue with the EOI at the legacy stream.
       if (in->PeekWord() == ByteStream::EOF)
-	return legacy;
+        return legacy;
       return in;
     }
   }
@@ -975,7 +1000,7 @@ class Checksum *Image::CreateChecksumWhenNeeded(class Checksum *chk)
   if (chk == NULL && m_pParent == NULL && m_pMaster == NULL) {
     if (m_pTables->ResidualSpecsOf() || m_pTables->AlphaSpecsOf()) {
       if (m_pChecksum == NULL)
-	chk = m_pChecksum = new(m_pEnviron) class Checksum();
+        chk = m_pChecksum = new(m_pEnviron) class Checksum();
     }
   }
   return chk;
@@ -1224,7 +1249,7 @@ class Frame *Image::ParseResidualStream(class DataBox *box)
   // Residual image must be there.
   if (m_pDimensions == NULL)
     JPG_THROW(MALFORMED_STREAM,"Image::ParseResidualStream",
-	      "No image found in legacy codestream, table-definitions only do not qualify a valid JPEG image");
+              "No image found in legacy codestream, table-definitions only do not qualify a valid JPEG image");
   //
   if (m_pResidual == NULL) {
     // Residual is not yet parsed off.
@@ -1232,7 +1257,7 @@ class Frame *Image::ParseResidualStream(class DataBox *box)
     //
     if (sio->GetWord() != 0xffd8) {
       JPG_THROW(MALFORMED_STREAM,"Image::ParseResidualStream",
-		"Residual codestream is invalid, SOI marker missing.");
+                "Residual codestream is invalid, SOI marker missing.");
     }
     // Start parsing its header.
     // And parse the tables following the SOI.
@@ -1248,14 +1273,14 @@ class Frame *Image::ParseResidualStream(class DataBox *box)
       //
       // Check for consistency.
       if (WidthOf()  != m_pResidual->WidthOf()  ||
-	  HeightOf() != m_pResidual->HeightOf()) {
-	JPG_THROW(MALFORMED_STREAM,"Image::ParseResidualStream",
-		  "Malformed stream - residual image dimensions do not match the dimensions of the legacy image");
+          HeightOf() != m_pResidual->HeightOf()) {
+        JPG_THROW(MALFORMED_STREAM,"Image::ParseResidualStream",
+                  "Malformed stream - residual image dimensions do not match the dimensions of the legacy image");
       }
       //
       if (DepthOf()  != m_pResidual->DepthOf()) {
-	JPG_THROW(MALFORMED_STREAM,"Image::ParseResidualStream",
-		  "Malformed stream - number of components differ between residual and legacy image");
+        JPG_THROW(MALFORMED_STREAM,"Image::ParseResidualStream",
+                  "Malformed stream - number of components differ between residual and legacy image");
       }
       //
       assert(m_pDimensions);
@@ -1280,7 +1305,7 @@ class Frame *Image::ParseResidualStream(class DataBox *box)
       // and forward the request to the residual. Using a different
       // stream, though.
       if (m_pResidual->ParseTrailer(sio))
-	return m_pCurrent;
+        return m_pCurrent;
     }
     // No more scans in the residual.
   }
@@ -1300,7 +1325,7 @@ class Frame *Image::ParseAlphaChannel(class DataBox *box)
   // Residual image must be there.
   if (m_pDimensions == NULL)
     JPG_THROW(MALFORMED_STREAM,"Image::ParseAlphaChannel",
-	      "No image found in legacy codestream, table-definitions only do not qualify a valid JPEG image");
+              "No image found in legacy codestream, table-definitions only do not qualify a valid JPEG image");
   //
   if (m_pAlphaChannel == NULL) {
     //
@@ -1309,7 +1334,7 @@ class Frame *Image::ParseAlphaChannel(class DataBox *box)
     //
     if (sio->GetWord() != 0xffd8) {
       JPG_THROW(MALFORMED_STREAM,"Image::ParseAlphaChannel",
-		"Alpha channel codestream is invalid, SOI marker missing.");
+                "Alpha channel codestream is invalid, SOI marker missing.");
     }
     // Start parsing its header.
     // And parse the tables following the SOI.
@@ -1323,14 +1348,14 @@ class Frame *Image::ParseAlphaChannel(class DataBox *box)
     if (frame) {
       // Check for consistency.
       if (WidthOf()  != m_pAlphaChannel->WidthOf()  ||
-	  HeightOf() != m_pAlphaChannel->HeightOf()) {
-	JPG_THROW(MALFORMED_STREAM,"Image::ParseAlphaChannel",
-		  "Malformed stream - residual image dimensions do not match the dimensions of the legacy image");
+          HeightOf() != m_pAlphaChannel->HeightOf()) {
+        JPG_THROW(MALFORMED_STREAM,"Image::ParseAlphaChannel",
+                  "Malformed stream - residual image dimensions do not match the dimensions of the legacy image");
       }
       //
       if (m_pAlphaChannel->DepthOf() != 1) {
-	JPG_THROW(MALFORMED_STREAM,"Image::ParseAlphaChannel",
-		  "Malformed stream - the alpha channel may only consist of a single component");
+        JPG_THROW(MALFORMED_STREAM,"Image::ParseAlphaChannel",
+                  "Malformed stream - the alpha channel may only consist of a single component");
       }
       //
       // Build the block helper that merges the two images.
@@ -1349,7 +1374,7 @@ class Frame *Image::ParseAlphaChannel(class DataBox *box)
       // and forward the request to the residual. Using a different
       // stream, though.
       if (m_pAlphaChannel->ParseTrailer(sio))
-	return m_pCurrent;
+        return m_pCurrent;
     }
   }
   // No more scans in the alpha... try residual alpha.
@@ -1376,42 +1401,42 @@ bool Image::ParseTrailer(class ByteStream *io)
       // Is there a residual scan left that hasn't been
       // parsed off yet?
       if (box) {
-	// If there are more scans in the residual, continue there.
-	if ((m_pCurrent = ParseResidualStream(box))) {
-	  // This has been parsed off from the boxed stream, hence, do not
-	  // require it again.
-	  m_bReceivedFrameHeader = true;
-	  return true;
-	}
+        // If there are more scans in the residual, continue there.
+        if ((m_pCurrent = ParseResidualStream(box))) {
+          // This has been parsed off from the boxed stream, hence, do not
+          // require it again.
+          m_bReceivedFrameHeader = true;
+          return true;
+        }
       }
       //
       // Continue the adventure with the alpha channel. This also needs
       // to be parsed off if it exists.
       box = m_pTables->AlphaDataOf();
       if (box) {
-	if ((m_pCurrent = ParseAlphaChannel(box))) {
-	  // This has been parsed off from the boxed stream, hence, do not
-	  // require it again.
-	  m_bReceivedFrameHeader = true;
-	  return true;
-	}
-	//
-	// Now check whether we have residual alpha.
-	if (m_pAlphaChannel) {
-	  assert(m_pAlphaChannel->m_pTables);
-	  class DataBox *box = m_pAlphaChannel->m_pTables->ResidualDataOf();
-	  //
-	  // Is there a residual scan left that hasn't been
-	  // parsed off yet?
-	  if (box) {
-	    if ((m_pCurrent = m_pAlphaChannel->ParseResidualStream(box))) {
-	      // This has been parsed off from the boxed stream, hence, do not
-	      // require it again.
-	      m_bReceivedFrameHeader = true;
-	      return true;
-	    }
-	  }
-	}
+        if ((m_pCurrent = ParseAlphaChannel(box))) {
+          // This has been parsed off from the boxed stream, hence, do not
+          // require it again.
+          m_bReceivedFrameHeader = true;
+          return true;
+        }
+        //
+        // Now check whether we have residual alpha.
+        if (m_pAlphaChannel) {
+          assert(m_pAlphaChannel->m_pTables);
+          class DataBox *box = m_pAlphaChannel->m_pTables->ResidualDataOf();
+          //
+          // Is there a residual scan left that hasn't been
+          // parsed off yet?
+          if (box) {
+            if ((m_pCurrent = m_pAlphaChannel->ParseResidualStream(box))) {
+              // This has been parsed off from the boxed stream, hence, do not
+              // require it again.
+              m_bReceivedFrameHeader = true;
+              return true;
+            }
+          }
+        }
       }
       // No more scans anywhere. Get rid of the final word.
       //
@@ -1421,21 +1446,21 @@ bool Image::ParseTrailer(class ByteStream *io)
       io->Get(); // Skip the filler and try again.
     } else if (marker == ByteStream::EOF) {
       JPG_WARN(MALFORMED_STREAM,"Image::ParseTrailer",
-	     "expecting an EOI marker at the end of the stream");
+             "expecting an EOI marker at the end of the stream");
       return false;
     } else if (marker < 0xff00) {
       JPG_WARN(MALFORMED_STREAM,"Image::ParseTrailer",
-	       "expecting a marker or marker segment - stream is out of sync");
+               "expecting a marker or marker segment - stream is out of sync");
       // Advance to the next marker.
       io->Get();
       do {
-	marker = io->Get();
+        marker = io->Get();
       } while(marker != 0xff && marker != ByteStream::EOF);
       //
       if (marker == ByteStream::EOF) {
-	JPG_WARN(UNEXPECTED_EOF,"Image::ParseTrailer",
-		 "run into an EOF while scanning for the next marker");
-	return false;
+        JPG_WARN(UNEXPECTED_EOF,"Image::ParseTrailer",
+                 "run into an EOF while scanning for the next marker");
+        return false;
       }
       io->LastUnDo();
       // Continue parsing, check what the next marker might be.

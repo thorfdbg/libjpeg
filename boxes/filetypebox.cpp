@@ -1,3 +1,28 @@
+/*************************************************************************
+
+    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
+    plus a library that can be used to encode and decode JPEG streams. 
+    It also implements ISO/IEC 18477 aka JPEG XT which is an extension
+    towards intermediate, high-dynamic-range lossy and lossless coding
+    of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
+
+    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Accusoft.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
 /*
 ** This box keeps the file type and compatible file types for JPEG XT.
 ** It is basically a profile information.
@@ -35,12 +60,12 @@ bool FileTypeBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
   //
   if (boxsize < 4 + 4) // at least brand and minor version must be there.
     JPG_THROW(MALFORMED_STREAM,"FileTypeBox::ParseBoxContent",
-	      "Malformed JPEG stream - file type box is too short to contain brand and minor version");
+              "Malformed JPEG stream - file type box is too short to contain brand and minor version");
   //
   // Also, refuse too long boxes.
   if (boxsize > MAX_LONG / sizeof(LONG))
     JPG_THROW(MALFORMED_STREAM,"FileTypeBox::ParseBoxContent",
-	      "Malformed JPEG stream - file type box is too long or length is invalid");
+              "Malformed JPEG stream - file type box is too long or length is invalid");
   //
   assert(m_pulCompatible == NULL);
   //
@@ -50,7 +75,7 @@ bool FileTypeBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
   // Check whether the brand is ok.
   if (((hi << 16) | lo) != XT_Brand)
     JPG_THROW(MALFORMED_STREAM,"FileTypeBox::ParseBoxContent",
-	      "Malformed JPEG stream - file is not compatible to JPEG XT and cannot be read by this software");
+              "Malformed JPEG stream - file is not compatible to JPEG XT and cannot be read by this software");
   //
   // Ignore the minor version.
   stream->GetWord();
@@ -62,8 +87,8 @@ bool FileTypeBox::ParseBoxContent(class ByteStream *stream,UQUAD boxsize)
   // Now check the number of entries.
   if (boxsize & 3)
     JPG_THROW(MALFORMED_STREAM,"FileTypeBox::ParseBoxContent",
-	      "Malformed JPEG stream - number of compatibilities is corrupted, "
-	      "box size is not divisible by entry size");
+              "Malformed JPEG stream - number of compatibilities is corrupted, "
+              "box size is not divisible by entry size");
   //
   cnt = boxsize >> 2;
   m_ulNumCompats  = cnt;
@@ -115,7 +140,7 @@ void FileTypeBox::addCompatibility(ULONG compat)
 
   if (newcnt <= m_ulNumCompats)
     JPG_THROW(OVERFLOW_PARAMETER,"FileTypeBox::addCompatibility",
-	      "too many compatible brands specified, cannot add another");
+              "too many compatible brands specified, cannot add another");
 
   p = (ULONG *)m_pEnviron->AllocMem(sizeof(ULONG) * newcnt);
 
@@ -143,7 +168,7 @@ bool FileTypeBox::isCompatbileTo(ULONG compat) const
   if (p) {
     while(cnt) {
       if (*p == compat)
-	return true;
+        return true;
       p++;
       cnt--;
     }
