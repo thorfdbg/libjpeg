@@ -28,7 +28,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.cpp,v 1.68 2015/10/28 08:45:28 thor Exp $
+** $Id: blockbitmaprequester.cpp,v 1.69 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -45,9 +45,13 @@
 #include "codestream/tables.hpp"
 #include "codestream/rectanglerequest.hpp"
 #include "marker/frame.hpp"
+#include "marker/scantypes.hpp"
 #include "marker/scan.hpp"
 #include "marker/component.hpp"
+#include "coding/huffmantemplate.hpp"
+#include "coding/huffmancoder.hpp"
 #include "dct/dct.hpp"
+#include "dct/deringing.hpp"
 #include "colortrafo/colortrafo.hpp"
 #include "std/string.hpp"
 ///
@@ -60,9 +64,10 @@ BlockBitmapRequester::BlockBitmapRequester(class Frame *frame)
     m_ppUpsampler(NULL), m_ppResidualUpsampler(NULL), m_ppOriginalImage(NULL),
     m_ppTempIBM(NULL), m_ppOriginalIBM(NULL),
     m_ppQTemp(NULL), m_ppRTemp(NULL), m_ppDTemp(NULL),
-    m_plResidualColorBuffer(NULL), m_plOriginalColorBuffer(NULL),
+    m_plResidualColorBuffer(NULL), m_plOriginalColorBuffer(NULL), 
     m_pppQImage(NULL), m_pppRImage(NULL),
-    m_pResidualHelper(NULL), m_bSubsampling(false), m_bOpenLoop(false)
+    m_pResidualHelper(NULL), m_ppDeRinger(NULL), 
+    m_bSubsampling(false), m_bOpenLoop(false), m_bDeRing(false)
 {  
   m_ucCount       = frame->DepthOf(); 
   m_ulPixelWidth  = frame->WidthOf();
@@ -132,6 +137,13 @@ BlockBitmapRequester::~BlockBitmapRequester(void)
     }
     m_pEnviron->FreeMem(m_ppOriginalIBM,m_ucCount * sizeof(struct ImageBitMap *));
   }
+
+  if (m_ppDeRinger) {
+    for(i = 0;i < m_ucCount;i++) {
+      delete m_ppDeRinger[i];
+    }
+    m_pEnviron->FreeMem(m_ppDeRinger,m_ucCount * sizeof(class DeRinger *));
+  }
   
   if (m_pulReadyLines)
     m_pEnviron->FreeMem(m_pulReadyLines,m_ucCount * sizeof(ULONG));
@@ -163,6 +175,11 @@ void BlockBitmapRequester::BuildCommon(void)
   if (m_ppDCT == NULL) {
     m_ppDCT = (class DCT **)m_pEnviron->AllocMem(sizeof(class DCT *) * m_ucCount);
     memset(m_ppDCT,0,sizeof(class DCT *) * m_ucCount);
+  }
+
+  if (m_ppDeRinger == NULL) {
+    m_ppDeRinger = (class DeRinger **)m_pEnviron->AllocMem(sizeof(class DeRinger *) * m_ucCount);
+    memset(m_ppDeRinger,0,sizeof(class DeRinger *) * m_ucCount);
   }
 
   if (m_ppTempIBM == NULL) {
@@ -218,6 +235,7 @@ void BlockBitmapRequester::BuildCommon(void)
 // First time usage: Collect all the information
 void BlockBitmapRequester::PrepareForEncoding(void)
 {  
+  class Tables *tables = m_pFrame->TablesOf();
   UBYTE i;
   
   BuildCommon();
@@ -227,7 +245,9 @@ void BlockBitmapRequester::PrepareForEncoding(void)
 
   //
   // This flag is only used on encoding.
-  m_bOpenLoop = m_pFrame->TablesOf()->isOpenLoop();
+  m_bOpenLoop = tables->isOpenLoop();
+  m_bOptimize = tables->Optimization();
+  m_bDeRing   = tables->isDeringingEnabled();
   
   if (m_ppDownsampler == NULL) {
     m_ppDownsampler = (class DownsamplerBase **)m_pEnviron->AllocMem(sizeof(class DownsamplerBase *) * m_ucCount);
@@ -242,6 +262,15 @@ void BlockBitmapRequester::PrepareForEncoding(void)
         m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
                                                                 m_ulPixelWidth,m_ulPixelHeight);
         m_bSubsampling     = true;
+      }
+    }
+  }
+
+  if (m_bDeRing) {
+    assert(m_ppDCT && m_ppDeRinger);
+    for(i = 0;i < m_ucCount;i++) {
+      if (m_ppDCT[i] && m_ppDeRinger[i] == NULL) {
+        m_ppDeRinger[i] = new(m_pEnviron) class DeRinger(m_pFrame,m_ppDCT[i]);
       }
     }
   }
@@ -460,8 +489,11 @@ void BlockBitmapRequester::AdvanceQRows(void)
       // image buffers.
       assert(m_pResidualHelper == NULL);
       //
-      class QuantizedRow *qrow = BuildImageRow(m_pppQImage[i],m_pFrame,i);
-      m_pppQImage[i] = &(qrow->NextOf());
+      {
+        class QuantizedRow *qrow;
+        qrow = BuildImageRow(m_pppQImage[i],m_pFrame,i);
+        m_pppQImage[i] = &(qrow->NextOf());
+      }
     } else {
       LONG bx,by;
       RectAngle<LONG> blocks;
@@ -483,12 +515,19 @@ void BlockBitmapRequester::AdvanceQRows(void)
       //
       // Push the blocks into the DCT.
       for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
-        class QuantizedRow *qr = BuildImageRow(m_pppQImage[i],m_pFrame,i);
+        class QuantizedRow *qr  = BuildImageRow(m_pppQImage[i],m_pFrame,i);
         for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
           LONG src[64]; // temporary buffer, the DCT requires a 8x8 block
           LONG *dst = (qr)?(qr->BlockAt(bx)->m_Data):NULL;
           m_ppDownsampler[i]->DownsampleRegion(bx,by,src);
-          m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
+          if (m_bDeRing) {
+            m_ppDeRinger[i]->DeRing(src,dst,(maxval + 1) >> 1);
+          } else {
+            m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
+          }
+          if (m_bOptimize) {
+            m_pFrame->OptimizeDCTBlock(bx,by,i,m_ppDCT[i],dst);
+          }
           //
           // Inversely reconstruct and feed into the upsampler to get the residual signal.
           // For openloop coding, the upsampler already contains the original LDR
@@ -725,7 +764,15 @@ void BlockBitmapRequester::PullSourceData(const RectAngle<LONG> &region,class Co
         } else { 
           class QuantizedRow *qrow = BuildImageRow(m_pppQImage[i],m_pFrame,i);
           LONG *dst                = qrow->BlockAt(x)->m_Data;
-          m_ppDCT[i]->TransformBlock(m_ppCTemp[i],dst,(maxval + 1) >> 1);
+          LONG *src                = m_ppCTemp[i];
+          if (m_bDeRing) {
+            m_ppDeRinger[i]->DeRing(src,dst,(maxval + 1) >> 1);
+          } else {
+            m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
+          }
+          if (m_bOptimize) {
+            m_pFrame->OptimizeDCTBlock(x,y,i,m_ppDCT[i],dst);
+          }
         }
       }
       //
@@ -820,7 +867,14 @@ void BlockBitmapRequester::EncodeUnsampled(const RectAngle<LONG> &region,class C
         LONG *dst = qrow->BlockAt(x)->m_Data;
         LONG *src = m_ppCTemp[i];
         
-        m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
+        if (m_bDeRing) {
+          m_ppDeRinger[i]->DeRing(src,dst,(maxval + 1) >> 1);
+        } else {
+          m_ppDCT[i]->TransformBlock(src,dst,(maxval + 1) >> 1);
+        }
+        if (m_bOptimize) {
+          m_pFrame->OptimizeDCTBlock(x,y,i,m_ppDCT[i],dst);
+        }
       }
       //
       // If any residuals are required, compute them now.
@@ -856,6 +910,7 @@ void BlockBitmapRequester::EncodeUnsampled(const RectAngle<LONG> &region,class C
       class QuantizedRow *rrow = *m_pppRImage[i];
       m_pppQImage[i] = &(qrow->NextOf());
       if (rrow) m_pppRImage[i] = &(rrow->NextOf()); // the residual is optional
+
       assert(m_pResidualHelper == NULL || rrow);
       m_pulReadyLines[i]   += 8;
     }

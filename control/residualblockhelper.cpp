@@ -29,7 +29,7 @@
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.cpp,v 1.65 2015/11/17 15:34:48 thor Exp $
+** $Id: residualblockhelper.cpp,v 1.66 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -39,6 +39,7 @@
 #include "control/blockbitmaprequester.hpp"
 #include "marker/scan.hpp"
 #include "marker/component.hpp"
+#include "marker/quantizationtable.hpp"
 #include "boxes/dctbox.hpp"
 #include "boxes/mergingspecbox.hpp"
 #include "interface/imagebitmap.hpp"
@@ -289,9 +290,9 @@ static void ClearSubblock8x8(LONG *res,LONG dcshift)
 /// ResidualBlockHelper::FindQuantizationFor
 // Find the quantization table for residual component i (index, not label).
 // Throws if this table is not available.
-const UWORD *ResidualBlockHelper::FindQuantizationFor(UBYTE i) const
+class QuantizationTable *ResidualBlockHelper::FindQuantizationFor(UBYTE i) const
 { 
-  const UWORD *table    = NULL;
+  class QuantizationTable *table    = NULL;
   class Component *comp = m_pResidualFrame->ComponentOf(i);
   if (comp)
     table = m_pResidualFrame->TablesOf()->FindQuantizationTable(comp->QuantizerOf());
@@ -337,7 +338,7 @@ void ResidualBlockHelper::AllocateBuffers(void)
           m_bNoiseShaping[i] = res->isNoiseShapingEnabled();
           //
           // Only the highest frequency entry is used.
-          m_usQuantization[i] = FindQuantizationFor(i)[63];
+          m_usQuantization[i] = FindQuantizationFor(i)->DeltasOf()[63];
           // If this is a color signal with pre-shifted bits, include
           // the subtraction of pre-shifted color bits so we get integer
           // bits already. For RCT, we could either say that there is one
@@ -373,11 +374,7 @@ void ResidualBlockHelper::AllocateBuffers(void)
 
 /// ResidualBlockHelper::QuantizeResidual
 // Compute the residuals of a block given the DCT data
-#ifdef SAVE_RESIDUAL
 void ResidualBlockHelper::QuantizeResidual(const LONG *legacy,LONG *residual,UBYTE i,LONG bx,LONG by)
-#else
-void ResidualBlockHelper::QuantizeResidual(const LONG *legacy,LONG *residual,UBYTE i,LONG   ,LONG   )
-#endif
 { 
   ULONG rmaxval  = (1UL << m_pResidualFrame->HiddenPrecisionOf()) - 1;
   ULONG rdcshift = (rmaxval + 1) >> 1;
@@ -426,6 +423,9 @@ void ResidualBlockHelper::QuantizeResidual(const LONG *legacy,LONG *residual,UBY
   // Finally, DCT transform and quantize, or quantize directly.
   if (m_pDCT[i]) {
     m_pDCT[i]->TransformBlock(residual,residual,rdcshift);
+    if (m_pResidualFrame->TablesOf()->Optimization()) {
+      m_pResidualFrame->OptimizeDCTBlock(bx,by,i,m_pDCT[i],residual);
+    }
 #ifdef SAVE_SPECTRUM
     // Add up the signal energy of the residual in all bands.
     {

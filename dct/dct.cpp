@@ -28,6 +28,8 @@
 ** Generic DCT transformation plus quantization class.
 ** All DCT implementations should derive from this.
 **
+** $Id: dct.cpp,v 1.9 2016/10/28 13:58:53 thor Exp $
+**
 */
 
 

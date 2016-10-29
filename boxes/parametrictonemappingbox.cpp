@@ -28,7 +28,7 @@
 ** is defined by parameters, not by actual providing the table explicitly
 ** as a LUT.
 **
-** $Id: parametrictonemappingbox.cpp,v 1.45 2015/10/28 08:45:24 thor Exp $
+** $Id: parametrictonemappingbox.cpp,v 1.46 2016/06/22 07:03:05 thor Exp $
 **
 */
 
@@ -236,8 +236,9 @@ DOUBLE ParametricToneMappingBox::TableValue(DOUBLE v) const
     }
     break;
   case GammaOffset:
+    const double inscale = 1.0; //256.0 / 255.0 * 65535.0 / 65536.0;
     if (v > 0.0) {
-      w = (m_fP2 - m_fP1) * pow(v,double(m_fP3)) + m_fP1;
+      w = (m_fP2 - m_fP1) * pow(v * inscale,double(m_fP3)) + m_fP1;
     } else {
       w = m_fP1;
     }
@@ -315,8 +316,9 @@ DOUBLE ParametricToneMappingBox::InverseTableValue(DOUBLE v) const
     assert(!isnan(w));
     break;
   case GammaOffset:
+    const double outscale = 1.0; // / (256.0 / 255.0 * 65535.0 / 65536.0);
     if (v > m_fP1) {
-      w = pow((v - m_fP1) / (m_fP2 - m_fP1),1.0 / m_fP3);
+      w = outscale * (pow((v - m_fP1) / (m_fP2 - m_fP1),1.0 / m_fP3));
     } else {
       w = 0.0;
     }

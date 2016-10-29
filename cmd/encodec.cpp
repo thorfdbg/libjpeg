@@ -26,7 +26,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.cpp,v 1.35 2016/01/22 12:27:52 thor Exp $
+** $Id: encodec.cpp,v 1.36 2016/10/28 13:58:52 thor Exp $
 **
 */
 
@@ -61,23 +61,21 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
              int colortrafo,bool lossless,bool progressive,
              bool residual,bool optimize,bool accoding,
              bool rsequential,bool rprogressive,bool raccoding,
-             bool dconly,UBYTE levels,bool pyramidal,bool writednl,UWORD restart,double gamma,
-             int lsmode,bool noiseshaping,bool serms,bool losslessdct,bool dctbypass,
-             bool openloop,bool deadzone,bool xyz,bool cxyz,
+             bool qscan,UBYTE levels,bool pyramidal,bool writednl,UWORD restart,double gamma,
+             int lsmode,bool noiseshaping,bool serms,bool losslessdct,
+             bool openloop,bool deadzone,bool lagrangian,bool dering,
+             bool xyz,bool cxyz,
              int hiddenbits,int riddenbits,int resprec,bool separate,
-             bool median,int smooth,bool noclamp,
+             bool median,bool noclamp,int smooth,
+             bool dctbypass,
              const char *sub,const char *ressub,
              const char *alpha,int alphamode,int matte_r,int matte_g,int matte_b,
              bool alpharesiduals,int alphaquality,int alphahdrquality,
              int alphatt,int residualalphatt,
              int ahiddenbits,int ariddenbits,int aresprec,
-             bool aopenloop,bool adeadzone,bool aserms,bool abypass)
+             bool aopenloop,bool adeadzone,bool alagrangian,bool adering,
+             bool aserms,bool abypass)
 { 
-  struct JPG_TagItem dcscan[] = { // scan parameters for the first DCOnly scan
-    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
-    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_STOP,0),
-    JPG_EndTag
-  };
   struct JPG_TagItem pscan1[] = { // standard progressive scan, first scan.
     JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
     JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_STOP,0),
@@ -125,6 +123,24 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
     JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_STOP,63),
     JPG_ValueTag(JPGTAG_SCAN_APPROXIMATION_LO,0),
     JPG_ValueTag(JPGTAG_SCAN_APPROXIMATION_HI,1),
+    JPG_EndTag
+  };
+
+  struct JPG_TagItem qscan1[] = { // quick progresssive scan, separates only DC from AC
+    JPG_ValueTag(JPGTAG_SCAN_COMPONENT0,0), 
+    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
+    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_STOP,0),
+    JPG_EndTag
+  };
+  struct JPG_TagItem qscan2[] = { // quick progresssive scan, separates only DC from AC
+    JPG_ValueTag(JPGTAG_SCAN_COMPONENTS_CHROMA,0),
+    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
+    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_STOP,0),
+    JPG_EndTag
+  };
+  struct JPG_TagItem qscan3[] = {
+    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,1),
+    JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_STOP,63),
     JPG_EndTag
   };
 
@@ -394,6 +410,8 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
             JPG_ValueTag((alphahdrquality >= 100)?JPGTAG_RESIDUAL_DCT:JPGTAG_TAG_IGNORE,losslessdct),
             JPG_ValueTag(JPGTAG_OPENLOOP_ENCODER,aopenloop),
             JPG_ValueTag(JPGTAG_DEADZONE_QUANTIZER,adeadzone),
+            JPG_ValueTag(JPGTAG_OPTIMIZE_QUANTIZER,alagrangian),
+            JPG_ValueTag(JPGTAG_IMAGE_DERINGING,adering),
             JPG_ValueTag(JPGTAG_ALPHA_MODE,alphamode),
             JPG_ValueTag(JPGTAG_ALPHA_MATTE(0),matte_r),
             JPG_ValueTag(JPGTAG_ALPHA_MATTE(1),matte_g),
@@ -411,13 +429,13 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
                           residualtype == JPGFLAG_RESIDUALPROGRESSIVE)?
                          JPGFLAG_TONEMAPPING_LUT:JPGFLAG_TONEMAPPING_IDENTITY),
             // Define the scan parameters for progressive.
-            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(dconly)?(dcscan):(pscan1)),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan2),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan3),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan4),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan5),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan6),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan7),
+            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(qscan)?(qscan1):(pscan1)),
+            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(qscan)?(qscan2):(pscan2)),
+            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(qscan)?(qscan3):(pscan3)),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan4),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan5),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan6),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan7),
             
             JPG_PointerTag((rprogressive)?JPGTAG_RESIDUAL_SCAN:JPGTAG_TAG_IGNORE,
                            ((residualtype & 7) == JPGFLAG_RESIDUALPROGRESSIVE)?rscan1:pscan1),
@@ -472,6 +490,8 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
             JPG_PointerTag(JPGTAG_RESIDUAL_SUBY,ressuby),
             JPG_ValueTag(JPGTAG_OPENLOOP_ENCODER,openloop),
             JPG_ValueTag(JPGTAG_DEADZONE_QUANTIZER,deadzone),
+            JPG_ValueTag(JPGTAG_OPTIMIZE_QUANTIZER,lagrangian),
+            JPG_ValueTag(JPGTAG_IMAGE_DERINGING,dering),
             JPG_ValueTag(JPGTAG_RESIDUAL_PRECISION,resprec),
             // The RGB2XYZ transformation matrix, used as L-transformation if the xyz flag is true.
             // this is the product of the 601->RGB and RGB->XYZ matrix
@@ -533,13 +553,13 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
             JPG_ValueTag((fullrange)?(JPGTAG_TONEMAPPING_R2_TYPE(2)):JPGTAG_TAG_IGNORE,
                          JPGFLAG_TONEMAPPING_LINEAR), 
             // The default settings for R2 in profile C are quite ok.
-            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(dconly)?(dcscan):(pscan1)),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan2),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan3),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan4),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan5),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan6),
-            JPG_PointerTag((progressive && !dconly)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan7),
+            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(qscan)?(qscan1):(pscan1)),
+            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(qscan)?(qscan2):(pscan2)),
+            JPG_PointerTag((progressive)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,(qscan)?(qscan3):(pscan3)),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan4),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan5),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan6),
+            JPG_PointerTag((progressive && !qscan)?JPGTAG_IMAGE_SCAN:JPGTAG_TAG_IGNORE,pscan7),
             
             JPG_PointerTag((rprogressive)?JPGTAG_RESIDUAL_SCAN:JPGTAG_TAG_IGNORE,
                            ((residualtype & 7) == JPGFLAG_RESIDUALPROGRESSIVE)?rscan1:pscan1),

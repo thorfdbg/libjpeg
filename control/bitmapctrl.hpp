@@ -27,7 +27,7 @@
 **
 ** Basic control helper for requesting and releasing bitmap data.
 **
-** $Id: bitmapctrl.hpp,v 1.24 2015/03/12 15:58:31 thor Exp $
+** $Id: bitmapctrl.hpp,v 1.25 2016/10/28 13:58:53 thor Exp $
 **
 */
 

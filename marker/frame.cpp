@@ -27,7 +27,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.126 2016/02/03 19:20:43 thor Exp $
+** $Id: frame.cpp,v 1.127 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -52,6 +52,7 @@
 #include "control/residualblockhelper.hpp"
 #include "boxes/databox.hpp"
 #include "boxes/checksumbox.hpp"
+#include "dct/dct.hpp"
 ///
 
 /// Frame::Frame
@@ -505,7 +506,7 @@ void Frame::CreateProgressiveScanParameters(bool breakup,ULONG tagoffset,const s
         m_pLast->TagOn(scan);
       }
       m_pLast = scan;
-      scan->InstallDefaults(m_ucDepth,tagoffset,scantags);
+      scan->InstallDefaults(create,tagoffset,scantags);
     }
   }
 }
@@ -1207,3 +1208,37 @@ void Frame::PostImageHeight(ULONG height)
   }
 }
 ///
+
+/// Frame::OptimizeDCTBlock
+// Optimize a single DCT block through all scans of this frame for
+// ideal R/D performance.
+void Frame::OptimizeDCTBlock(LONG bx,LONG by,UBYTE compidx,class DCT *dct,LONG block[64])
+{
+  class Scan *scan;
+  DOUBLE lambda   = dct->EstimateCriticalSlope();
+
+  for(scan = m_pScan;scan;scan = scan->NextOf()) {
+    scan->OptimizeDCTBlock(bx,by,compidx,lambda,dct,block);
+  }
+}
+///
+
+/// Frame::StartOptimizeScan
+// Start an optimization scan for the R/D optimizer.
+class Scan *Frame::StartOptimizeScan(void)
+{ 
+  if (m_pCurrent == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartOptimizeScan",
+              "scan parameters have not been defined yet");
+  if (m_pImage == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartOptimizeScan",
+              "frame is currently not available for optimization");
+  // 
+  // Create a compatible image buffer and put it into BitmapCtrl,
+  // or re-use it.
+  m_pCurrent->StartOptimizeScan(m_pImage);
+
+  return m_pCurrent;
+}
+///
+ 

@@ -27,7 +27,7 @@
 ** This class implements an encoder for a single group of bits in a huffman
 ** decoder.
 **
-** $Id: huffmancoder.hpp,v 1.14 2014/09/30 08:33:16 thor Exp $
+** $Id: huffmancoder.hpp,v 1.15 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -78,6 +78,13 @@ public:
     if (m_ucBits[symbol])
       return m_ucBits[symbol];
     return MAX_UBYTE;
+  }
+  //
+  // Returns non-zero if the Huffman alphabet contains
+  // the passed in symbol, or zero otherwise.
+  UBYTE isDefined(UBYTE symbol) const
+  {
+    return m_ucBits[symbol];
   }
 };
 ///

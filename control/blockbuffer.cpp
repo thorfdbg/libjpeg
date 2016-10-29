@@ -28,7 +28,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbuffer.cpp,v 1.19 2015/06/03 15:37:24 thor Exp $
+** $Id: blockbuffer.cpp,v 1.20 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -53,7 +53,8 @@
 /// BlockBuffer::BlockBuffer
 BlockBuffer::BlockBuffer(class Frame *frame)
   : BlockCtrl(frame->EnvironOf()), m_pFrame(frame), m_pulY(NULL), m_pulCurrentY(NULL), 
-    m_ppDCT(NULL), m_ppQTop(NULL), m_ppRTop(NULL), 
+    m_ppDCT(NULL), 
+    m_ppQTop(NULL), m_ppRTop(NULL), 
     m_pppQStream(NULL), m_pppRStream(NULL)
 {
   m_ucCount       = frame->DepthOf();
@@ -74,7 +75,7 @@ BlockBuffer::~BlockBuffer(void)
     }
     m_pEnviron->FreeMem(m_ppDCT,m_ucCount * sizeof(class DCT *));
   }
-
+  
   if (m_pulY)
     m_pEnviron->FreeMem(m_pulY,m_ucCount * sizeof(ULONG));
   
@@ -106,7 +107,6 @@ BlockBuffer::~BlockBuffer(void)
 
   if (m_pppRStream)
     m_pEnviron->FreeMem(m_pppRStream,m_ucCount * sizeof(class QuantizedRow **));
-
 }
 ///
 
@@ -170,7 +170,6 @@ void BlockBuffer::ResetToStartOfScan(class Scan *scan)
       if (m_ppDCT[idx] == NULL)
         m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp,m_ucCount,
                                                              m_pFrame->HiddenPrecisionOf());
-
       m_pulY[idx]           = 0;
       m_pulCurrentY[idx]    = 0;
       m_pppQStream[idx]     = NULL;
@@ -183,7 +182,6 @@ void BlockBuffer::ResetToStartOfScan(class Scan *scan)
       if (m_ppDCT[idx] == NULL)
         m_ppDCT[idx]        = m_pFrame->TablesOf()->BuildDCT(comp,m_ucCount,
                                                              m_pFrame->HiddenPrecisionOf());
-      
       m_pulY[idx]           = 0;
       m_pulCurrentY[idx]    = 0;
       m_pppQStream[idx]     = NULL;

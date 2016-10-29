@@ -27,7 +27,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.hpp,v 1.57 2015/02/25 16:09:41 thor Exp $
+** $Id: sequentialscan.hpp,v 1.58 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -73,11 +73,23 @@ class SequentialScan : public EntropyParser {
   // The bitstream from which we read the data.
   BitStream<false>         m_Stream;
   //
-protected:
-  //
   // The block control helper that maintains all the request/release
   // logic and the interface to the user.
   class BlockCtrl         *m_pBlockCtrl; 
+  //
+  // The DC delta values for the DC optimizer.
+  LONG                     m_lDCDelta[4];
+  //
+  // The critical R/D slope (aka \lambda) buffered for the DC optimizer.
+  DOUBLE                   m_dCritical[4];
+  //
+  // Dimensions of the block array.
+  ULONG                    m_ulBlockWidth[4];
+  ULONG                    m_ulBlockHeight[4];
+  //
+  // Pointer to the DC buffers. This keeps the DC values for each
+  // component to allow later optimization.
+  LONG                    *m_plDCBuffer[4];
   // 
   // Scan positions.
   ULONG                    m_ulX[4];
@@ -142,7 +154,7 @@ protected:
   // Code any run of zero blocks here. This is only valid in
   // the progressive mode.
   void CodeBlockSkip(class HuffmanCoder *ac,UWORD &skip);
-  //
+  // 
   //
 public:
   // Create a sequential scan. The highbit is always ignored as this is
@@ -162,6 +174,9 @@ public:
   // Measure scan statistics.
   virtual void StartMeasureScan(class BufferCtrl *ctrl);
   //
+  // Start making an optimization run to adjust the coefficients.
+  virtual void StartOptimizeScan(class BufferCtrl *ctrl);
+  //
   // Start a MCU scan. Returns true if there are more rows. False otherwise.
   virtual bool StartMCURow(void);
   //
@@ -170,7 +185,27 @@ public:
   virtual bool ParseMCU(void);  
   //
   // Write a single MCU in this scan.
-  virtual bool WriteMCU(void); 
+  virtual bool WriteMCU(void);
+  //
+  // Make an R/D optimization for the given scan by potentially pushing
+  // coefficients into other bins. This runs an optimization for a single
+  // block and requires external control to run over the blocks.
+  // component is the component, critical is the critical slope for
+  // the R/D optimization of the functional J = \lambda D + R, i.e.
+  // this is lambda.
+  // Quant are the quantization parameters, i.e. deltas. These are eventually
+  // preshifted by "preshift".
+  // transformed are the dct-transformed but unquantized data. These are also pre-
+  // shifted by "preshift".
+  // quantized is the quantized data. These are potentially (and likely) adjusted.
+  virtual void OptimizeBlock(LONG bx,LONG by,UBYTE component,double critical,
+                             class DCT *dct,
+                             LONG quantized[64]);
+  //
+  // Make an R/D optimization of the DC scan. This includes all DC blocks in
+  // total, not just a single block. This is because the coefficients are not
+  // coded independently.
+  virtual void OptimizeDC(void);
 };
 ///
 

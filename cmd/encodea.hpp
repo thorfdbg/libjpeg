@@ -26,7 +26,7 @@
 /*
 ** Parameter definition and encoding for profile A.
 **
-** $Id: encodea.hpp,v 1.15 2016/01/22 12:15:13 thor Exp $
+** $Id: encodea.hpp,v 1.16 2016/10/28 13:58:52 thor Exp $
 **
 */
 

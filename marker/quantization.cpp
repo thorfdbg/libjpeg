@@ -26,12 +26,13 @@
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.cpp,v 1.35 2015/05/22 09:55:29 thor Exp $
+** $Id: quantization.cpp,v 1.36 2016/10/28 13:58:54 thor Exp $
 **
 */
 
 /// Includes
 #include "marker/quantization.hpp"
+#include "marker/quantizationtable.hpp"
 #include "io/bytestream.hpp"
 #include "dct/dct.hpp"
 ///
@@ -163,7 +164,7 @@ static const LONG ahumada2_luminance_tbl[64] = { // this is also used for chroma
 Quantization::Quantization(class Environ *env)
   : JKeeper(env)
 {
-  memset(m_pDelta,0,sizeof(m_pDelta));
+  memset(m_pTables,0,sizeof(m_pTables));
 }
 ///
 
@@ -173,8 +174,7 @@ Quantization::~Quantization(void)
   int i;
 
   for(i = 0;i < 4;i++) {
-    if (m_pDelta[i])
-      m_pEnviron->FreeMem(m_pDelta[i],sizeof(UWORD) * 64);
+    delete m_pTables[i];
   }
 }
 ///
@@ -191,9 +191,10 @@ void Quantization::WriteMarker(class ByteStream *io)
   for(i = 0;i < 4;i++) {
     types[i] = 0;
 
-    if (m_pDelta[i]) {
+    if (m_pTables[i]) {
+      const UWORD *delta = m_pTables[i]->DeltasOf();
       for(j = 0;j < 64;j++) {
-        if (m_pDelta[i][j] > 255) {
+        if (delta[j] > 255) {
           types[i] = 1;
           len     += 64;
           break;
@@ -205,15 +206,16 @@ void Quantization::WriteMarker(class ByteStream *io)
   
   io->PutWord(len);
   for(i = 0;i < 4;i++) {
-    if (m_pDelta[i]) {
+    if (m_pTables[i]) {
+      const UWORD *delta = m_pTables[i]->DeltasOf();
       io->Put((types[i] << 4) | i);
       if (types[i]) {
         for(j = 0;j < 64;j++) {
-          io->PutWord(m_pDelta[i][DCT::ScanOrder[j]]);
+          io->PutWord(delta[DCT::ScanOrder[j]]);
         }
       } else {
         for(j = 0;j < 64;j++) {
-          io->Put(m_pDelta[i][DCT::ScanOrder[j]]);
+          io->Put(delta[DCT::ScanOrder[j]]);
         }
       }
     }
@@ -242,6 +244,7 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
                                      const LONG customchroma[64])
 {
   int i,j;
+  UWORD deltas[64];
   const LONG *table       = NULL;
   const LONG *lumatable   = NULL;
   const LONG *chromatable = NULL;
@@ -350,8 +353,6 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
       table = NULL;
     }
     if (table) {
-      if (m_pDelta[i] == NULL)
-        m_pDelta[i] = (UWORD *)m_pEnviron->AllocMem(sizeof(UWORD) * 64);
       for(j = 0;j < 64;j++) {
         LONG mult  = (i >= 2 || forresidual)?(hdrscale):(scale);
         LONG delta = (table[j] * mult  + 50) / 100;
@@ -399,13 +400,14 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
           // Luma is also extended by one bit, can even be stripped off for lossless.
           delta <<= 1;
         }
-        m_pDelta[i][j] = delta;
+        deltas[j] = delta;
       }
+      if (m_pTables[i] == NULL)
+        m_pTables[i] = new(m_pEnviron) class QuantizationTable(m_pEnviron);     
+      m_pTables[i]->DefineBucketSizes(deltas);
     } else {
-      if (m_pDelta[i]) {
-        m_pEnviron->FreeMem(m_pDelta[i],sizeof(UWORD) * 64);
-        m_pDelta[i] = NULL;
-      }
+      delete m_pTables[i];
+      m_pTables[i] = NULL;
     }
   }
 }
@@ -422,6 +424,7 @@ void Quantization::ParseMarker(class ByteStream *io)
   len -= 2; // remove the marker length.
 
   while(len > 2) {
+    UWORD deltas[64];
     LONG type   = io->Get();
     LONG target;
     int i;
@@ -436,12 +439,6 @@ void Quantization::ParseMarker(class ByteStream *io)
     if (target < 0 || target > 3)
       JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker target table must be between 0 and 3");
 
-    //
-    // For multiple tables the current table is replaced by the new table. Interestingly, this
-    // shall be supported according to the specs.
-    if (m_pDelta[target] == NULL)
-      m_pDelta[target] = (UWORD *)m_pEnviron->AllocMem(sizeof(UWORD) * 64);
-    
     len -= 1; // remove the byte.
 
     if (type == 0) {
@@ -453,7 +450,7 @@ void Quantization::ParseMarker(class ByteStream *io)
         LONG data = io->Get();
         if (data == ByteStream::EOF)
           JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker run out of data");
-        m_pDelta[target][DCT::ScanOrder[i]] = data;
+        deltas[DCT::ScanOrder[i]] = data;
       }
       len -= 64;
     } else {
@@ -466,10 +463,16 @@ void Quantization::ParseMarker(class ByteStream *io)
         LONG data = io->GetWord();
         if (data == ByteStream::EOF)
           JPG_THROW(MALFORMED_STREAM,"Quantization::ParseMarker","DQT marker run out of data");
-        m_pDelta[target][DCT::ScanOrder[i]] = data;
+        deltas[DCT::ScanOrder[i]] = data;
       }
       len -= 64 * 2;
     }
+    //
+    // For multiple tables the current table is replaced by the new table. Interestingly, this
+    // shall be supported according to the specs.
+    if (m_pTables[target] == NULL)
+      m_pTables[target] = new(m_pEnviron) class QuantizationTable(m_pEnviron);
+    m_pTables[target]->DefineBucketSizes(deltas);
   }
 
   if (len != 0)

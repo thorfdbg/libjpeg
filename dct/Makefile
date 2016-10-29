@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.13 2015/03/26 07:40:38 thor Exp $
+## $Id: Makefile,v 1.14 2016/10/28 13:58:53 thor Exp $
 ##
 ## Makefile for the jpeg transcoder project,
 ## THOR Software, May 20, 2012, Thomas Richter
@@ -8,7 +8,7 @@
 ## directory.
 ##
 
-FILES	=	dct idct liftingdct
+FILES	=	dct idct liftingdct deringing
 
 DIRNAME	=	dct
 SUPER	=	../

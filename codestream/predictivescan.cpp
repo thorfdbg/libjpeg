@@ -29,7 +29,7 @@
 ** services useful to implement them such that the derived classes can
 ** focus on the actual algorithm.
 **
-** $Id: predictivescan.cpp,v 1.14 2015/03/25 08:45:43 thor Exp $
+** $Id: predictivescan.cpp,v 1.15 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -188,5 +188,35 @@ void PredictiveScan::RestartOnMarker(void)
     m_pLinePredict[i] = m_pPredictors[0];
   }
 #endif
+}
+///
+
+/// PredictiveScan::OptimizeBlock
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+void PredictiveScan::OptimizeBlock(LONG, LONG ,UBYTE ,double ,
+                                   class DCT *,LONG [64])
+{
+  JPG_THROW(NOT_IMPLEMENTED,"PredictiveScan::OptimizeBlock",
+            "Rate-distortion optimization is not available for line-based coding modes");
+}
+///
+
+/// PredictiveScan::OptimizeDC
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+void PredictiveScan::OptimizeDC(void)
+{
+  JPG_THROW(NOT_IMPLEMENTED,"PredictiveScan::OptimizeDC",
+            "Rate-distortion optimization is not available for line-based coding modes");
+}
+///
+
+/// PredictiveScan::StartOptimizeScan
+// Start making an optimization run to adjust the coefficients.
+void PredictiveScan::StartOptimizeScan(class BufferCtrl *)
+{  
+  JPG_THROW(NOT_IMPLEMENTED,"PredictiveScan::StartOptimizeScan",
+            "Line-based modes do not support R/D optimization");
 }
 ///

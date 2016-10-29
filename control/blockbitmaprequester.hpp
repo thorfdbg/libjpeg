@@ -28,7 +28,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.hpp,v 1.28 2015/03/11 16:02:42 thor Exp $
+** $Id: blockbitmaprequester.hpp,v 1.29 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -47,6 +47,7 @@ class DownsamplerBase;
 class ColorTrafo;
 class QuantizedRow;
 class ResidualBlockHelper;
+class DeRinger;
 ///
 
 /// class BlockBitmapRequester
@@ -116,12 +117,21 @@ class BlockBitmapRequester : public BlockBuffer, public BitmapCtrl {
   // A helper class that encodes the residual.
   class ResidualBlockHelper *m_pResidualHelper;
   //
+  // Deblocking filter (if any)
+  class DeRinger           **m_ppDeRinger;
+  //
   // True if subsampling is required.
   bool                       m_bSubsampling;
   //
   // True if this is an openloop encoder, i.e. we do not
   // use the reconstructed DCT samples.
   bool                       m_bOpenLoop;
+  //
+  // If this is true, the post-DCT R/D optimizer is on.
+  bool                       m_bOptimize;
+  //
+  // If this is true, run the deblocking filter as well.
+  bool                       m_bDeRing;
   //
   // Build common structures for encoding and decoding
   void BuildCommon(void);

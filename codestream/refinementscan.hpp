@@ -26,7 +26,7 @@
 /*
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.hpp,v 1.24 2014/09/30 08:33:15 thor Exp $
+** $Id: refinementscan.hpp,v 1.25 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -150,6 +150,9 @@ public:
   // Measure scan statistics.
   virtual void StartMeasureScan(class BufferCtrl *ctrl);
   //
+  // Start making an optimization run to adjust the coefficients.
+  virtual void StartOptimizeScan(class BufferCtrl *ctrl);
+  //
   // Start a MCU scan. Returns true if there are more rows. False otherwise.
   virtual bool StartMCURow(void);
   //
@@ -159,6 +162,16 @@ public:
   //
   // Write a single MCU in this scan.
   virtual bool WriteMCU(void); 
+  //
+  // Make an R/D optimization for the given scan by potentially pushing
+  // coefficients into other bins. 
+  virtual void OptimizeBlock(LONG bx,LONG by,UBYTE component,double critical,
+                             class DCT *dct,LONG quantized[64]); 
+  //
+  // Make an R/D optimization of the DC scan. This includes all DC blocks in
+  // total, not just a single block. This is because the coefficients are not
+  // coded independently.
+  virtual void OptimizeDC(void);
 };
 ///
 

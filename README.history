@@ -390,3 +390,40 @@ If the JPEG-XT markers were delayed to the frame-header intead the global
 header, the previous code did not built up the necessary infrastructure
 to compute the checksum and hence could not verify the checksum in such
 a condition. The 1.51 release fixes this problem.
+
+-------------------------------------------------------------------------------------
+
+Release 1.52:
+
+This file is an updated/enhanced version of the 1.50 release of
+the JPEG XT demo software found on https://github.com/thorfdbg/. It
+includes additional features presented in the paper
+"JPEG on Steroids : Common Optimization Techniques for JPEG Image Compression"
+by the same author.
+
+In specific, the following command line flags are *NEW* to this version and
+are available only as a contribution to ICIP 2016:
+
+-oz:	      This enables the dynamic programming algorithm to enhance
+the rate-distortion performance by soft-threshold quantization. It has been
+used for the tests in section 3.3 of the paper.
+
+-dr: 	     This enables the smart de-ringing algorithm that has been used
+in section 3.6.
+
+Additionally, the following switches have been used for other subsections
+of the paper; they are not new to this distribution but available as
+part of the regular libjpeg distribution at github or www.jpeg.org:
+
+-s 1x1,2x2,2x2:	    Enable 420 subsampling (444 is default)
+-s 1x1,2x1,2x1:	    Enable 422 subsampling (444 is default)
+-qt n (n=0..8)	    Use quantization matrix n.
+      		    In the paper, n=1 (flat) was used for PSNR-optimized
+		    coding, unless otherwise noted.
+-dz		    The deadzone quantizer in section 3.3
+		    (simpler than -oz)
+-v		    Enable coding in processive mode (section 3.5)
+-v -qv		    Optimized progressive mode (section 3.5)
+-h 		    Optimized Huffman coding (always used, unless noted
+		    otherwise, see section 3.4)
+

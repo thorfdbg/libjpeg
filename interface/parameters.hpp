@@ -28,7 +28,7 @@
  * client application to define all the parameters the jpeg library
  * needs. 
  *
- * $Id: parameters.hpp,v 1.65 2015/09/17 14:11:14 thor Exp $
+ * $Id: parameters.hpp,v 1.66 2016/10/28 13:58:54 thor Exp $
  *
  * These parameters are specified by the user upon invocation of
  * the library.
@@ -210,6 +210,9 @@
 // Use a deadzone quantizer which may improve the R/D performance a bit.
 // It is still JPEG compliant.
 #define JPGTAG_DEADZONE_QUANTIZER        (JPGTAG_IMAGE_BASE + 0x19)
+//
+// Set this to TRUE to enable a quantization optimization
+#define JPGTAG_OPTIMIZE_QUANTIZER        (JPGTAG_IMAGE_BASE + 0x1a)
 
 // Enable or disable the DCT for the residual image. The default
 // is to enable the DCT for all residual scan types but the residual
@@ -218,9 +221,14 @@
 
 // Replace the L-DCT by the lossless DCT.
 // This is a boolean tag that applies to all components.
-#define JPGTAG_IMAGE_LOSSLESSDCT            (JPGTAG_IMAGE_BASE + 0x2f)
+#define JPGTAG_IMAGE_LOSSLESSDCT         (JPGTAG_IMAGE_BASE + 0x2f)
 //
 
+// Preprocessing options. Currently, only a single preprocessor is
+// available, and this is the de-ringing filter. If this is
+// enabled, rings around extreme contrast edges on max-white or
+// max-black image contours are avoided.
+#define JPGTAG_IMAGE_DERINGING           (JPGTAG_IMAGE_BASE + 0x30)   
 
 // The following offset is added to the tag types to specify the
 // parameters of the residual image

@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.15 2014/02/06 16:34:59 thor Exp $
+## $Id: Makefile,v 1.16 2016/10/28 13:58:54 thor Exp $
 ##
 ## Makefile for the jpeg transcoder project,
 ## THOR Software, May 20, 2012, Thomas Richter
@@ -8,7 +8,8 @@
 ## directory.
 ##
 
-FILES	=	quantization huffmantable frame component scan \
+FILES	=	quantization quantizationtable \
+		huffmantable frame component scan \
 		adobemarker jfifmarker exifmarker \
 		actable restartintervalmarker scantypes \
 		thresholds lscolortrafo

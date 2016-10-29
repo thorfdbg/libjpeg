@@ -27,7 +27,7 @@
 **
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.cpp,v 1.41 2014/11/07 19:12:52 thor Exp $
+** $Id: refinementscan.cpp,v 1.42 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -684,3 +684,222 @@ void RefinementScan::WriteFrameType(class ByteStream *io)
 }
 ///
 
+/// RefinementScan::OptimizeBlock
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+#if ACCUSOFT_CODE 
+void RefinementScan::OptimizeBlock(LONG,LONG,UBYTE component,double critical,
+                                   class DCT *dct,LONG quantized[64])
+#else
+void RefinementScan::OptimizeBlock(LONG,LONG,UBYTE,double,class DCT *,LONG [64])
+#endif
+{
+#if ACCUSOFT_CODE 
+  class HuffmanCoder *ac  = (m_ucScanStop)?m_pScan->ACHuffmanCoderOf(component):NULL; 
+  const LONG *transformed = dct->TransformedBlockOf();
+  const LONG *delta       = dct->BucketSizes();
+  double zdistbuf[64 + 1]; // the element at zero is zero to keep the code simple.
+  double jfuncbuf[64 + 1]; // ditto.
+  UBYTE refinebuf[64 + 1];   // ditto.
+  double *zdist = zdistbuf  + 1; // cumulative distortion for coefficients "runned over"
+  double *jfunc = jfuncbuf  + 1; // the cumulative J functional along the run
+  UBYTE *refine = refinebuf + 1; // cumulative bits spend for refinement coding
+  LONG zero[64];     // value of a zero'd coefficient.
+  int start[64];     // start of runs.
+  int coded[64];
+  const LONG thres = (1L << m_ucLowBit) - 1;
+  int eobpos = 0;    // position of the EOB
+  int k; // position in the scan.
+  int ss = m_ucScanStart;
+  //
+  // Start of the scan. Do not include the DC coefficient if we have one.
+  if (ss == 0 && !m_bResidual)
+    ss = 1;
+  //
+  // Only consider AC coefficients. DC coefficients would require cross-block optimizations
+  // and are hence harder to do.
+  // Start of the trellis: Initialize the cumulative functionals to zero.
+  zdist [ss - 1] = 0.0;
+  jfunc [ss - 1] = 0.0;
+  refine[ss - 1] = 0;
+  for(k = ss;k <= m_ucScanStop;k++) {
+    int j         = DCT::ScanOrder[k];
+    LONG quant    = quantized[j];
+    double weight = 8.0 / delta[j];
+    double error;
+    LONG prev; // Data in the previous scan, might be zero or non-zero
+    LONG data; // data to be coded in this scan.
+    // Implement the point transformation. This is here a division, not
+    // a shift (rounding is different for negative numbers).
+    prev     = (quant >= 0)?(quant >> m_ucHighBit):(-((-quant) >> m_ucHighBit));
+    data     = (quant >= 0)?(quant >> m_ucLowBit ):(-((-quant) >> m_ucLowBit ));
+    coded[j] = data;
+    jfunc[k] = HUGE_VAL;
+    // In the optimization, only cover bits that we may encode in this
+    // run and we could delay to the next. Refined coefficients cannot
+    // improve the rate or rate-distortion since they do not undergo
+    // any coding.
+    if (prev) {
+      // Coefficient was coded before and is refined here. Update the
+      // distortion for including it in a run in front of a non-zero
+      // coefficient. Refinement coding is really nothing we should
+      // change since there is no rate advantage anyhow, it remains
+      // coding of one bit.
+      error     = (quant * delta[j] - transformed[j]) * weight;
+      zdist[k]  = error * error * critical + zdist[k - 1];
+      refine[k] = 1 + refine[k - 1];
+    } else {
+      // Additional error due to including this coefficient in a run by
+      // setting it to zero.
+      if (quant < -thres) {
+        zero[k] = -thres; // lowest possible value.
+      } else if (quant > thres) {
+        zero[k] = thres;
+      } else {
+        zero[k] = quant; // is already consistent with the value.
+      } 
+      error     = (zero[k] * delta[j] - transformed[j]) * weight;
+      zdist[k]  = error * error * critical + zdist[k - 1];
+      refine[k] = refine[k - 1];
+      // Only care about coefficients that are non-zero since those we
+      // can push into the zero.
+      if (data) {
+        double dist;
+        // Compute the candidates. Since we only code a single bit here,
+        // we can either include it in the run or not. There is not much
+        // other choice to make. Compute the distortion contribution by
+        // encoding the coefficient "as is" without including it in the
+        // run.
+        error = (quant * delta[j] - transformed[j]) * weight;
+        dist  = error * error * critical;
+        // The only choice is now to include this coefficient in a run and
+        // hence set it to zero, or not. This decision is made by the
+        // next later coefficient.
+        // Now compute the cost for encoding the run in front of this coefficient.
+        for (int l = ss - 1;l < k;l++) {
+          // Accumulate j for starting the run at l (actually, l+1 is the first
+          // coefficient that is part of the run, the coefficient at l is non-zero
+          // or the DC coefficient).
+          if (l == ss - 1 || coded[DCT::ScanOrder[l]]) {
+            int run = k - 1 - l; // Length of the run in front of me.
+            int runrate  = 0,rate;
+            double jf; // new candidate of the J functional.
+            // Non-zero coefficient. This is now a potential "push-l-into-zero" case which might
+            // create a new run of the size above.
+            // For that, compute now the cost of the run. 
+            // First, to encode the runs larger than 16 (if we can).
+            // This includes also the rate for the coefficients refined in front of us
+            // which are encoded each by a single bit. Fortunately, the order in which
+            // we add up coefficients does not matter here, so we can simply include this
+            // later in the rate and just compute the overhead for the run-16 markers now.
+            if ((run >> 4)) {
+              int runrate = ac->isDefined(0xf0);
+              if (runrate == 0)
+                continue; // This is not an option if the Huffman code does not define this
+              runrate = (run >> 4) * runrate;
+            }
+            run   &= 0x0f;
+            // The symbol to code is now (run << 4) | 1. Compute the rate contribution of that.
+            rate = ac->isDefined((run << 4) | 1);
+            if (rate == 0)
+              continue; // Not an option if not in the alphabet.
+            // The total rate is now given by the rate of the cofficient itself (one bit)
+            // plus the refinement codes of the coefficients ahead, plus the size of
+            // the run code, plus the refinement codes in the run-groups before.
+            // The distortion part includes the distortion from above, plus the
+            // distortion of the coefficients we pushed to zero, plus the distortion
+            // of the refined coefficients (which are conveniently included in zdist as well)
+            // Finally, include the cost up to l here to get the total J up to coefficient k.
+            jf   = dist + zdist[k - 1] - zdist[l] + 
+              runrate + rate + 1 + refine[k - 1] - refine[l] + jfunc[l];
+            //
+            // If this lowers the functional, use this as candidate.
+            if (jf < jfunc[k]) {
+              jfunc[k] = jf;
+              start[k] = l;
+            }
+          }
+        }
+        // The ideal start point for the run has been found.
+        // There is no need to modify the new quantized value of the coefficient
+        // since there is not really a choice. Either it is included in the run
+        // or it is not.
+      }
+    }
+  }
+  //
+  // Run starts found. Now try to find the EOB. Actually, one could run an EOB-
+  // optimization here in case all coefficients are zero as the run is then
+  // relocated into one of the next blocks as a run-of-blocks.
+  // Note that there may be refined coefficients in front of the EOB that
+  // need to be coded. Note that the EOB itself is not coded, though, but is
+  // part of a block skip. For simplicity, assume here that we do not use
+  // zero-runs of blocks.
+  if (m_ucScanStop) {
+    if (ac->isDefined(0x00)) {
+      double jeob = zdist[m_ucScanStop] + ac->Length(0x00) + refine[m_ucScanStop]; 
+      // joeb is the value of the j functional for coding the entire block as zero, 
+      // i.e. coding the eob directly at the first AC coefficient. This includes
+      // the cost for the refinement coding of all coefficients between.
+      for(k = ss;k <= m_ucScanStop;k++) {
+        if (coded[DCT::ScanOrder[k]]) {
+          // Include in the functional the cost for placing the EOB right behind 
+          // this block and zero-ing out the rest of the block.
+          double jf = jfunc[k] + zdist[m_ucScanStop] - zdist[k] + refine[m_ucScanStop] - refine[k];
+          // If this is not the end of the block, include the rate of the EOB.
+          if (k < m_ucScanStop)
+            jf += ac->isDefined(0x00);
+          // If the functional gets lower by terminating the block at position k, remember this
+          // choice.
+          if (jf < jeob) {
+            jeob  = jf;
+            eobpos = k;
+          }
+        }
+      }
+    } else {
+      // No EOB in the alphabet. Yuck. Ok, so stop at 63.
+      eobpos = m_ucScanStop;
+    }
+    //
+    // Done. Zero-out the coefficients in the runs and behind the EOB, or rather, push
+    // them into the deadzone.
+    for(k = m_ucScanStop;k >= ss;k--) {
+      if (k > eobpos) { // Is behind a run?
+        // Potentially zero-out the coefficient, unless it is a refined coefficient
+        // which we should not touch. Changing them does not change the rate at all
+        // and can only lower the distortion, so do not bother.
+        if (refine[k] == refine[k-1])
+          quantized[DCT::ScanOrder[k]] = zero[k]; // zero out the coefficient.
+      } else {
+        // Otherwise, find the start of the run that ends at this coefficient,
+        // and continue to clean out up to this position.
+        eobpos = start[k];
+      }
+    }
+  }
+#else
+  JPG_THROW(NOT_IMPLEMENTED,"RefinementScan::OptimizeBlock",
+            "soft-threshold quantizer not implemented in this code version");
+#endif  
+}
+///
+
+/// RefinementScan::OptimizeDC
+// Make an R/D optimization of the DC scan. This includes all DC blocks in
+// total, not just a single block. This is because the coefficients are not
+// coded independently.
+void RefinementScan::OptimizeDC(void)
+{
+  // There is really nothing to optimize here as the bitrate is constant, no
+  // matter what the data actually is.
+}
+///
+
+/// RefinementScan::StartOptimizeScan
+// Start making an optimization run to adjust the coefficients.
+void RefinementScan::StartOptimizeScan(class BufferCtrl *)
+{  
+  // Ditto.
+}
+///

@@ -28,7 +28,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbuffer.hpp,v 1.13 2015/05/10 15:21:43 thor Exp $
+** $Id: blockbuffer.hpp,v 1.14 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -123,7 +123,7 @@ public:
     if (m_pppRStream[comp])
       return *m_pppRStream[comp];
     return NULL;
-  }
+  } 
   //
   // Start a MCU scan by initializing the quantized rows for this row
   // in this scan.

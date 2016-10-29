@@ -28,7 +28,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.70 2016/02/03 19:20:43 thor Exp $
+** $Id: image.cpp,v 1.71 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -1112,10 +1112,10 @@ void Image::EncodeRegion(class BitMapHook *bmh,const struct RectangleRequest *rr
   bool doalpha = m_pAlphaChannel && rr->rr_bIncludeAlpha;
   RectAngle<LONG> region;
 
-  if (m_pDimensions == NULL || m_pImageBuffer == NULL)
+  if (m_pImageBuffer == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Image::EncodeRegion","no image constructed into which data could be loaded");
   if (doalpha) {
-    if (m_pAlphaChannel->m_pDimensions == NULL || m_pAlphaChannel->m_pImageBuffer == NULL)
+    if (m_pAlphaChannel->m_pImageBuffer == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Image::ReconstructRegion","alpha channel not loaded, or not yet available");
   }
 
@@ -1470,6 +1470,17 @@ bool Image::ParseTrailer(class ByteStream *io)
   } while(true);
   
   return true;
+}
+///
+
+/// Image::StartOptimizeFrame
+// Start an optimization scan that can be added upfront the measurement to 
+// improve the R/D performance.
+class Frame *Image::StartOptimizeFrame(void)
+{ 
+  // Actually, for the time being, this is identical to
+  // StartMeasureFrame
+  return StartMeasureFrame();
 }
 ///
 

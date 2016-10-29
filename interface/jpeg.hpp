@@ -31,7 +31,7 @@
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.hpp,v 1.13 2015/03/11 16:02:42 thor Exp $
+** $Id: jpeg.hpp,v 1.14 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -105,6 +105,9 @@ class JPEG {
   //
   // Requires optimization?
   bool          m_bOptimizeHuffman;
+  //
+  // Requires R/D optimization with a langrangian multiplier?
+  bool          m_bOptimizeQuantizer;
   //
   // The real constructor. We must use this, since we're not using
   // NEW to allocate objects, but MALLOC.

@@ -24,50 +24,46 @@
 
 *************************************************************************/
 /*
-** This class defines the minimal abstract interface the block based
-** scan types require to access quantized data.
+** This class represents a quantization table of 64 UWORD
+** entries, plus the statistics that have been measured for
+** this particular table to optimize the quality.
 **
-** $Id: blockctrl.hpp,v 1.9 2016/10/28 13:58:53 thor Exp $
+** $Id: quantizationtable.hpp,v 1.2 2016/10/28 13:58:54 thor Exp $
 **
 */
 
-#ifndef CONTROL_BLOCKCTRL_HPP
-#define CONTROL_BLOCKCTRL_HPP
+#ifndef MARKER_QUANTIZATIONTABLE_HPP
+#define MARKER_QUANTIZATIONTABLE_HPP
 
 /// Includes
 #include "tools/environment.hpp"
 ///
 
-/// Forwards
-class QuantizedRow;
-class Scan;
-///
-
-/// class BlockCtrl
-// This class defines the minimal abstract interface the block based
-// scan types require to access quantized data.
-class BlockCtrl : public JKeeper {
+/// class QuantizationTable
+// This class describes a single quantization table plus all the statistics
+// of this table.
+class QuantizationTable : public JKeeper {
+  //
+  // The actual quantization values.
+  UWORD  m_usDelta[64];
   //
 public:
-  BlockCtrl(class Environ *env)
-    : JKeeper(env)
+  QuantizationTable(class Environ *env)
+  : JKeeper(env)
   { }
   //
-  virtual ~BlockCtrl(void)
+  ~QuantizationTable(void)
   { }
   //
+  // Redefine the bucket sizes, install the default deadzone sizes
+  // for the given bucket sizes.
+  void DefineBucketSizes(const UWORD deltas[64]);
   //
-  // Return the current top MCU quantized line.
-  virtual class QuantizedRow *CurrentQuantizedRow(UBYTE comp) = 0;
-  //
-  // Start a MCU scan by initializing the quantized rows for this row
-  // in this scan.
-  virtual bool StartMCUQuantizerRow(class Scan *scan) = 0;
-  //
-  // Make sure to reset the block control to the
-  // start of the scan for the indicated components in the scan, 
-  // required after collecting the statistics for this scan.
-  virtual void ResetToStartOfScan(class Scan *scan) = 0;
+  // Return the table of quantization settings.
+  const UWORD *DeltasOf(void) const
+  {
+    return m_usDelta;
+  }
   //
 };
 ///

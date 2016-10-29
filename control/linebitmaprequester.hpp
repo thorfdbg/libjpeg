@@ -29,7 +29,7 @@
 ** them from the codestream. Only the lossless scheme uses this buffer
 ** organization.
 **
-** $Id: linebitmaprequester.hpp,v 1.22 2015/03/11 16:02:42 thor Exp $
+** $Id: linebitmaprequester.hpp,v 1.23 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -150,7 +150,7 @@ public:
   // Return an indicator whether all of the image has been loaded into
   // the image buffer.
   virtual bool isImageComplete(void) const; 
-  //
+  // 
   // Return true in case this buffer is organized in lines rather
   // than blocks.
   virtual bool isLineBased(void) const

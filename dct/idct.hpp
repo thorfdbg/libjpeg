@@ -27,7 +27,7 @@
 **
 ** Integer DCT operation plus scaled quantization.
 **
-** $Id: idct.hpp,v 1.19 2015/05/09 20:09:21 thor Exp $
+** $Id: idct.hpp,v 1.20 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -48,7 +48,7 @@ struct ImageBitMap;
 /// class IDCT
 // This class implements the integer based DCT. The template parameter is the number of
 // preshifted bits coming in from the color transformer.
-template<int preshift,typename T,bool deadzone>
+template<int preshift,typename T,bool deadzone,bool optimize>
 class IDCT : public DCT {
   //
   // Bit assignment
@@ -65,15 +65,24 @@ class IDCT : public DCT {
   LONG  m_plInvQuant[64];
   //
   // The quantizer tables.
-  WORD  m_psQuant[64];
+  LONG  m_plQuant[64];
+  //
+  // Local buffer for the scaled unquantized data. This allows an R/D optimization.
+  LONG m_lTransform[64];
   //
   // Quantize a floating point number with a multiplier, round correctly.
   // Must remove FIX_BITS + INTER_BITS + 3
-  static inline LONG Quantize(LONG n,LONG qnt,bool dc)
+  inline LONG Quantize(LONG n,LONG qnt,int band)
   {
-    // Use the equi-quantizer if deadzone quantization is turned
-    // off or we are quantizing the DC part.
-    if (deadzone == false || dc) {
+    if (optimize) {
+      // If the optimization is on, also store the raw unqantized data.
+      // It just has to be scaled correctly.
+      // The preshift is not removed since it is part of the quantization
+      // settings to remove it.
+      m_lTransform[band] = n >> (FIX_BITS + INTERMEDIATE_BITS + 3);
+    }
+    
+    if (deadzone == false || band == 0) {
       return (n * QUAD(qnt) + (ULONG(-n) >> TypeTrait<LONG>::SignBit) + 
               (QUAD(1) << (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3 - 1)))
         >> (FIX_BITS + INTERMEDIATE_BITS + QUANTIZER_BITS + preshift + 3);
@@ -86,7 +95,6 @@ class IDCT : public DCT {
     }
   }
   //
-  //
 public:
   IDCT(class Environ *env);
   //
@@ -94,13 +102,40 @@ public:
   //
   // Use the quantization table defined here, scale them to the needs of the DCT and scale them
   // to the right size.
-  virtual void DefineQuant(const UWORD *table);
+  virtual void DefineQuant(class QuantizationTable *table);
   //
   // Run the DCT on a 8x8 block on the input data, giving the output table.
   virtual void TransformBlock(const LONG *source,LONG *target,LONG dcoffset);
   //
   // Run the inverse DCT on an 8x8 block reconstructing the data.
   virtual void InverseTransformBlock(LONG *target,const LONG *source,LONG dcoffset);
+  //
+  // Estimate a critical slope (lambda) from the unquantized data.
+  // Or to be precise, estimate lambda/delta^2, the constant in front of
+  // delta^2.
+  virtual DOUBLE EstimateCriticalSlope(void);
+  //
+  // Return (in case optimization is enabled) a pointer to the unquantized
+  // but DCT transformed data. The data is potentially preshifted.
+  virtual const LONG *TransformedBlockOf(void) const
+  {
+    assert(optimize);
+    return m_lTransform;
+  } 
+  //
+  // Return (in case optimization is enabled) a pointer to the effective
+  // quantization step sizes.
+  virtual const LONG *BucketSizes(void) const
+  {
+    return m_plQuant;
+  } 
+  //
+  // The prescaling of the DCT. This is the number of bits the input data
+  // is upshifted compared to the regular input.
+  virtual int PreshiftOf(void) const
+  {
+    return preshift;
+  }
 };
 ///
 

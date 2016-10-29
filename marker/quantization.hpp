@@ -26,7 +26,7 @@
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.hpp,v 1.14 2015/05/22 09:55:29 thor Exp $
+** $Id: quantization.hpp,v 1.15 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -39,6 +39,7 @@
 
 /// Forwards
 class ByteStream;
+class QuantizationTable;
 ///
 
 /// class Quantization
@@ -46,7 +47,7 @@ class ByteStream;
 class Quantization : public JKeeper {
   //
   // The actual quantization tables. This marker can hold up to four of them.
-  UWORD *m_pDelta[4];
+  class QuantizationTable *m_pTables[4];
   //
 public:
   Quantization(class Environ *env);
@@ -78,11 +79,10 @@ public:
                          const LONG customluma[64],
                          const LONG customchroma[64]);
   //
-  const UWORD *QuantizationTable(UBYTE idx) const
+  class QuantizationTable *QuantizationTable(UBYTE idx) const
   {
-    if (idx < 4)
-      return m_pDelta[idx];
-    return NULL;
+    assert(idx < 4);
+    return m_pTables[idx];
   }
 };
 ///

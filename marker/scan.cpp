@@ -27,7 +27,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.111 2016/01/21 13:57:49 thor Exp $
+** $Id: scan.cpp,v 1.112 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -977,6 +977,17 @@ void Scan::StartMeasureScan(class BufferCtrl *ctrl)
 }
 ///
 
+/// Scan::StartOptimizeScan
+// Start making a R/D optimization
+void Scan::StartOptimizeScan(class BufferCtrl *ctrl)
+{
+  assert(m_pParser);
+  //
+  ctrl->PrepareForEncoding();
+  m_pParser->StartOptimizeScan(ctrl);
+}
+///
+
 /// Scan::StartMCURow
 // Start a MCU scan.
 bool Scan::StartMCURow(void)
@@ -1183,5 +1194,38 @@ class ACTemplate *Scan::ACConditionerOf(UBYTE idx) const
   }
 
   return m_pFrame->TablesOf()->FindACConditioner(m_ucACTable[idx]);
+}
+///
+
+/// Scan::OptimizeDCTBlock
+// Optimize the given DCT block for ideal rate-distortion performance. The
+// input parameters are the component this applies to, the critical R/D slope,
+// the original transformed but unquantized DCT data and the quantized DCT
+// block.
+void Scan::OptimizeDCTBlock(LONG bx,LONG by,UBYTE compidx,DOUBLE lambda,
+                            class DCT *dct,LONG quantized[64])
+{
+  UBYTE i;
+
+  assert(m_pParser);
+
+  for(i = 0;i < m_ucCount;i++) {
+    if (m_pComponent[i] && m_pComponent[i]->IndexOf() == compidx) {
+      m_pParser->OptimizeBlock(bx,by,i,lambda,dct,quantized);
+      break;
+    }
+  }
+}
+///
+
+/// Scan::OptimizeDC
+// Run a joint optimization of the R/D performance of all DC coefficients
+// within this scan. This requires a separate joint efford as DC coefficients
+// are encoded dependently.
+void Scan::OptimizeDC(void)
+{
+  assert(m_pParser);
+
+  m_pParser->OptimizeDC();
 }
 ///

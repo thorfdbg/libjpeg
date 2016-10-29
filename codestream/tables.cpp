@@ -27,13 +27,14 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.189 2016/01/22 12:15:16 thor Exp $
+** $Id: tables.cpp,v 1.190 2016/10/28 13:58:53 thor Exp $
 **
 */
 
 /// Include
 #include "codestream/tables.hpp"
 #include "marker/quantization.hpp"
+#include "marker/quantizationtable.hpp"
 #include "marker/huffmantable.hpp"
 #include "marker/component.hpp"
 #include "marker/actable.hpp"
@@ -86,7 +87,7 @@ Tables::Tables(class Environ *env)
     m_pThresholds(NULL), m_pLSColorTrafo(NULL), m_pResidualSpecs(NULL), m_pAlphaSpecs(NULL),
     m_pIdentityMapping(NULL), m_pChecksumBox(NULL),
     m_ucMaxError(0), m_bDisableColor(false), m_bTruncateColor(false), m_bRefinement(false), 
-    m_bOpenLoop(false), m_bDeadZone(false),
+    m_bOpenLoop(false), m_bDeadZone(false), m_bOptimize(false), m_bDeRing(false),
     m_bFoundExp(false), m_bHorizontalExpansion(false), m_bVerticalExpansion(false)
 
 {
@@ -245,15 +246,19 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
   
   //
   // Get the color truncation flag. No longer supported.
-  //m_bTruncateColor = tags->GetTagData(JPGTAG_TRUNCATE_RESIDUALS)?true:false;
+  //m_bTruncateColor = tags->GetTagData(JPGTAG_TRUxNCATE_RESIDUALS)?true:false;
   // Set if the encoder uses the original and not the reconstructed samples
   // for computing the residuals. No quantization done then...
   if (m_pParent) {
     m_bOpenLoop = m_pParent->m_bOpenLoop;
     m_bDeadZone = m_pParent->m_bDeadZone;
+    m_bOptimize = m_pParent->m_bOptimize;
+    m_bDeRing   = false; // never on the residual channel.
   } else {
     m_bOpenLoop = tags->GetTagData(JPGTAG_OPENLOOP_ENCODER)?true:false;
     m_bDeadZone = tags->GetTagData(JPGTAG_DEADZONE_QUANTIZER)?true:false;
+    m_bOptimize = tags->GetTagData(JPGTAG_OPTIMIZE_QUANTIZER)?true:false;
+    m_bDeRing   = tags->GetTagData(JPGTAG_IMAGE_DERINGING)?true:false;
   }
   //
   // Install the maximum error.
@@ -1412,9 +1417,9 @@ class ACTemplate *Tables::FindACConditioner(UBYTE idx) const
 
 /// Tables::FindQuantizationTable
 // Find the quantization table of the given index.
-const UWORD *Tables::FindQuantizationTable(UBYTE idx) const
+class QuantizationTable *Tables::FindQuantizationTable(UBYTE idx) const
 {
-  const UWORD *t;
+  class QuantizationTable *t;
   
   if (m_pQuant == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindQuantizationTable","DQT marker missing, no quantization table defined");
@@ -1633,7 +1638,7 @@ class DCT *Tables::BuildDCT(class Component *comp,UBYTE count,UBYTE precision) c
   UBYTE fractional = FractionalColorBitsOf(count);
   bool  lossless   = UseLosslessDCT();
   class DCT *dct   = NULL;
-  const UWORD *quant;
+  class QuantizationTable *quant;
 
   // Ok, so get the quantization matrix there, i.e. in our table because
   // this is the residual table.
@@ -1649,35 +1654,80 @@ class DCT *Tables::BuildDCT(class Component *comp,UBYTE count,UBYTE precision) c
       // and hence the preshift should not be removed.
       assert(fractional == 0 || fractional == 1);
       if (fractional + precision + 12 + 3 > 31) {
-        if (m_bDeadZone)
-          dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,true>(m_pEnviron);
-        else
-          dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,false>(m_pEnviron);
+        if (m_bDeadZone) {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,true,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,true,false>(m_pEnviron);
+          }
+        } else {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,false,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,QUAD,false,false>(m_pEnviron);
+          }
+        }
       } else {
-        if (m_bDeadZone)
-          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true>(m_pEnviron);
-        else
-          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false>(m_pEnviron);
+        if (m_bDeadZone) {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true,false>(m_pEnviron);
+          }
+        } else {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false,false>(m_pEnviron);
+          }
+        }
       }
     } else {
       switch(fractional) {
       case 0:
-        if (m_bDeadZone)
-          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true>(m_pEnviron);
-        else
-          dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false>(m_pEnviron);
+        if (m_bDeadZone) {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,true,false>(m_pEnviron);
+          }
+        } else {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<0,LONG,false,false>(m_pEnviron);
+          }
+        }
         break;
       case 1:
-        if (m_bDeadZone)
-          dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,true>(m_pEnviron);
-        else
-          dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,false>(m_pEnviron);
+        if (m_bDeadZone) {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,true,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,true,false>(m_pEnviron);
+          }
+        } else {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,false,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<1,LONG,false,false>(m_pEnviron);
+          }
+        }
         break;
       case ColorTrafo::COLOR_BITS:
-        if (m_bDeadZone)
-          dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,true>(m_pEnviron);
-        else
-          dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,false>(m_pEnviron);
+        if (m_bDeadZone) {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,true,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,true,false>(m_pEnviron);
+          }
+        } else {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,false,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSLESSDCT<ColorTrafo::COLOR_BITS,LONG,false,false>(m_pEnviron);
+          }
+        }
         break;
       default:
         JPG_THROW(INVALID_PARAMETER,"Tables::BuildDCT",
@@ -1689,29 +1739,65 @@ class DCT *Tables::BuildDCT(class Component *comp,UBYTE count,UBYTE precision) c
   } else {
     switch(fractional) {
     case 0:
-      if (m_bDeadZone)
-        dct = new(m_pEnviron) class LOSSYDCT<0,LONG,true>(m_pEnviron);
-      else
-        dct = new(m_pEnviron) class LOSSYDCT<0,LONG,false>(m_pEnviron);
+      if (m_bDeadZone) {
+        if (m_bOptimize) {
+          dct = new(m_pEnviron) class LOSSYDCT<0,LONG,true,true>(m_pEnviron);
+        } else {
+          dct = new(m_pEnviron) class LOSSYDCT<0,LONG,true,false>(m_pEnviron);
+        }
+      } else {
+        if (m_bOptimize) {
+          dct = new(m_pEnviron) class LOSSYDCT<0,LONG,false,true>(m_pEnviron);
+        } else {
+          dct = new(m_pEnviron) class LOSSYDCT<0,LONG,false,false>(m_pEnviron);
+        }
+      }
       break;
     case 1: // This is for the RCT which is range-extending.
-      if (m_bDeadZone)
-        dct = new(m_pEnviron) class LOSSYDCT<1,LONG,true>(m_pEnviron);
-      else
-        dct = new(m_pEnviron) class LOSSYDCT<1,LONG,false>(m_pEnviron);
+      if (m_bDeadZone) {
+        if (m_bOptimize) {
+          dct = new(m_pEnviron) class LOSSYDCT<1,LONG,true,true>(m_pEnviron);
+        } else {
+          dct = new(m_pEnviron) class LOSSYDCT<1,LONG,true,false>(m_pEnviron);
+        }
+      } else {
+        if (m_bOptimize) {
+          dct = new(m_pEnviron) class LOSSYDCT<1,LONG,false,true>(m_pEnviron);
+        } else {
+          dct = new(m_pEnviron) class LOSSYDCT<1,LONG,false,false>(m_pEnviron);
+        }
+      }
       break;
     case ColorTrafo::COLOR_BITS:
       if (precision > 12) {
         // This might be 20 bits large, so be careful.
-        if (m_bDeadZone)
-          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,true>(m_pEnviron);
-        else
-          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,false>(m_pEnviron);
+        if (m_bDeadZone) {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,true,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,true,false>(m_pEnviron);
+          }
+        } else {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,false,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,QUAD,false,false>(m_pEnviron);
+          }
+        }
       } else {
-        if (m_bDeadZone)
-          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,true>(m_pEnviron);
-        else
-          dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,false>(m_pEnviron);
+        if (m_bDeadZone) {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,true,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,true,false>(m_pEnviron);
+          }
+        } else {
+          if (m_bOptimize) {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,false,true>(m_pEnviron);
+          } else {
+            dct = new(m_pEnviron) class LOSSYDCT<ColorTrafo::COLOR_BITS,LONG,false,false>(m_pEnviron);
+          }
+        }
       }
       break;
     }
@@ -1726,6 +1812,7 @@ class DCT *Tables::BuildDCT(class Component *comp,UBYTE count,UBYTE precision) c
   return dct;
 }
 ///
+
 
 /// Tables::RestartIntervalOf
 // Return the currently active restart interval in MCUs or zero

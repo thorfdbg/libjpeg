@@ -27,7 +27,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.hpp,v 1.86 2015/05/09 20:09:21 thor Exp $
+** $Id: tables.hpp,v 1.87 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -47,6 +47,7 @@
 /// Forwards
 class ByteStream;
 class Quantization;
+class QuantizationTable;
 class HuffmanTemplate;
 class JFIFMarker;
 class AdobeMarker;
@@ -177,6 +178,13 @@ class Tables: public JKeeper {
   // Otherwise, the default equi-quantizer is used.
   bool                           m_bDeadZone;
   //
+  // True in case a quantization optimization of the encoder/quantizer
+  // is desired.
+  bool                           m_bOptimize;
+  //
+  // True in case the de-ringing filter on encoding is enabled.
+  bool                           m_bDeRing;
+  //
   // This flag is set if an exp marker is found in the tables.
   bool                           m_bFoundExp;
   //
@@ -253,7 +261,7 @@ public:
   class ACTemplate *FindACConditioner(UBYTE idx) const;
   //
   // Find the quantization table of the given index.
-  const UWORD *FindQuantizationTable(UBYTE idx) const;
+  class QuantizationTable *FindQuantizationTable(UBYTE idx) const;
   //
   // Return the residual data if any.
   class DataBox *ResidualDataOf(void) const
@@ -448,6 +456,19 @@ public:
     v = m_bVerticalExpansion;
     
     return m_bFoundExp;
+  }
+  //
+  // Returns true in case the quantization optimization is desired.
+  bool Optimization() const
+  {
+    return m_bOptimize;
+  }
+  //
+  // Returns true if the optional deringing filter is enabled. This works
+  // only for the LDR image (plus refinement).
+  bool isDeringingEnabled(void) const
+  {
+    return m_bDeRing;
   }
 };
 ///

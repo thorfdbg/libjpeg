@@ -27,7 +27,7 @@
 ** This header provides the interface for the bitmap hook that 
 ** delivers the bitmap data to the core library.
 **
-** $Id: bitmaphook.cpp,v 1.11 2015/03/24 08:39:08 thor Exp $
+** $Id: bitmaphook.cpp,v 1.12 2016/10/28 13:58:52 thor Exp $
 **
 */
 
@@ -137,6 +137,7 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
         // lines available.
         if (height > 8)
           height = 8;
+        //
         if (bmm->bmm_ucPixelType == CTYP_UBYTE || 
             bmm->bmm_ucPixelType == CTYP_UWORD || 
             bmm->bmm_ucPixelType == CTYP_FLOAT) {

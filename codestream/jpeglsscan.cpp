@@ -27,7 +27,7 @@
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.cpp,v 1.24 2015/03/25 08:45:43 thor Exp $
+** $Id: jpeglsscan.cpp,v 1.25 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -265,6 +265,15 @@ void JPEGLSScan::StartMeasureScan(class BufferCtrl *)
 }
 ///
 
+/// JPEGLSScan::StartOptimizeScan
+// Start making an optimization run to adjust the coefficients.
+void JPEGLSScan::StartOptimizeScan(class BufferCtrl *)
+{  
+  JPG_THROW(NOT_IMPLEMENTED,"LosslessScan::StartOptimizeScan",
+            "JPEG LS is not based on Huffman coding and does not support R/D optimization");
+}
+///
+
 /// JPEGLSScan::StartMCURow
 // Start a MCU scan. Returns true if there are more rows.
 bool JPEGLSScan::StartMCURow(void)
@@ -311,5 +320,27 @@ bool JPEGLSScan::BeginReadMCU(class ByteStream *io)
   m_Stream.SkipStuffing();
 #endif
   return EntropyParser::BeginReadMCU(io);
+}
+///
+
+/// JPEGLSScan::OptimizeBlock
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+void JPEGLSScan::OptimizeBlock(LONG, LONG, UBYTE ,double ,
+                               class DCT *,LONG [64])
+{
+  JPG_THROW(NOT_IMPLEMENTED,"JPEGLSScan::OptimizeBlock",
+            "Rate-distortion optimization is not available for line-based coding modes");
+}
+///
+
+/// JPEGLSScan::OptimizeDC
+// Make an R/D optimization of the DC scan. This includes all DC blocks in
+// total, not just a single block. This is because the coefficients are not
+// coded independently.
+void JPEGLSScan::OptimizeDC(void)
+{ 
+  JPG_THROW(NOT_IMPLEMENTED,"JPEGLSScan::OptimizeDC",
+            "Rate-distortion optimization is not available for line-based coding modes");
 }
 ///

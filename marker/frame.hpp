@@ -27,7 +27,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.hpp,v 1.65 2016/02/03 19:20:43 thor Exp $
+** $Id: frame.hpp,v 1.66 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -52,6 +52,7 @@ class BufferCtrl;
 class ResidualBlockHelper;
 class Checksum;
 class ChecksumAdapter;
+class DCT;
 ///
 
 /// class Frame
@@ -258,6 +259,9 @@ public:
   // coder
   class Scan *StartMeasureScan(void);
   //
+  // Start an optimization scan for the R/D optimizer.
+  class Scan *StartOptimizeScan(void);
+  //
   // End parsing the current scan.
   void EndParseScan(void);
   //
@@ -332,6 +336,11 @@ public:
   // Define the image size if it is not yet known here. This is
   // called whenever the DNL marker is parsed in.
   void PostImageHeight(ULONG height);
+  //
+  // Optimize a single DCT block through all scans of this frame for
+  // ideal R/D performance.
+  void OptimizeDCTBlock(LONG bx,LONG by,UBYTE compidx,class DCT *dct,LONG block[64]);
+  //
 };
 ///
 

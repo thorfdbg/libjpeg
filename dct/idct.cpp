@@ -29,7 +29,7 @@
 ** This is an unscaled fix-point DCT. It requires approximately 45 shifts
 ** per row and column.
 **
-** $Id: idct.cpp,v 1.23 2015/06/27 09:52:29 thor Exp $
+** $Id: idct.cpp,v 1.24 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -41,6 +41,8 @@
 #include "tools/traits.hpp"
 #include "interface/imagebitmap.hpp"
 #include "colortrafo/colortrafo.hpp"
+#include "marker/quantizationtable.hpp"
+#include "coding/huffmancoder.hpp"
 ///
 
 /// Defines
@@ -62,42 +64,43 @@
 ///
 
 /// IDCT::IDCT
-template<int preshift,typename T,bool deadzone>
-IDCT<preshift,T,deadzone>::IDCT(class Environ *env)
+template<int preshift,typename T,bool deadzone,bool optimize>
+IDCT<preshift,T,deadzone,optimize>::IDCT(class Environ *env)
   : DCT(env)
 {
 }
 ///
 
 /// IDCT::~IDCT
-template<int preshift,typename T,bool deadzone>
-IDCT<preshift,T,deadzone>::~IDCT(void)
+template<int preshift,typename T,bool deadzone,bool optimize>
+IDCT<preshift,T,deadzone,optimize>::~IDCT(void)
 {
 }
 ///
 
 /// IDCT::DefineQuant
-template<int preshift,typename T,bool deadzone>
-void IDCT<preshift,T,deadzone>::DefineQuant(const UWORD *table)
+template<int preshift,typename T,bool deadzone,bool optimize>
+void IDCT<preshift,T,deadzone,optimize>::DefineQuant(class QuantizationTable *table)
 {
+  const UWORD *delta      = table->DeltasOf();
   int i;
 
   // No scaling required here.
   for(i = 0;i < 64;i++) {
-    m_psQuant[i]    = table[i] << preshift;
-    m_plInvQuant[i] = LONG(FLOAT(1L << QUANTIZER_BITS) / table[i] + 0.5);
+    m_plQuant[i]    = LONG(delta[i]) << preshift;
+    m_plInvQuant[i] = LONG(FLOAT(1L << QUANTIZER_BITS) / delta[i] + 0.5);
   }
 }
 ///
 
 /// IDCT::TransformBlock
 // Run the DCT on a 8x8 block on the input data, giving the output table.
-template<int preshift,typename T,bool deadzone>
-void IDCT<preshift,T,deadzone>::TransformBlock(const LONG *source,LONG *target,LONG dcoffset)
+template<int preshift,typename T,bool deadzone,bool optimize>
+void IDCT<preshift,T,deadzone,optimize>::TransformBlock(const LONG *source,LONG *target,LONG dcoffset)
 { 
   LONG *dpend,*dp;
   const LONG *qp = m_plInvQuant; 
-  bool dc = true;
+  int band = 0;
   //
   // Adjust the DC offset to the number of fractional bits.
   dcoffset <<= preshift + 3 + 3 + INTERMEDIATE_BITS; 
@@ -168,14 +171,14 @@ void IDCT<preshift,T,deadzone>::TransformBlock(const LONG *source,LONG *target,L
     tmp3               = dp[3] - dp[4];
 
     // complete DC and middle band.
-    dp[0]              = Quantize((tmp10 + tmp11 - dcoffset) << FIX_BITS,qp[0],dc);
-    dp[4]              = Quantize((tmp10 - tmp11) << FIX_BITS           ,qp[4],false);
+    dp[0]              = Quantize((tmp10 + tmp11 - dcoffset) << FIX_BITS,qp[0],band);
+    dp[4]              = Quantize((tmp10 - tmp11) << FIX_BITS           ,qp[4],band+4);
     
     INTER_FIXED z1     = (tmp12 + tmp13) * TO_FIX(0.541196100);
 
     // complete bands 2 and 6
-    dp[2]              = Quantize(z1 + tmp12 * TO_FIX(0.765366865),qp[2],false);
-    dp[6]              = Quantize(z1 + tmp13 *-TO_FIX(1.847759065),qp[6],false);
+    dp[2]              = Quantize(z1 + tmp12 * TO_FIX(0.765366865),qp[2],band+2);
+    dp[6]              = Quantize(z1 + tmp13 *-TO_FIX(1.847759065),qp[6],band+6);
 
     tmp10              = tmp0 + tmp3;
     tmp11              = tmp1 + tmp2;
@@ -192,25 +195,25 @@ void IDCT<preshift,T,deadzone>::TransformBlock(const LONG *source,LONG *target,L
     INTER_FIXED ttmp12 = tmp12 *-TO_FIX(0.390180644) + z1;
     INTER_FIXED ttmp13 = tmp13 *-TO_FIX(1.961570560) + z1;
 
-    dp[1]              = Quantize(ttmp0 + ttmp10 + ttmp12,qp[1],false);
-    dp[3]              = Quantize(ttmp1 + ttmp11 + ttmp13,qp[3],false);
-    dp[5]              = Quantize(ttmp2 + ttmp11 + ttmp12,qp[5],false);
-    dp[7]              = Quantize(ttmp3 + ttmp10 + ttmp13,qp[7],false);
+    dp[1]              = Quantize(ttmp0 + ttmp10 + ttmp12,qp[1],band+1);
+    dp[3]              = Quantize(ttmp1 + ttmp11 + ttmp13,qp[3],band+3);
+    dp[5]              = Quantize(ttmp2 + ttmp11 + ttmp12,qp[5],band+5);
+    dp[7]              = Quantize(ttmp3 + ttmp10 + ttmp13,qp[7],band+7);
     dcoffset           = 0;
-    dc                 = false;
+    band              += 8;
   }
 }
 ///
 
 /// IDCT::InverseTransformBlock
 // Run the inverse DCT on an 8x8 block reconstructing the data.
-template<int preshift,typename T,bool deadzone>
-void IDCT<preshift,T,deadzone>::InverseTransformBlock(LONG *target,const LONG *source,
-                                                      LONG dcoffset)
+template<int preshift,typename T,bool deadzone,bool optimize>
+void IDCT<preshift,T,deadzone,optimize>::InverseTransformBlock(LONG *target,const LONG *source,
+                                                               LONG dcoffset)
 {
   LONG *dptr,*dend;
   
-  const WORD *qnt = m_psQuant;
+  const LONG *qnt = m_plQuant;
 
   dcoffset <<= preshift + 3;
 
@@ -321,14 +324,52 @@ void IDCT<preshift,T,deadzone>::InverseTransformBlock(LONG *target,const LONG *s
 }
 ///
 
-/// Instanciate the classes
-template class IDCT<0,LONG,false>;
-template class IDCT<1,LONG,false>; // For the RCT output
-template class IDCT<ColorTrafo::COLOR_BITS,LONG,false>;
-template class IDCT<ColorTrafo::COLOR_BITS,QUAD,false>;
+/// IDCT::EstimateCriticalSlope
+// Estimate a critical slope (lambda) from the unquantized data.
+// Or to be precise, estimate lambda/delta^2, the constant in front of
+// delta^2.
+template<int preshift,typename T,bool deadzone,bool optimize>
+DOUBLE IDCT<preshift,T,deadzone,optimize>::EstimateCriticalSlope(void)
+{
+#ifdef ESTIMATE_FROM_ENERGY 
+  int i;
+  double energy = 0.0;
+  const double s1    = pow(2.0,14.75);
+  const double s2    = pow(2.0,16.5);
+  const double scale = double(1L << preshift) / 8.0;
+  
+  assert(optimize);
+  for(i = 1;i < 63;i++) {
+    double val   = m_lTransform[i] / scale;
+    energy      += val * val;
+  }
+  energy  /= 63.0;
 
-template class IDCT<0,LONG,true>;
-template class IDCT<1,LONG,true>; // For the RCT output
-template class IDCT<ColorTrafo::COLOR_BITS,LONG,true>;
-template class IDCT<ColorTrafo::COLOR_BITS,QUAD,true>;
+  return (s1 / (s2 + energy));
+#else
+  return 0.25;
+#endif  
+}
+///
+
+/// Instanciate the classes
+template class IDCT<0,LONG,false,false>;
+template class IDCT<1,LONG,false,false>; // For the RCT output
+template class IDCT<ColorTrafo::COLOR_BITS,LONG,false,false>;
+template class IDCT<ColorTrafo::COLOR_BITS,QUAD,false,false>;
+
+template class IDCT<0,LONG,true,false>;
+template class IDCT<1,LONG,true,false>; // For the RCT output
+template class IDCT<ColorTrafo::COLOR_BITS,LONG,true,false>;
+template class IDCT<ColorTrafo::COLOR_BITS,QUAD,true,false>;
+
+template class IDCT<0,LONG,false,true>;
+template class IDCT<1,LONG,false,true>; // For the RCT output
+template class IDCT<ColorTrafo::COLOR_BITS,LONG,false,true>;
+template class IDCT<ColorTrafo::COLOR_BITS,QUAD,false,true>;
+
+template class IDCT<0,LONG,true,true>;
+template class IDCT<1,LONG,true,true>; // For the RCT output
+template class IDCT<ColorTrafo::COLOR_BITS,LONG,true,true>;
+template class IDCT<ColorTrafo::COLOR_BITS,QUAD,true,true>;
 ///

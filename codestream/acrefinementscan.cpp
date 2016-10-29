@@ -28,7 +28,7 @@
 ** Encode a refinement scan with the arithmetic coding procedure from
 ** Annex G.
 **
-** $Id: acrefinementscan.cpp,v 1.31 2015/10/13 16:56:50 thor Exp $
+** $Id: acrefinementscan.cpp,v 1.32 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -470,5 +470,35 @@ void ACRefinementScan::Flush(bool)
   m_Context.Init();
   m_Coder.OpenForWrite(m_Coder.ByteStreamOf(),m_Coder.ChecksumOf());
 #endif
+}
+///
+
+/// ACRefinementScan::OptimizeBlock
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+void ACRefinementScan::OptimizeBlock(LONG, LONG, UBYTE ,double ,
+                                     class DCT *,LONG [64])
+{
+  JPG_THROW(NOT_IMPLEMENTED,"ACRefinementScan::OptimizeBlock",
+            "Rate-distortion optimization is not implemented for arithmetic coding");
+}
+///
+
+/// ACRefinementScan::OptimizeDC
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+void ACRefinementScan::OptimizeDC(void)
+{
+  JPG_THROW(NOT_IMPLEMENTED,"ACRefinementScan::OptimizeDC",
+            "Rate-distortion optimization is not implemented for arithmetic coding");
+}
+///
+
+/// ACRefinementScan::StartOptimizeScan
+// Start making an optimization run to adjust the coefficients.
+void ACRefinementScan::StartOptimizeScan(class BufferCtrl *)
+{  
+  JPG_THROW(NOT_IMPLEMENTED,"ACRefinementScan::StartOptimizeScan",
+            "Rate-distortion optimization is not implemented for arithmetic coding");
 }
 ///

@@ -37,7 +37,7 @@
 ** This implementation requires approximately 191 shifts per row and column
 ** or 39 multiplications per row and column and 230 adds per shift and column.
 **
-** $Id: liftingdct.cpp,v 1.17 2016/02/04 12:43:28 thor Exp $
+** $Id: liftingdct.cpp,v 1.18 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -49,6 +49,7 @@
 #include "tools/traits.hpp"
 #include "interface/imagebitmap.hpp"
 #include "colortrafo/colortrafo.hpp"
+#include "marker/quantizationtable.hpp"
 ///
 
 /// Multiplications by constants
@@ -81,42 +82,43 @@
 ///
 
 /// LiftingDCT::LiftingDCT
-template<int preshift,typename T,bool deadzone>
-LiftingDCT<preshift,T,deadzone>::LiftingDCT(class Environ *env)
+template<int preshift,typename T,bool deadzone,bool optimize>
+LiftingDCT<preshift,T,deadzone,optimize>::LiftingDCT(class Environ *env)
   : DCT(env)
 {
 }
 ///
 
-/// LiftingDCT::~LiftingDCT
-template<int preshift,typename T,bool deadzone>
-LiftingDCT<preshift,T,deadzone>::~LiftingDCT(void)
+/// LiftingtDCT::~LiftingDCT
+template<int preshift,typename T,bool deadzone,bool optimize>
+LiftingDCT<preshift,T,deadzone,optimize>::~LiftingDCT(void)
 {
 }
 ///
 
 /// LiftingDCT::DefineQuant
-template<int preshift,typename T,bool deadzone>
-void LiftingDCT<preshift,T,deadzone>::DefineQuant(const UWORD *table)
+template<int preshift,typename T,bool deadzone,bool optimize>
+void LiftingDCT<preshift,T,deadzone,optimize>::DefineQuant(class QuantizationTable *table)
 {
+  const UWORD *delta      = table->DeltasOf();
   int i;
 
   // No scaling required here.
   for(i = 0;i < 64;i++) {
-    m_plQuant[i]    = table[i];
-    m_plInvQuant[i] = LONG((FLOAT(1L << QUANTIZER_BITS)) / table[i] + 0.5);
+    m_plQuant[i]    = delta[i];
+    m_plInvQuant[i] = LONG((FLOAT(1L << QUANTIZER_BITS)) / delta[i] + 0.5);
   }
 }
 ///
 
 /// LiftingDCT::TransformBlock
 // Run the DCT on a 8x8 block on the input data, giving the output table.
-template<int preshift,typename T,bool deadzone>
-void LiftingDCT<preshift,T,deadzone>::TransformBlock(const LONG *source,LONG *target,
-                                                     LONG dcoffset)
+template<int preshift,typename T,bool deadzone,bool optimize>
+void LiftingDCT<preshift,T,deadzone,optimize>::TransformBlock(const LONG *source,LONG *target,
+                                                              LONG dcoffset)
 { 
   LONG *dpend,*dp;
-  bool dc = true;
+  int band = 0;
   const LONG *qp = m_plInvQuant; 
   T t;
   //
@@ -280,26 +282,26 @@ void LiftingDCT<preshift,T,deadzone>::TransformBlock(const LONG *source,LONG *ta
     T z1  = -pmul_sin4(z0) + zc3;
     T x45 = pmul_tan4(z1)  + z0;
     // Output permutation.
-    dp[0] = Quantize(z20 - dcoffset,qp[0],dc);
-    dp[1] = Quantize(zc0           ,qp[1],false);
-    dp[2] = Quantize(z21           ,qp[2],false);
-    dp[3] = Quantize(-z1           ,qp[3],false);
-    dp[4] = Quantize(-z10          ,qp[4],false);
-    dp[5] = Quantize(x45           ,qp[5],false);
-    dp[6] = Quantize(-z11          ,qp[6],false);
-    dp[7] = Quantize(zc2           ,qp[7],false);
+    dp[0] = Quantize(z20 - dcoffset,qp[0],band + 0);
+    dp[1] = Quantize(zc0           ,qp[1],band + 1);
+    dp[2] = Quantize(z21           ,qp[2],band + 2);
+    dp[3] = Quantize(-z1           ,qp[3],band + 3);
+    dp[4] = Quantize(-z10          ,qp[4],band + 4);
+    dp[5] = Quantize(x45           ,qp[5],band + 5);
+    dp[6] = Quantize(-z11          ,qp[6],band + 6);
+    dp[7] = Quantize(zc2           ,qp[7],band + 7);
 
     dcoffset = 0;
-    dc       = false;
+    band    += 8;
   }
 }
 ///
 
 /// LiftingDCT::InverseTransformBlock
 // Run the inverse DCT on an 8x8 block reconstructing the data.
-template<int preshift,typename T,bool deadzone>
-void LiftingDCT<preshift,T,deadzone>::InverseTransformBlock(LONG *target,const LONG *source,
-                                                            LONG dcoffset)
+template<int preshift,typename T,bool deadzone,bool optimize>
+void LiftingDCT<preshift,T,deadzone,optimize>::InverseTransformBlock(LONG *target,const LONG *source,
+                                                                     LONG dcoffset)
 {
   const LONG *qp = m_plQuant;
   T t;
@@ -472,18 +474,62 @@ void LiftingDCT<preshift,T,deadzone>::InverseTransformBlock(LONG *target,const L
 }
 ///
 
-/// Instanciate the classes
-template class LiftingDCT<0,LONG,false>;
-template class LiftingDCT<1,LONG,false>;
-template class LiftingDCT<ColorTrafo::COLOR_BITS,LONG,false>;
-template class LiftingDCT<0,QUAD,false>;
-template class LiftingDCT<1,QUAD,false>;
-template class LiftingDCT<ColorTrafo::COLOR_BITS,QUAD,false>;
 
-template class LiftingDCT<0,LONG,true>;
-template class LiftingDCT<1,LONG,true>;
-template class LiftingDCT<ColorTrafo::COLOR_BITS,LONG,true>;
-template class LiftingDCT<0,QUAD,true>;
-template class LiftingDCT<1,QUAD,true>;
-template class LiftingDCT<ColorTrafo::COLOR_BITS,QUAD,true>;
+/// LiftingDCT::EstimateCriticalSlope
+// Estimate a critical slope (lambda) from the unquantized data.
+// Or to be precise, estimate lambda/delta^2, the constant in front of
+// delta^2.
+template<int preshift,typename T,bool deadzone,bool optimize>
+DOUBLE LiftingDCT<preshift,T,deadzone,optimize>::EstimateCriticalSlope(void)
+{
+#ifdef ESTIMATE_FROM_ENERGY
+  int i;
+  double energy = 0.0;
+  const double s1    = pow(2.0,14.75);
+  const double s2    = pow(2.0,16.5);
+  const double scale = 1.0 / 8.0; 
+  // the preshift does not scale coefficients or delta here
+  
+  assert(optimize);
+  for(i = 1;i < 63;i++) {
+    double val   = m_lTransform[i] / scale;
+    energy      += val * val;
+  }
+  energy  /= 63.0;
+
+  return (s1 / (s2 + energy));
+#else
+  return 0.25;
+#endif  
+}
+///
+
+/// Instanciate the classes
+template class LiftingDCT<0,LONG,false,false>;
+template class LiftingDCT<1,LONG,false,false>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,LONG,false,false>;
+template class LiftingDCT<0,QUAD,false,false>;
+template class LiftingDCT<1,QUAD,false,false>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,QUAD,false,false>;
+
+template class LiftingDCT<0,LONG,true,false>;
+template class LiftingDCT<1,LONG,true,false>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,LONG,true,false>;
+template class LiftingDCT<0,QUAD,true,false>;
+template class LiftingDCT<1,QUAD,true,false>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,QUAD,true,false>;
+
+template class LiftingDCT<0,LONG,false,true>;
+template class LiftingDCT<1,LONG,false,true>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,LONG,false,true>;
+template class LiftingDCT<0,QUAD,false,true>;
+template class LiftingDCT<1,QUAD,false,true>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,QUAD,false,true>;
+
+template class LiftingDCT<0,LONG,true,true>;
+template class LiftingDCT<1,LONG,true,true>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,LONG,true,true>;
+template class LiftingDCT<0,QUAD,true,true>;
+template class LiftingDCT<1,QUAD,true,true>;
+template class LiftingDCT<ColorTrafo::COLOR_BITS,QUAD,true,true>;
 ///

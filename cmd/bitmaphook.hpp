@@ -27,7 +27,7 @@
 ** This header provides the interface for the bitmap hook that 
 ** delivers the bitmap data to the core library.
 **
-** $Id: bitmaphook.hpp,v 1.4 2015/03/11 16:02:41 thor Exp $
+** $Id: bitmaphook.hpp,v 1.5 2016/10/28 13:58:52 thor Exp $
 **
 */
 

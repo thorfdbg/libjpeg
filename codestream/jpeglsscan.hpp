@@ -27,7 +27,7 @@
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.hpp,v 1.30 2014/11/13 21:21:50 thor Exp $
+** $Id: jpeglsscan.hpp,v 1.31 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -662,6 +662,9 @@ public:
   // Start the measurement run for the optimized
   // huffman encoder.
   virtual void StartMeasureScan(class BufferCtrl *ctrl);
+  // 
+  // Start making an optimization run to adjust the coefficients.
+  virtual void StartOptimizeScan(class BufferCtrl *ctrl);
   //
   // Start a MCU scan. Returns true if there are more rows. False otherwise.
   // Note that we emulate here that MCUs are multiples of eight lines high
@@ -675,6 +678,16 @@ public:
   //
   // Write a single MCU in this scan.
   virtual bool WriteMCU(void) = 0; 
+  //
+  // Make an R/D optimization for the given scan by potentially pushing
+  // coefficients into other bins. 
+  virtual void OptimizeBlock(LONG bx,LONG by,UBYTE component,double critical,
+                             class DCT *dct,LONG quantized[64]); 
+  //
+  // Make an R/D optimization of the DC scan. This includes all DC blocks in
+  // total, not just a single block. This is because the coefficients are not
+  // coded independently.
+  virtual void OptimizeDC(void);
 };
 ///
 

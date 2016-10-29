@@ -27,7 +27,7 @@
 ** This file provides the transformation from RGB to YCbCr in the floating
 ** point profiles, profiles A and B of 18477-7.
 **
-** $Id: multiplicationtrafo.cpp,v 1.15 2016/01/19 15:46:26 thor Exp $
+** $Id: multiplicationtrafo.cpp,v 1.16 2016/06/09 19:12:18 thor Exp $
 **
 */
 

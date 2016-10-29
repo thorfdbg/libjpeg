@@ -28,6 +28,8 @@
 ** Generic DCT transformation plus quantization class.
 ** All DCT implementations should derive from this.
 **
+** $Id: dct.hpp,v 1.12 2016/10/28 13:58:53 thor Exp $
+**
 */
 
 #ifndef DCT_DCT_HPP
@@ -40,12 +42,13 @@
 /// Forwards
 class Quantization;
 struct ImageBitMap;
+class QuantizationTable;
+class HuffmanCoder;
 ///
 
 /// class DCT
 // This class is the base class for all DCT implementations.
 class DCT : public JKeeper {
-  //
   //
 public: 
   //
@@ -61,13 +64,30 @@ public:
   //
   // Use the quantization table defined here, scale them to the needs of the DCT and scale them
   // to the right size.
-  virtual void DefineQuant(const UWORD *table) = 0;
+  virtual void DefineQuant(class QuantizationTable *table) = 0;
   //
   // Run the DCT on a 8x8 block on the input data, giving the output table.
   virtual void TransformBlock(const LONG *source,LONG *target,LONG dcoffset) = 0;
   //
   // Run the inverse DCT on an 8x8 block reconstructing the data.
-  virtual void InverseTransformBlock(LONG *target,const LONG *source,LONG dcoffset) = 0; 
+  virtual void InverseTransformBlock(LONG *target,const LONG *source,LONG dcoffset) = 0;
+  //
+  // Estimate a critical slope (lambda) from the unquantized data.
+  // Or to be precise, estimate lambda/delta^2, the constant in front of
+  // delta^2.
+  virtual DOUBLE EstimateCriticalSlope(void) = 0;
+  //
+  // Return (in case optimization is enabled) a pointer to the unquantized
+  // but DCT transformed data. The data is potentially preshifted.
+  virtual const LONG *TransformedBlockOf(void) const = 0;
+  //
+  // Return (in case optimization is enabled) a pointer to the effective
+  // quantization step sizes.
+  virtual const LONG *BucketSizes(void) const = 0;
+  //
+  // The prescaling of the DCT. This is the number of bits the input data
+  // is upshifted compared to the regular input.
+  virtual int PreshiftOf(void) const = 0;
 };
 ///
 

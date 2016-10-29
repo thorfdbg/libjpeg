@@ -28,7 +28,7 @@
 ** extension mechanism for 10918-1. Boxes are used consistently for all
 ** types of extended data.
 **
-** $Id: box.cpp,v 1.26 2015/09/17 14:10:50 thor Exp $
+** $Id: box.cpp,v 1.27 2016/10/28 13:58:52 thor Exp $
 **
 */
 
@@ -91,8 +91,8 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
     JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
               "APP11 extended box marker size is too short.");
 
-  en    = stream->GetWord();      // the enumerator.
-  z     = stream->GetWord() <<16; // the sequence number.
+  en    = stream->GetWord();       // the enumerator.
+  z     = stream->GetWord() << 16; // the sequence number.
   z    |= stream->GetWord();
   lbox  = stream->GetWord() << 16;
   lbox |= stream->GetWord();

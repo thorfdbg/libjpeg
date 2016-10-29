@@ -27,7 +27,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.hpp,v 1.64 2014/09/30 08:33:17 thor Exp $
+** $Id: scan.hpp,v 1.65 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -229,6 +229,9 @@ public:
   // huffman tables.
   void StartMeasureScan(class BufferCtrl *ctrl);
   //
+  // Start a rate/distortion optimization for scan on the given buffer.
+  void StartOptimizeScan(class BufferCtrl *ctrl);
+  //
   // Start a MCU scan.
   bool StartMCURow(void);  
   //
@@ -280,6 +283,18 @@ public:
     
     return m_ucACTable[idx];
   }
+  //
+  // Optimize the given DCT block for ideal rate-distortion performance. The
+  // input parameters are the component this applies to, the critical R/D slope,
+  // the original transformed but unquantized DCT data and the quantized DCT
+  // block.
+  void OptimizeDCTBlock(LONG bx,LONG by,UBYTE compidx,DOUBLE lambda,
+                        class DCT *dct,LONG quantized[64]);
+  //
+  // Run a joint optimization of the R/D performance of all DC coefficients
+  // within this scan. This requires a separate joint efford as DC coefficients
+  // are encoded dependently.
+  void OptimizeDC(void);
 };
 ///
 

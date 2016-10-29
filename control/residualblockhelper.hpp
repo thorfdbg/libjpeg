@@ -29,7 +29,7 @@
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.hpp,v 1.32 2014/09/30 08:33:16 thor Exp $
+** $Id: residualblockhelper.hpp,v 1.33 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -45,6 +45,7 @@
 
 /// Forwards
 struct ImageBitMap;
+class QuantizationTable;
 class DCT;
 ///
 
@@ -85,10 +86,10 @@ class ResidualBlockHelper : public JKeeper {
   LONG                *m_pBuffer[4];
   //
   // Find the quantization table for residual component i (index, not label).
-  const UWORD *FindQuantizationFor(UBYTE i) const;
+  class QuantizationTable *FindQuantizationFor(UBYTE i) const;
   //
   // Find the DCT for the given component, when DCT is enabled. 
-  class DCT   *FindDCTFor(UBYTE i) const;
+  class DCT *FindDCTFor(UBYTE i) const;
   //
   // Allocate the temporary buffers to hold the residuals and their bitmaps.
   // Only required during encoding.

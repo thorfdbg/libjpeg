@@ -27,7 +27,7 @@
 **
 ** Represents the scan including the scan header.
 **
-** $Id: acsequentialscan.cpp,v 1.50 2015/03/25 08:45:43 thor Exp $
+** $Id: acsequentialscan.cpp,v 1.51 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -729,5 +729,35 @@ void ACSequentialScan::Flush(bool)
   
   m_Coder.OpenForWrite(m_Coder.ByteStreamOf(),m_Coder.ChecksumOf());
 #endif
+}
+///
+
+/// ACSequentialScan::OptimizeBlock
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+void ACSequentialScan::OptimizeBlock(LONG, LONG, UBYTE ,double ,
+                                     class DCT *,LONG [64])
+{
+  JPG_THROW(NOT_IMPLEMENTED,"ACSequentialScan::OptimizeBlock",
+            "Rate-distortion optimization is not implemented for arithmetic coding");
+}
+///
+
+/// ACSequentialScan::OptimizeDC
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. 
+void ACSequentialScan::OptimizeDC(void)
+{
+  JPG_THROW(NOT_IMPLEMENTED,"ACSequentialScan::OptimizeDC",
+            "Rate-distortion optimization is not implemented for arithmetic coding");
+}
+///
+
+/// ACSequentialScan::StartOptimizeScan
+// Start making an optimization run to adjust the coefficients.
+void ACSequentialScan::StartOptimizeScan(class BufferCtrl *)
+{  
+  JPG_THROW(NOT_IMPLEMENTED,"ACSequentialScan::StartOptimizeScan",
+            "Rate-distortion optimization is not implemented for arithmetic coding");
 }
 ///

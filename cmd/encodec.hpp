@@ -26,7 +26,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.hpp,v 1.14 2016/01/22 12:15:13 thor Exp $
+** $Id: encodec.hpp,v 1.15 2016/10/28 13:58:52 thor Exp $
 **
 */
 
@@ -45,18 +45,21 @@ extern void EncodeC(const char *source,const char *ldrsource,
                     int colortrafo,bool lossless,bool progressive,
                     bool residual,bool optimize,bool accoding,
                     bool rsequential,bool rprogressive,bool raccoding,
-                    bool dconly,UBYTE levels,bool pyramidal,bool writednl,UWORD restart,
+                    bool qscan,UBYTE levels,bool pyramidal,bool writednl,UWORD restart,
                     double gamma,
-                    int lsmode,bool noiseshaping,bool serms,bool losslessdct,bool dctbypass,
-                    bool openloop,bool deadzone,bool xyz,bool cxyz,
+                    int lsmode,bool noiseshaping,bool serms,bool losslessdct,
+                    bool openloop,bool deadzone,bool lagrangian,bool dering,
+                    bool xyz,bool cxyz,
                     int hiddenbits,int riddenbits,int resprec,bool separate,
-                    bool median,int smooth,bool noclamp,
+                    bool median,bool noclamp,int smooth,
+                    bool dctbypass,
                     const char *sub,const char *ressub,
                     const char *alpha,int alphamode,int matte_r,int matte_g,int matte_b,
                     bool alpharesiduals,int alphaquality,int alphahdrquality,
                     int alphatt,int residualalphatt,
                     int ahiddenbits,int ariddenbits,int aresprec,
-                    bool aopenloop,bool adeadzone,bool aserms,bool abypass);
+                    bool aopenloop,bool adeadzone,bool alagrangian,bool adering,
+                    bool aserms,bool abypass);
 //
 // Provide a useful default for splitting the quality between LDR and HDR.
 extern void SplitQualityC(int totalquality,bool residuals,int &ldrquality,int &hdrquality);

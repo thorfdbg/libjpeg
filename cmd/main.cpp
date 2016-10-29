@@ -29,7 +29,7 @@
 ** It is here to serve as an entry point for the command line image
 ** compressor.
 **
-** $Id: main.cpp,v 1.208 2016/01/22 12:37:41 thor Exp $
+** $Id: main.cpp,v 1.209 2016/10/28 13:58:52 thor Exp $
 **
 */
 
@@ -56,6 +56,8 @@
 #include "cmd/encodea.hpp"
 #include "cmd/reconstruct.hpp"
 ///
+
+bool oznew = false;
 
 /// Defines
 #define FIX_BITS 13
@@ -227,6 +229,8 @@ void PrintUsage(const char *progname)
 #endif
           "-v         : use progressive instead of sequential encoding\n"
           "             available for all coding schemes (-r,-a,-l and default)\n"
+          "-qv        : use a simplified scan pattern for progressive that only\n"
+          "             separates AC from DC bands and may improve the performance\n"
 #if ACCUSOFT_CODE
           "-d         : encode the DC band only (requires -p)\n"
 #endif
@@ -263,6 +267,10 @@ void PrintUsage(const char *progname)
           "-rv        : encode the residual image in progressive coding mode\n"
           "-ol        : open loop encoding, residuals are based on original, not reconstructed\n"
           "-dz        : improved deadzone quantizer, may help to improve the R/D performance\n"
+#if ACCUSOFT_CODE 
+          "-oz        : optimize quantizer, may help to improve the R/D performance\n"
+          "-dr        : include the optional de-ringing (Gibbs Phenomenon) filter on encoding\n"
+#endif   
           "-qt n      : define the quantization table. The following tables are currently defined:\n"
           "             n = 0 the default tables from Annex K of the JPEG standard (default)\n"
           "             n = 1 a completely flat table that should be PSNR-optimal\n"
@@ -290,6 +298,10 @@ void PrintUsage(const char *progname)
           "-arR bits  : set refinement bits in the residual alpha codestream\n"
           "-aol       : enable open loop coding for the alpha channel\n"
           "-adz       : enable the deadzone quantizer for the alpha channel\n"
+#if ACCUSOFT_CODE        
+          "-aoz       : enable the quantization optimization for the alpha channel\n"
+          "-adr       : include the de-ringing filter for the alpha channel\n"
+#endif   
           "-all       : enable lossless DCT for alpha coding\n"
           "-alo       : disable the DCT in the residual alpha channel, quantize spatially.\n"
           "-aq qu     : specify a quality for the alpha base channel (usually the only one)\n"
@@ -341,7 +353,7 @@ int main(int argc,char **argv)
   bool lossless     = false;
   bool optimize     = false;
   bool accoding     = false;
-  bool dconly       = false;
+  bool qscan        = false;
   bool progressive  = false;
   bool writednl     = false;
   bool noiseshaping = false;
@@ -355,8 +367,12 @@ int main(int argc,char **argv)
   bool dctbypass    = false;
   bool openloop     = false;
   bool deadzone     = false;
+  bool lagrangian   = false;
+  bool dering       = false;
   bool aopenloop    = false;
   bool adeadzone    = false;
+  bool alagrangian  = false;
+  bool adering      = false;
   bool xyz          = false;
   bool cxyz         = false;
   bool separate     = false;
@@ -501,8 +517,8 @@ int main(int argc,char **argv)
       argc--;
     }
 #endif
-    else if (!strcmp(argv[1],"-d")) {
-      dconly   = true;
+    else if (!strcmp(argv[1],"-qv")) {
+      qscan       = true;
       argv++;
       argc--;
     } else if (!strcmp(argv[1],"-v")) {
@@ -550,6 +566,20 @@ int main(int argc,char **argv)
       deadzone = true;
       argv++;
       argc--;
+#if ACCUSOFT_CODE
+    } else if (!strcmp(argv[1],"-oz")) {
+      lagrangian = true;
+      argv++;
+      argc--;
+    } else if (!strcmp(argv[1],"-ozn")) {
+      oznew = true;
+      argv++;
+      argc--;
+    } else if (!strcmp(argv[1],"-dr")) {
+      dering = true;
+      argv++;
+      argc--;
+#endif      
     } else if (!strcmp(argv[1],"-qt")) {
       tabletype = ParseInt(argc,argv);
     } else if (!strcmp(argv[1],"-rqt")) {
@@ -566,6 +596,16 @@ int main(int argc,char **argv)
       adeadzone = true;
       argv++;
       argc--;
+#if ACCUSOFT_CODE
+    } else if (!strcmp(argv[1],"-aoz")) {
+      alagrangian = true;
+      argv++;
+      argc--;
+    } else if (!strcmp(argv[1],"-adr")) {
+      adering = true;
+      argv++;
+      argc--;
+#endif      
     } else if (!strcmp(argv[1],"-ldr")) {
       ldrsource = ParseString(argc,argv);
     } else if (!strcmp(argv[1],"-l")) {
@@ -618,7 +658,7 @@ int main(int argc,char **argv)
 
   //
   // Use a very simplistic quality split.
-  if (splitquality > 0) {
+  if (splitquality >= 0) {
     switch(profile) {
     case 0:
       break;
@@ -665,17 +705,24 @@ int main(int argc,char **argv)
       if (setprofile && ((residuals == false && hiddenbits == false && profile != 4) || profile == 2))
         residuals = true;
       EncodeC(argv[1],ldrsource,argv[2],lsource,quality,hdrquality,
-              tabletype,residualtt,maxerror,colortrafo,
-              lossless,progressive,
-              residuals,optimize,accoding,rsequential,rprogressive,raccoding,
-              dconly,levels,pyramidal,writednl,restart,
-              gamma,lsmode,noiseshaping,serms,losslessdct,dctbypass,openloop,deadzone,xyz,cxyz,
-              hiddenbits,riddenbits,resprec,separate,median,smooth,noclamp,
+              tabletype,residualtt,maxerror,
+              colortrafo,lossless,progressive,
+              residuals,optimize,accoding,
+              rsequential,rprogressive,raccoding,
+              qscan,levels,pyramidal,writednl,restart,
+              gamma,
+              lsmode,noiseshaping,serms,losslessdct,
+              openloop,deadzone,lagrangian,dering,
+              xyz,cxyz,
+              hiddenbits,riddenbits,resprec,separate,
+              median,noclamp,smooth,dctbypass,
               sub,ressub,
               alpha,alphamode,matte_r,matte_g,matte_b,
               alpharesiduals,alphaquality,alphahdrquality,
               alphatt,residualalphatt,
-              ahiddenbits,ariddenbits,aresprec,aopenloop,adeadzone,aserms,abypass);
+              ahiddenbits,ariddenbits,aresprec,
+              aopenloop,adeadzone,alagrangian,adering,
+              aserms,abypass);
       break;
     }
   }

@@ -24,50 +24,54 @@
 
 *************************************************************************/
 /*
-** This class defines the minimal abstract interface the block based
-** scan types require to access quantized data.
+** This class implements a simple deringing filter to avoid
+** DCT artifacts (Gibbs Phenomenon).
 **
-** $Id: blockctrl.hpp,v 1.9 2016/10/28 13:58:53 thor Exp $
+** $Id: deringing.hpp,v 1.2 2016/10/28 13:58:54 thor Exp $
 **
 */
 
-#ifndef CONTROL_BLOCKCTRL_HPP
-#define CONTROL_BLOCKCTRL_HPP
+#ifndef DCT_DERINGING_HPP
+#define DCT_DERINGING_HPP
 
 /// Includes
 #include "tools/environment.hpp"
 ///
 
 /// Forwards
-class QuantizedRow;
-class Scan;
+class Frame;
+class DCT;
 ///
 
-/// class BlockCtrl
-// This class defines the minimal abstract interface the block based
-// scan types require to access quantized data.
-class BlockCtrl : public JKeeper {
+/// class DeRinger
+// This implements a deringing filter on top of a DCT
+class DeRinger : public JKeeper {
+  //
+  // The DCT for the transformation.
+  class DCT *m_pDCT;
+  //
+  // Maximum and minimum values for the current frame.
+  LONG m_lMin;
+  LONG m_lMax;
+  LONG m_lDelta;
+  //
+#if ACCUSOFT_CODE
+  // Run a simple Gaussian smoothing filter on the second argument, place
+  // the result in the first argument, or copy from the original if mask is
+  // not set.
+  void Smooth(LONG target[64],const LONG src[64],const LONG mask[64]);
+#endif  
+  //
   //
 public:
-  BlockCtrl(class Environ *env)
-    : JKeeper(env)
-  { }
+  DeRinger(class Frame *frame,class DCT *dct);
   //
-  virtual ~BlockCtrl(void)
-  { }
+  ~DeRinger(void);
   //
-  //
-  // Return the current top MCU quantized line.
-  virtual class QuantizedRow *CurrentQuantizedRow(UBYTE comp) = 0;
-  //
-  // Start a MCU scan by initializing the quantized rows for this row
-  // in this scan.
-  virtual bool StartMCUQuantizerRow(class Scan *scan) = 0;
-  //
-  // Make sure to reset the block control to the
-  // start of the scan for the indicated components in the scan, 
-  // required after collecting the statistics for this scan.
-  virtual void ResetToStartOfScan(class Scan *scan) = 0;
+  // Remove Gibbs' pheonomenon artifacts from the given image block 
+  // (non-DCT-transformed) by including overshooting
+  // in the extreme image parts, or undershooting in the dark image regions.
+  void DeRing(const LONG block[64],LONG dst[64],LONG dcshift);
   //
 };
 ///

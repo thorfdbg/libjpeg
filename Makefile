@@ -9,7 +9,7 @@
 #
 #######################################################################
 ##
-## $Id: Makefile,v 1.10 2015/03/26 07:30:25 thor Exp $
+## $Id: Makefile,v 1.11 2016/06/22 07:02:15 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -317,6 +317,7 @@ isodistrib:	ISODistrib.zip
 ##
 ## The public distribution, no accusoft-code, with the stripped headers.
 ISODistrib.zip	:	doc configure autoconfig.h.in
+	@ cp README.license COPYRIGHT
 	@ touch interface/jpeg.hpp
 	@ sleep 2
 	@ touch configure.in
@@ -325,7 +326,7 @@ ISODistrib.zip	:	doc configure autoconfig.h.in
 	@ sleep 2
 	@ touch configure
 	@ $(MAKE) --no-print-directory $(DIRLIBS) TARGET="isozip"
-	@ $(ZIPASCII) -r ISODistrib.zip README README.license README.history Compile.txt config.h
+	@ $(ZIPASCII) -r ISODistrib.zip README COPYRIGHT README.license README.history Compile.txt config.h
 	@ $(ZIP) -r ISODistrib.zip Makefile Makefile.template Makefile_Settings.*
 	@ $(ZIP) -r ISODistrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r ISODistrib.zip vs10.0 --exclude '*CVS*'

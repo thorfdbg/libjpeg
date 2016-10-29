@@ -27,7 +27,7 @@
 ** A couple of generic TMO related functions: Estimate TMO from LDR and HDR
 ** image pair, build a gamma mapping.
 **
-** $Id: tmo.cpp,v 1.17 2015/11/17 15:34:43 thor Exp $
+** $Id: tmo.cpp,v 1.18 2016/09/20 11:40:05 thor Exp $
 **
 */
 
@@ -216,7 +216,7 @@ void BuildIntermediateTable(int **hists,int offs,int hdrcnt,
         fullrange   = true;
         intermed[i] = (max - min) >> 1;
       } else {
-        if (median) {
+        if (median && count > 1) {
           int median = 0;
           for(j = 0;j < hdrcnt;j++) {
             median += hists[i+offs][j];

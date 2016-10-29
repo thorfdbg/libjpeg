@@ -28,7 +28,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.hpp,v 1.33 2016/02/03 19:20:43 thor Exp $
+** $Id: image.hpp,v 1.34 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -258,6 +258,10 @@ public:
   // coder
   class Frame *StartMeasureFrame(void);
   //
+  // Start an optimization scan that can be added upfront the measurement to 
+  // improve the R/D performance.
+  class Frame *StartOptimizeFrame(void);
+  //
   // Return the scan.
   class Frame *FirstFrameOf(void) const
   {
@@ -327,7 +331,6 @@ public:
   // Parse off the EOI marker at the end of the image. Return false
   // if there are no more scans in the file, true otherwise.
   bool ParseTrailer(class ByteStream *io);
-  //
 };
 ///
 

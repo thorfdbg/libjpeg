@@ -28,7 +28,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.cpp,v 1.87 2015/02/26 14:07:08 thor Exp $
+** $Id: sequentialscan.cpp,v 1.88 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -58,7 +58,7 @@
 SequentialScan::SequentialScan(class Frame *frame,class Scan *scan,
                                UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE,
                                bool differential,bool residual,bool large)
-  : EntropyParser(frame,scan), m_pBlockCtrl(NULL),
+  : EntropyParser(frame,scan), m_pBlockCtrl(NULL), 
     m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit),
     m_bDifferential(differential), m_bResidual(residual), m_bLargeRange(large)
 {  
@@ -77,6 +77,7 @@ SequentialScan::SequentialScan(class Frame *frame,class Scan *scan,
     m_pACCoder[i]      = NULL;
     m_pDCStatistics[i] = NULL;
     m_pACStatistics[i] = NULL;
+    m_plDCBuffer[i]    = NULL;
   }
 }
 ///
@@ -84,6 +85,10 @@ SequentialScan::SequentialScan(class Frame *frame,class Scan *scan,
 /// SequentialScan::~SequentialScan
 SequentialScan::~SequentialScan(void)
 {
+  for(int i = 0;i < 4;i++) {
+    if (m_plDCBuffer[i])
+      m_pEnviron->FreeMem(m_plDCBuffer[i],sizeof(LONG) * m_ulBlockWidth[i] * m_ulBlockHeight[i]);
+  }
 }
 ///
 
@@ -122,7 +127,7 @@ void SequentialScan::StartWriteScan(class ByteStream *io,class Checksum *chk,cla
   int i;
 
   for(i = 0;i < m_ucCount;i++) {
-    if (m_ucScanStart == 0) {
+    if (m_bResidual == false && m_ucScanStart == 0) {
       m_pDCCoder[i]    = m_pScan->DCHuffmanCoderOf(i);
     } else {
       m_pDCCoder[i]    = NULL;
@@ -161,7 +166,7 @@ void SequentialScan::StartMeasureScan(class BufferCtrl *ctrl)
   for(i = 0;i < m_ucCount;i++) { 
     m_pDCCoder[i]        = NULL;
     m_pACCoder[i]        = NULL;
-    if (m_ucScanStart == 0) {
+    if (m_bResidual == false && m_ucScanStart == 0) {
       m_pDCStatistics[i] = m_pScan->DCHuffmanStatisticsOf(i);
     } else {
       m_pDCStatistics[i] = NULL;
@@ -176,6 +181,40 @@ void SequentialScan::StartMeasureScan(class BufferCtrl *ctrl)
     m_usSkip[i]          = 0;
   }
   m_bMeasure = true;
+
+  assert(!ctrl->isLineBased());
+  m_pBlockCtrl = dynamic_cast<BlockCtrl *>(ctrl);
+  m_pBlockCtrl->ResetToStartOfScan(m_pScan);
+
+  EntropyParser::StartWriteScan(NULL,NULL,ctrl);
+
+  m_Stream.OpenForWrite(NULL,NULL);
+}
+///
+
+/// SequentialScan::StartOptimizeScan
+// Start making an optimization run to adjust the coefficients.
+void SequentialScan::StartOptimizeScan(class BufferCtrl *ctrl)
+{  
+  int i;
+
+  for(i = 0;i < m_ucCount;i++) {
+    if (m_bResidual == false && m_ucScanStart == 0) {
+      m_pDCCoder[i]    = m_pScan->DCHuffmanCoderOf(i);
+    } else {
+      m_pDCCoder[i]    = NULL;
+    }
+    if (m_ucScanStop) {
+      m_pACCoder[i]    = m_pScan->ACHuffmanCoderOf(i);
+    } else {
+      m_pACCoder[i]    = NULL;
+    }
+    m_pDCStatistics[i] = NULL;
+    m_pACStatistics[i] = NULL;
+    m_lDC[i]           = 0;
+    m_ulX[i]           = 0;
+    m_usSkip[i]        = 0;
+  }
 
   assert(!ctrl->isLineBased());
   m_pBlockCtrl = dynamic_cast<BlockCtrl *>(ctrl);
@@ -731,3 +770,443 @@ void SequentialScan::WriteFrameType(class ByteStream *io)
   }
 }
 ///
+/// SequentialScan::OptimizeBlock
+// Make an R/D optimization for the given scan by potentially pushing
+// coefficients into other bins. This runs an optimization for a single
+// block and requires external control to run over the blocks.
+// component is the component, critical is the critical slope for
+// the R/D optimization of the functional J = \lambda D + R, i.e.
+// this is lambda.
+// Quant are the quantization parameters, i.e. deltas. These are eventually
+// preshifted by "preshift".
+// transformed are the dct-transformed but unquantized data. These are also pre-
+// shifted by "preshift".
+// quantized is the quantized data. These are potentially (and likely) adjusted.
+#if ACCUSOFT_CODE 
+void SequentialScan::OptimizeBlock(LONG bx,LONG by,UBYTE component,double critical,
+                                   class DCT *dct,LONG quantized[64])
+#else
+void SequentialScan::OptimizeBlock(LONG,LONG,UBYTE,double,class DCT *,LONG[64])
+#endif
+{
+#if ACCUSOFT_CODE 
+  class HuffmanCoder *ac  = (m_ucScanStop)?m_pScan->ACHuffmanCoderOf(component):NULL;
+  const LONG *transformed = dct->TransformedBlockOf();
+  const LONG *delta       = dct->BucketSizes();
+  double zdistbuf[64 + 1]; // the element at zero is zero to keep the code simple.
+  double jfuncbuf[64 + 1]; // ditto.
+  double *zdist = zdistbuf + 1;  // cumulative distortion for pushing coefficients into zero
+  double *jfunc = jfuncbuf + 1;  // the cumulative J functional along the run
+  LONG zero[64];     // The value of a coefficient if we "push it into zero".
+  int start[64];     // start of runs.
+  LONG coded[64];
+  const LONG thres = (1L << m_ucLowBit) - 1;
+  int eobpos = 0;    // position of the EOB
+  int k; // position in the scan.
+  int ss = m_ucScanStart;
+  //
+  // Create the DC buffer if we do not yet have it.
+  if (m_plDCBuffer[component] == NULL) {
+    class Component *comp       = m_pComponent[component];
+    ULONG width                 = m_pFrame->WidthOf();
+    ULONG height                = m_pFrame->HeightOf();
+    UBYTE subx                  = comp->SubXOf();
+    UBYTE suby                  = comp->SubYOf();
+    ULONG blockwidth            = (((width  + subx - 1) / subx) + 7) >> 3;
+    ULONG blockheight           = (((height + suby - 1) / suby) + 7) >> 3;
+    // Allocate now the DC buffer
+    m_ulBlockWidth[component]   = blockwidth;
+    m_ulBlockHeight[component]  = blockheight;
+    m_plDCBuffer[component]     = (LONG *)m_pEnviron->AllocMem(sizeof(LONG) * blockwidth * blockheight);
+    m_dCritical[component]      = critical;
+    // Keep the DC quantizer value for later optimizer.
+    m_lDCDelta[component]       = delta[0];
+  }
+  //
+  // Keep the DC coefficient for later.
+  m_plDCBuffer[component][bx + m_ulBlockWidth[component] * by] = transformed[0];
+  //
+  // Start of the scan. Do not include the DC coefficient if we have one.
+  if (ss == 0 && !m_bResidual)
+    ss = 1;
+  //
+  // Only consider AC coefficients. DC coefficients would require cross-block optimizations
+  // and are hence harder to do.
+  // Start of the trellis: Initialize the cumulative functionals to zero.
+  zdist[ss - 1] = 0.0;
+  jfunc[ss - 1] = 0.0;
+  for(k = ss;k <= m_ucScanStop;k++) {
+    int j         = DCT::ScanOrder[k];
+    LONG quant    = quantized[j];
+    LONG data; // the data encoded in the codestream after the point shift.
+    double weight = 8.0 / delta[j];
+    int symbol;  // the size category of the old symbol, or 0 if the amplitude is +1 or -1
+    int newsymb; // the second alternative for the symbol if we modify the amplitude.
+    double error;
+    //
+    // Include the point shift in the quantized data for the symbol computation.
+    // Keep the encoded data for later.
+    data     = (quant >= 0)?(quant >> m_ucLowBit):(-((-quant) >> m_ucLowBit));
+    coded[j] = data;
+    //
+    // Pool up the entire error along the scan. This means that the total
+    // error for initiating a zero-run can be given by the difference of the zdist
+    // functional at the end minus the value at the start-1. Note that due to
+    // the point-shift by low-bits, the coefficient may not be actually
+    // zero after the adjustment. Compute the largest possible value to make
+    // the coefficient consistent with the inclusion of the coefficient in the
+    // zero-bin.
+    if (quant < -thres) {
+      zero[k] = -thres; // lowest possible value.
+    } else if (quant > thres) {
+      zero[k] = thres;
+    } else {
+      zero[k] = quant; // is already consistent with the value.
+    } 
+    //
+    // Compute the distortion when setting the coefficient to zero.
+    // Additional error due to including this coefficient in a run by
+    // setting it to zero.
+    error    = (zero[k] * delta[j] - transformed[j]) * weight;
+    zdist[k] = critical * error * error + zdist[k - 1];
+    //
+    // This is the cumulative j functional up to the position k, so far. Will be
+    // optimized during this iteration finding its minimum.
+    jfunc[k] = HUGE_VAL;
+    //
+    // If the quantized version is already zero, there is no need to modify anything.
+    if (data) {
+      double distnew,distold;
+      LONG newquant;
+      LONG bestquant = quant; // quantized value that goes for the best coefficient decision.
+      // Compute the new and old distortion for pushing the coefficient into the next lower bin.
+      // The next higher bin makes no sense (higher rate, usually), 
+      // and anything else is probably too unlikely to worry about.
+      double errold;
+      double errnew;
+      // This coefficient may profit from an amplitude change. Actually, we may
+      // consider more than one amplitude change, but in reality, it rately makes
+      // sense to change the amplitude by more than one bucket. Thus, we only keep
+      // two possibilites here (or actually three, namely set the coefficient to
+      // zero completely).
+      // The rate is only reduced if we change the amplitude category by one.
+      // (or, theoretically, by more).
+      symbol = 0;
+      do {
+        symbol++;
+        if (data > -(1L << symbol) && data < (1L << symbol)) {
+          // We got the right category for the symbol.
+          if (symbol > 1) {
+            // Ok, there is at least a chance to modify the symbol
+            // Try to push it into the next lower category while keeping
+            // it as large as possible. This also modifies the bits
+            // for subsequent refinement scans.
+            newquant = (1L << (symbol + m_ucLowBit - 1)) - 1;
+            newsymb  = symbol - 1;
+            if (quant < 0)
+              newquant = -newquant;
+          } else {
+            // Magnitude category 1 does not really have a choice
+            // between two options. This can either stay non-zero
+            // or become part of a run (which is evaluated below).
+            newquant = quant;
+            newsymb  = symbol;
+          }       
+          break;
+        }
+      } while(true);
+      //
+      // Compute the distortion difference as new - old. 
+      errold    = (double)(quant    * delta[j] - transformed[j]) * weight;
+      errnew    = (double)(newquant * delta[j] - transformed[j]) * weight;
+      distold   = errold * errold * critical;
+      distnew   = errnew * errnew * critical;
+      //
+      // Now compute the cost for encoding the run in front of this coefficient.
+      for (int l = ss - 1;l < k;l++) {
+        // Accumulate j for starting the run at l (actually, l+1 is the first
+        // coefficient that is part of the run, the coefficient at l is non-zero
+        // or the DC coefficient).
+        if (l == ss - 1 || coded[DCT::ScanOrder[l]]) {
+          int run = k - 1 - l;
+          int runrate = 0,rateold,ratenew;
+          LONG qnt;
+          double jf; // new candidate of the J functional.
+          double jold,jnew;
+          // Non-zero coefficient. This is now a potential "push-l-into-zero" case which might
+          // create a new run of the size above.
+          // For that, compute now the cost of the run. 
+          // First, to encode the runs larger than 16 (if we can).
+          if ((run >> 4)) {
+            runrate = ac->isDefined(0xf0);
+            if (runrate == 0)
+              continue; // This is not an option if the Huffman code does not define this
+            runrate = (run >> 4) * runrate;
+          }
+          // the rest goes into the 2D VLC.
+          run    &= 0x0f;
+          // Now check which overall rate we get if we modify the current coefficient. If the
+          // coefficient is +1/-1, then the computation is different and there is only one
+          // candidate, and the Huffman alphabet contains the necessary symbol.
+          rateold = ac->isDefined((run << 4) | symbol );
+          ratenew = ac->isDefined((run << 4) | newsymb);
+          // Compute the total j functional for the modification. This is given by the 
+          // contribution due to the coefficient itself, plus the contribution for the
+          // run in front of it.
+          jold    = distold + zdist[k-1] - zdist[l] + rateold + symbol  + runrate;
+          jnew    = distnew + zdist[k-1] - zdist[l] + ratenew + newsymb + runrate;
+          // Pick the minimum of the two as new candidate j.
+          if (rateold && jold <= jnew) {
+            jf        = jold;
+            qnt       = quant;
+          } else if (ratenew) {
+            jf        = jnew;
+            qnt       = newquant;
+          } else continue; // the symbol is not in the alphabet.
+          //
+          // Include in jf the cumulated j functional up to the start position.
+          jf += jfunc[l];
+          // Ok, if the cost of the run up to me starting at the given position plus
+          // the modification of the current coefficient is lower than the current
+          // accumulated cost, make the change and start the run at position l.
+          if (jf < jfunc[k]) {
+            jfunc[k]  = jf;
+            start[k]  = l;
+            bestquant = qnt;
+          }
+        }
+      }
+      // Now we have in jfunc[k] the optimal accumulated J functional up to the current position
+      // in start[k] the ideal start position of a run up to the current position and in
+      // bestquant the ideal quantized value at position k, so fill it in.
+      quantized[j] = bestquant;
+    }
+    // End of loop over coefficients.
+  }
+  //
+  // Up to now, EOB coding has not been taken into account. Now check were to place the EOB.
+  // eobpos contains the position behind which the EOB is placed.
+  if (m_ucScanStop) {
+    if (ac->isDefined(0x00)) {
+      double jeob = zdist[m_ucScanStop] + ac->isDefined(0x00);
+      // joeb is the value of the j functional for coding the entire block as zero, 
+      // i.e. coding the eob directly at the first AC coefficient.
+      for(k = ss;k <= m_ucScanStop;k++) {
+        if (coded[DCT::ScanOrder[k]]) {
+          // Include in the functional the cost for placing the EOB right behind 
+          // this block and zero-ing out the rest of the block.
+          double jf = jfunc[k] + zdist[m_ucScanStop] - zdist[k];
+          // If this is not the end of the block, include the rate of the EOB.
+          if (k < m_ucScanStop)
+            jf += ac->isDefined(0x00);
+          // If the functional gets lower by terminating the block at position k, remember this
+          // choice.
+          if (jf < jeob) {
+            jeob  = jf;
+            eobpos = k;
+          }
+        }
+      }
+    } else {
+      // No EOB in the alphabet. Yuck. Ok, so stop at 63.
+      eobpos = m_ucScanStop;
+    }
+    //
+    // Done. Zero-out the coefficients in the runs and behind the EOB, or rather, push
+    // them into the deadzone. Note that this is not the same for LowBit > 0.
+    for(k = m_ucScanStop;k >= ss;k--) {
+      if (k > eobpos) { // Is behind a run?
+        quantized[DCT::ScanOrder[k]] = zero[k]; // zero out the coefficient.
+      } else {
+      // Otherwise, find the start of the run that ends at this coefficient,
+      // and continue to clean out up to this position.
+        eobpos = start[k];
+      }
+    }
+  }
+#else
+  JPG_THROW(NOT_IMPLEMENTED,"SequentialScan::OptimizeBlock",
+            "soft-threshold quantizer not implemented in this code version");
+#endif  
+}
+///
+
+/// SequentialScan::OptimizeDC
+// Optimize the DC values of all blocks within this scan.
+// Unlike the AC optimization, this requires a cross-block optimization.
+void SequentialScan::OptimizeDC(void)
+{
+#if ACCUSOFT_CODE 
+  UBYTE c;
+  LONG dctrange = 1L << (m_pFrame->HiddenPrecisionOf() + 4);
+  // Maximum number of bits we can possibly use in the DC value.
+ 
+  assert(m_pFrame && m_pScan);
+  //
+  // This only makes sense if the start of the scan contains the DC value and we
+  // do not use residual coding.
+  if (m_ucScanStart || m_bResidual)
+    return;
+
+  StartMCURow();
+  
+  for(c = 0;c < m_ucCount;c++) {
+    class Component *comp  = m_pComponent[c];
+    class QuantizedRow *qr = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
+    class QuantizedRow *q;
+    DOUBLE critical        = m_dCritical[c];
+    struct BackTrace {
+      LONG  *bt_plData;         // Points to the original DC data we want to modify.
+      LONG   bt_lDC[3];         // The various choices we have for the DC values.
+      int    bt_iPrev[3];       // backtrace: The ideal predicessor for the current DC value.
+      DOUBLE bt_dFunctional[3]; // the various values for the J functional J = R + \lambda D
+    } *btr                 = NULL;
+    UBYTE mcux             = (m_ucCount > 1)?(comp->MCUWidthOf() ):(1);
+    UBYTE mcuy             = (m_ucCount > 1)?(comp->MCUHeightOf()):(1);
+    ULONG blockwidth       = m_ulBlockWidth[c];
+    ULONG blockheight      = m_ulBlockHeight[c];
+    ULONG xmcu,ymcu;
+    class HuffmanCoder *dc = m_pDCCoder[c];
+    const LONG dcdelta     = m_lDCDelta[c];
+    double weight          = 8.0 / dcdelta;
+    //
+    JPG_TRY {
+      struct BackTrace *bt = (struct BackTrace *)m_pEnviron->AllocVec(sizeof(struct BackTrace) * 
+                                                                      (blockwidth * blockheight + 1));
+      // Keep the pointer to the start of the array.
+      btr = bt;
+      //
+      // Initialize the start of the trellis.
+      for(int i = 0;i < 3;i++) {
+        bt->bt_dFunctional[i] = 0.0;
+        bt->bt_lDC[i]         = 0; // Previous DC value: Is always zero.
+        bt->bt_iPrev[i]       = 0; // Backtrace.
+      }
+      // This does not belong to any data block. It is just the start of the trellis.
+      bt->bt_plData = NULL;
+      bt++;
+      for(ymcu = 0;ymcu < blockheight;ymcu += mcuy) {
+        for(xmcu = 0;xmcu < blockwidth;xmcu += mcux) {
+          ULONG xmin        = xmcu;
+          ULONG xmax        = xmin + mcux;
+          ULONG ymin        = ymcu;
+          ULONG ymax        = ymin + mcuy;
+          ULONG x,y;
+          for(y = ymin,q = qr;y < ymax;y++) {
+            for(x = xmin;x < xmax;x++) {
+              if (q && x < q->WidthOf()) {
+                LONG transformed = m_plDCBuffer[c][x + m_ulBlockWidth[c] * y];
+                // There is a previous block. If this is not the case, then
+                // we do not need to optimize. The cost is always constant.
+                // Get a pointer to the data that we want to modify if present.
+                bt->bt_plData = q->BlockAt(x)->m_Data;
+                // Now try all possible current values for this DC value. Test only the
+                // nearby quantizer values. Everything else does not make sense, i.e.
+                // fixed rate quantization is not *that* far away from varying rate
+                // quantization that we can be off by more than one bucket.
+                for(int curcand = 0;curcand < 3;curcand++) {
+                  LONG newqnt = *bt->bt_plData + ((curcand - 1) << m_ucLowBit);
+                  DOUBLE distortion;
+                  DOUBLE jbest = HUGE_VAL;
+                  LONG error;
+                  int cbest    = 0;
+                  // Ensure we do not overshoot the range.
+                  if (newqnt >= dctrange)
+                    newqnt = dctrange - 1;
+                  if (newqnt <= -dctrange)
+                    newqnt = 1 - dctrange;
+                  // Compute the error in the DC domain.
+                  error      = double(dcdelta * newqnt - transformed) * weight;
+                  // Compute the resulting distortion.
+                  distortion = critical * error * error;
+                  // Keep the quantized (modified) DC candidate.
+                  bt->bt_lDC[curcand] = newqnt;
+                  // Compute now the symbol to decode, for all possible values
+                  // of the last DC value.
+                  for(int lastcand = 0;lastcand < 3;lastcand++) {
+                    LONG prevdc = bt[-1].bt_lDC[lastcand] >> m_ucLowBit;
+                    LONG curdc  = bt[0 ].bt_lDC[curcand ] >> m_ucLowBit;
+                    LONG diff   = curdc;
+                    LONG symbol = 0;
+                    DOUBLE jnow;
+                    if (!m_bDifferential) {
+                      // Actually, pretty pointless to optimize over the last bit if we are differential...
+                      // Anyhow, we support differential, so let's use a minimum attempt to support it...
+                      diff     -= prevdc;
+                    }
+                    if (diff) {
+                      do {
+                        symbol++;
+                        if (diff > -(1L << symbol) && diff < (1L << symbol)) {
+                          break;
+                        }
+                      } while(true);
+                    }
+                    // symbol contains now the DC bits reqired to encode the data.
+                    // Compute now the value of the functional.
+                    jnow = distortion + dc->isDefined(symbol) + symbol + bt[-1].bt_dFunctional[lastcand];
+                    if (jnow < jbest) {
+                      jbest = jnow;
+                      cbest = lastcand;
+                    }
+                  }
+                  // Ok, the best possible previous candidate for the current selection of the
+                  // candidate is now in cbest, and its contribution to the J functional is
+                  // in jbest.
+                  bt[0].bt_dFunctional[curcand] = jbest;
+                  bt[0].bt_iPrev[curcand]       = cbest;
+                }
+                //assert((x == 0 && y == 0) || bt[0].bt_iPrev[dccandidates >> 1] == (dccandidates >> 1));
+                // This DC candidate has been handled, go to the next.
+                bt++;
+              }
+            } // of loop over MCU in X direction
+            if (q) q = q->NextOf();
+          } // of loop over MCU in Y direction
+        }
+        // Advance to the next row of MCUs.
+        qr = q;
+      }
+      //
+      // Now every block has been visited. Now trace back all blocks, using the minimal rate-distortion.
+      bt--;
+      if (bt > btr) {
+        DOUBLE jopt = HUGE_VAL;
+        int cand    = 0;
+        for(int i = 0;i < 3;i++) {
+          if (bt->bt_dFunctional[i] < jopt) {
+            jopt = bt->bt_dFunctional[i];
+            cand = i;
+          }
+        }
+        // cand is now the right quantized DC value for the data referenced by bt.
+        while(bt > btr) {
+          assert(bt->bt_plData);
+          *bt->bt_plData = bt->bt_lDC[cand];
+          cand           = bt->bt_iPrev[cand];
+          bt--;
+        }
+      }
+      //
+      // Release the backtrace.
+      if (btr != NULL) {
+        m_pEnviron->FreeVec(btr);
+        btr = NULL;
+      }
+      // Advance to the next component.
+    } JPG_CATCH {
+      if (btr != NULL) {
+        m_pEnviron->FreeVec(btr);
+        btr = NULL;
+      }
+      JPG_RETHROW;
+      //
+    } JPG_ENDTRY;
+  }
+#else
+  JPG_THROW(NOT_IMPLEMENTED,"SequentialScan::OptimizeDC",
+            "soft-threshold quantizer not implemented in this code version");
+#endif 
+}
+///
+

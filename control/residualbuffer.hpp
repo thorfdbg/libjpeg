@@ -30,7 +30,7 @@
 ** manage buffers itself, but requires a block bitmap requester as
 ** base to forward the requests to.
 **
-** $Id: residualbuffer.hpp,v 1.4 2014/09/30 08:33:16 thor Exp $
+** $Id: residualbuffer.hpp,v 1.5 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -104,7 +104,7 @@ public:
   {
     // On purpose, forward to the residual row.
     return m_pParent->CurrentResidualRow(comp);
-  }
+  }  
   //
   // Start a MCU scan by initializing the quantized rows for this row
   // in this scan.

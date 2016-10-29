@@ -28,7 +28,7 @@
 ** Represents the scan including the scan header for the
 ** arithmetic coding procedure.
 **
-** $Id: acsequentialscan.hpp,v 1.37 2016/01/26 13:25:18 thor Exp $
+** $Id: acsequentialscan.hpp,v 1.38 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -320,6 +320,9 @@ public:
   // required. The AC coder is adaptive.
   virtual void StartMeasureScan(class BufferCtrl *ctrl);
   //
+  // Start making an optimization run to adjust the coefficients.
+  virtual void StartOptimizeScan(class BufferCtrl *ctrl);
+  //
   // Start a MCU scan. Returns true if there are more rows. False otherwise.
   virtual bool StartMCURow(void);
   //
@@ -328,7 +331,17 @@ public:
   virtual bool ParseMCU(void);  
   //
   // Write a single MCU in this scan.
-  virtual bool WriteMCU(void); 
+  virtual bool WriteMCU(void);
+  //
+  // Make an R/D optimization for the given scan by potentially pushing
+  // coefficients into other bins. 
+  virtual void OptimizeBlock(LONG bx,LONG by,UBYTE component,double critical,
+                             class DCT *dct,LONG quantized[64]); 
+  //
+  // Make an R/D optimization of the DC scan. This includes all DC blocks in
+  // total, not just a single block. This is because the coefficients are not
+  // coded independently.
+  virtual void OptimizeDC(void);
 };
 ///
 

@@ -28,7 +28,7 @@
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.hpp,v 1.20 2014/10/08 15:11:52 thor Exp $
+** $Id: entropyparser.hpp,v 1.21 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -186,6 +186,9 @@ public:
   // huffman tables.
   virtual void StartMeasureScan(class BufferCtrl *) = 0;
   //
+  // Start making an optimization run to adjust the coefficients.
+  virtual void StartOptimizeScan(class BufferCtrl *) = 0;
+  //
   // Start a MCU scan.
   virtual bool StartMCURow(void) = 0;  
   //
@@ -193,7 +196,26 @@ public:
   virtual bool ParseMCU(void) = 0;
   //
   // Write a single MCU in this scan.
-  virtual bool WriteMCU(void) = 0;
+  virtual bool WriteMCU(void) = 0; 
+  //
+  // Make an R/D optimization for the given scan by potentially pushing
+  // coefficients into other bins. This runs an optimization for a single
+  // block and requires external control to run over the blocks.
+  // component is the component, critical is the critical slope for
+  // the R/D optimization of the functional J = \lambda D + R, i.e.
+  // this is lambda.
+  // Quant are the quantization parameters, i.e. deltas. These are eventually
+  // preshifted by "preshift".
+  // transformed are the dct-transformed but unquantized data. These are also pre-
+  // shifted by "preshift".
+  // quantized is the quantized data. These are potentially (and likely) adjusted.
+  virtual void OptimizeBlock(LONG bx,LONG by,UBYTE component,double critical,
+                             class DCT *dct,LONG quantized[64]) = 0;  
+  //
+  // Make an R/D optimization of the DC scan. This includes all DC blocks in
+  // total, not just a single block. This is because the coefficients are not
+  // coded independently.
+  virtual void OptimizeDC(void) = 0;
 };
 ///
 

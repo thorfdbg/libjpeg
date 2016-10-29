@@ -2,7 +2,7 @@
 ##
 ## Specific GCC project settings.
 ##
-## $Id: Makefile_Settings.clang,v 1.1 2016/01/26 13:25:11 thor Exp $
+## $Id: Makefile_Settings.clang,v 1.2 2016/10/28 13:58:49 thor Exp $
 ##
 
 CXX		= $(COMPILER_CMD)

@@ -29,7 +29,7 @@
 ** services useful to implement them such that the derived classes can
 ** focus on the actual algorithm.
 **
-** $Id: predictivescan.hpp,v 1.11 2014/11/16 15:49:58 thor Exp $
+** $Id: predictivescan.hpp,v 1.12 2016/10/28 13:58:53 thor Exp $
 **
 */
 
@@ -180,6 +180,19 @@ protected:
   // reset the predictors, check for the correctness
   // of the restart interval.
   void RestartOnMarker(void);
+  //
+  // Start making an optimization run to adjust the coefficients.
+  virtual void StartOptimizeScan(class BufferCtrl *ctrl);
+  //
+  // Make an R/D optimization for the given scan by potentially pushing
+  // coefficients into other bins. 
+  virtual void OptimizeBlock(LONG bx,LONG by,UBYTE component,double critical,
+                             class DCT *dct,LONG quantized[64]); 
+  //
+  // Make an R/D optimization of the DC scan. This includes all DC blocks in
+  // total, not just a single block. This is because the coefficients are not
+  // coded independently.
+  virtual void OptimizeDC(void);
 };
 ///
 

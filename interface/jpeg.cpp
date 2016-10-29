@@ -31,7 +31,7 @@
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.cpp,v 1.24 2015/03/16 08:55:34 thor Exp $
+** $Id: jpeg.cpp,v 1.25 2016/10/28 13:58:54 thor Exp $
 **
 */
 
@@ -89,16 +89,17 @@ void JPEG::doConstruct(class Environ *env)
 
   //
   // State variables.
-  m_pIOStream        = NULL;
-  m_pImage           = NULL;
-  m_pFrame           = NULL;
-  m_pScan            = NULL;
-  m_bRow             = false;
-  m_bDecoding        = false;
-  m_bEncoding        = false;
-  m_bHeaderWritten   = false;
-  m_bOptimized       = false;
-  m_bOptimizeHuffman = false;
+  m_pIOStream          = NULL;
+  m_pImage             = NULL;
+  m_pFrame             = NULL;
+  m_pScan              = NULL;
+  m_bRow               = false;
+  m_bDecoding          = false;
+  m_bEncoding          = false;
+  m_bHeaderWritten     = false;
+  m_bOptimized         = false;
+  m_bOptimizeHuffman   = false;
+  m_bOptimizeQuantizer = false;
 }
 ///
 
@@ -364,7 +365,7 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
 
   //
   // Actually, we do not need the encoder class here.
-  m_bOptimizeHuffman = RequiresTwoPassEncoding(tags);
+  m_bOptimizeHuffman   = RequiresTwoPassEncoding(tags);
 
   if (!m_bEncoding)
     return;
@@ -390,6 +391,19 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
 
 
   if (!m_bOptimized) {
+    // Run the R/D optimization over the DC part if we have not yet
+    // done that. This is a joint optimization that requires full
+    // access to all data and cannot be run on the fly.
+    if (m_bOptimizeQuantizer) {
+      do {
+        class Frame *frame = m_pImage->StartOptimizeFrame();
+        do {
+          class Scan *scan = frame->StartOptimizeScan();
+          scan->OptimizeDC();
+        } while(frame->NextScan());
+      } while(m_pImage->NextFrame());
+    }
+    // Now try find a better Huffman coding.
     if (m_bOptimizeHuffman) {
       do {
         class Frame *frame = m_pImage->StartMeasureFrame();
@@ -557,14 +571,15 @@ void JPEG::InternalProvideImage(struct JPG_TagItem *tags)
 
     delete m_pIOStream;m_pIOStream = NULL;
 
-    m_pFrame           = NULL;
-    m_pScan            = NULL;
-    m_bRow             = false;
-    m_bDecoding        = false;
-    m_bEncoding        = false;
-    m_bHeaderWritten   = false;
-    m_bOptimized       = false;
-    m_bOptimizeHuffman = false;
+    m_pFrame             = NULL;
+    m_pScan              = NULL;
+    m_bRow               = false;
+    m_bDecoding          = false;
+    m_bEncoding          = false;
+    m_bHeaderWritten     = false;
+    m_bOptimized         = false;
+    m_bOptimizeHuffman   = false;
+    m_bOptimizeQuantizer = false;
   }
 
   if (m_pImage == NULL) {
@@ -572,16 +587,16 @@ void JPEG::InternalProvideImage(struct JPG_TagItem *tags)
       m_pEncoder  = new(m_pEnviron) class Encoder(m_pEnviron);
       m_bEncoding = true;
     }
-
-    m_bOptimizeHuffman = RequiresTwoPassEncoding(tags);
-    m_pImage           = m_pEncoder->CreateImage(tags);
+    m_bOptimizeHuffman   = RequiresTwoPassEncoding(tags);
+    m_bOptimizeQuantizer = tags->GetTagData(JPGTAG_OPTIMIZE_QUANTIZER,false)?true:false;
+    m_pImage             = m_pEncoder->CreateImage(tags);
   }
-
+  
   do {
     rr.ParseTags(tags,m_pImage);
     m_pImage->EncodeRegion(&bmh,&rr);
   } while(!m_pImage->isImageComplete() && loop);
-
+  
   tags->SetTagData(JPGTAG_ENCODER_IMAGE_COMPLETE,m_pImage->isImageComplete());
 }
 ///
