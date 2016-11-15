@@ -280,10 +280,16 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
               switch(bmm->bmm_usDepth) {
               case 1:
               case 3: // The direct cases, can write PPM right away.
-#ifdef JPG_LIL_ENDIAN
+
                 // On those bloddy little endian machines, an endian swap is necessary
                 // as PNM is big-endian.
-                if (bmm->bmm_ucPixelType == CTYP_UWORD) {
+                bool turnBytePairs = bmm->bmm_ucPixelType == CTYP_UWORD;
+#ifdef JPG_LIL_ENDIAN
+                turnBytePairs &= bmm->bmm_decodedFormat == PPM;
+#else
+                turnBytePairs &= bmm->bmm_decodedFormat == RAW;
+#endif
+                if (turnBytePairs) {
                   ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
                   UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
                   do {
@@ -291,12 +297,10 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                     data++;
                   } while(--count);
                 }
-#endif
+
                 const size_t dataSize =
                   (bmm->bmm_ucPixelType & CTYP_SIZE_MASK) * bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
                 bmm->bmm_pTarget->write(bmm->bmm_pMemPtr, dataSize);
-                //fwrite(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-                  //     bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pTarget);
                 break;
               }
             }

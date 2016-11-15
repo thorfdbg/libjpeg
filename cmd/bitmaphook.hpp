@@ -69,6 +69,7 @@ struct BitmapMemory {
   bool         bmm_bNoAlphaOutputConversion; // ditto for alpha
   bool         bmm_bClamp;      // if set, clamp negative values to zero.
   bool         bmm_bAlphaClamp; // if set, alpha values outside [0,1] will be clamped to range
+  DecodedFormat bmm_decodedFormat; // decoded format(ppm or raw)
 };
 ///
 

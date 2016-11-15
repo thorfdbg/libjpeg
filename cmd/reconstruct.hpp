@@ -39,10 +39,11 @@
 #include "interface/parameters.hpp"
 
 /// Prototypes
-extern void Reconstruct(const char *infile, const char *outfile,
+extern void Reconstruct(const char *infile, const char *outfile, DecodedFormat outFormat = PPM,
                         int colortrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE, const char *alpha = NULL);
 
 extern void ReconstructFromUserData(JPG_APTR input, LONG inputSize, JPG_APTR output, LONG outputSize,
+                                    DecodedFormat outFormat = RAW,
                                     int colortrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
                                     JPG_APTR alpha = NULL, LONG alphaSize = 0);
 ///

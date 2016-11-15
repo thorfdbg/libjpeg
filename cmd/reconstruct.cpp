@@ -44,7 +44,8 @@
 #include "interface/jpeg.hpp"
 ///
 
-void reconstruct(HookDataAccessor* input, HookDataAccessor* output, HookDataAccessor* alpha, int colortrafo)
+void reconstruct(HookDataAccessor* input, HookDataAccessor* output, HookDataAccessor* alpha,
+                 DecodedFormat outFormat, int colortrafo)
 {
   if(!input || ! output)
     return;
@@ -151,6 +152,7 @@ void reconstruct(HookDataAccessor* input, HookDataAccessor* output, HookDataAcce
         bmm.bmm_bAlphaBigEndian          = true;
         bmm.bmm_bNoOutputConversion      = !convert;
         bmm.bmm_bNoAlphaOutputConversion = !aconvert;
+        bmm.bmm_decodedFormat            = outFormat;
 
         ULONG y = 0; // Just as a demo, run a stripe-based reconstruction.
         ULONG lastline;
@@ -164,18 +166,21 @@ void reconstruct(HookDataAccessor* input, HookDataAccessor* output, HookDataAcce
           JPG_EndTag
         };
 
-        char ppmHeaderData[50];
-        const JPG_LONG written = sprintf(ppmHeaderData,"P%c\n%d %d\n%d\n",
-                                         (pfm)?((depth > 1)?'F':'f'):((depth > 1)?('6'):('5')),
-                                         width,height,(pfm)?(1):((1 << prec) - 1));
-        output->write(ppmHeaderData, written);
-
-        if (bmm.bmm_pAlphaTarget)
+        if (outFormat == PPM)
         {
+          char ppmHeaderData[50];
           const JPG_LONG written = sprintf(ppmHeaderData,"P%c\n%d %d\n%d\n",
-                                           (apfm)?('f'):('5'),
-                                           width,height,(apfm)?(1):((1 << aprec) - 1));
-          alpha->write(ppmHeaderData, written);
+                                           (pfm)?((depth > 1)?'F':'f'):((depth > 1)?('6'):('5')),
+                                           width,height,(pfm)?(1):((1 << prec) - 1));
+          output->write(ppmHeaderData, written);
+
+          if (bmm.bmm_pAlphaTarget)
+          {
+            const JPG_LONG written = sprintf(ppmHeaderData,"P%c\n%d %d\n%d\n",
+                                             (apfm)?('f'):('5'),
+                                             width,height,(apfm)?(1):((1 << aprec) - 1));
+            alpha->write(ppmHeaderData, written);
+          }
         }
 
         //
@@ -213,8 +218,8 @@ void reconstruct(HookDataAccessor* input, HookDataAccessor* output, HookDataAcce
 /// Reconstruct
 // This reconstructs an image from the given input file
 // and writes the output ppm.
-void Reconstruct(const char *infile,const char *outfile,
-                 int colortrafo,const char *alpha)
+void Reconstruct(const char *infile, const char *outfile, DecodedFormat outFormat,
+                 int colortrafo, const char *alpha)
 {
   FILE *in = fopen(infile,"rb");
   FILE *out = fopen(outfile,"wb");
@@ -237,7 +242,7 @@ void Reconstruct(const char *infile,const char *outfile,
   FILE *alphaOut = alpha ? fopen(outfile,"wb") : NULL;
   FileHookDataAccessor alphaWriter(alphaOut);
 
-  reconstruct(&inDataAccessor, &targetWriter, (alpha ? &alphaWriter : NULL), colortrafo);
+  reconstruct(&inDataAccessor, &targetWriter, (alpha ? &alphaWriter : NULL), outFormat, colortrafo);
 
   fclose(in);
   fclose(out);
@@ -247,7 +252,7 @@ void Reconstruct(const char *infile,const char *outfile,
 }
 
 void ReconstructFromUserData(JPG_APTR input, LONG inputSize, JPG_APTR output, LONG outputSize,
-                             int colortrafo, JPG_APTR alpha, LONG alphaSize)
+                             DecodedFormat outFormat, int colortrafo, JPG_APTR alpha, LONG alphaSize)
 {
   if (!input || !output)
     return;
@@ -256,6 +261,6 @@ void ReconstructFromUserData(JPG_APTR input, LONG inputSize, JPG_APTR output, LO
   UserDataHookAccessor outputWriter(output, outputSize);
   UserDataHookAccessor alphaWriter(alpha, alphaSize);
 
-  reconstruct(&inputDataAccessor, &outputWriter, (alpha ? &alphaWriter : NULL), colortrafo);
+  reconstruct(&inputDataAccessor, &outputWriter, (alpha ? &alphaWriter : NULL), outFormat, colortrafo);
 }
 ///
