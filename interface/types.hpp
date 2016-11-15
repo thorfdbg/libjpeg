@@ -239,5 +239,11 @@ typedef DOUBLE DOUBLE_ALIASED;
 #endif
 ///
 
+enum DecodedFormat
+{
+  PPM,
+  RAW
+};
+
 ///
 #endif

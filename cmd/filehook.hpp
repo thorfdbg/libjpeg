@@ -36,12 +36,48 @@
 
 /// Includes
 #include "interface/types.hpp"
+#include "std/stdio.hpp"
+#include <cstring>
 ///
 
 /// Forwards
 struct JPG_Hook;
 struct JPG_TagItem;
 ///
+
+struct HookDataAccessor
+{
+  virtual JPG_LONG read(JPG_APTR destination, JPG_LONG size) = 0;
+  virtual JPG_LONG write(JPG_CPTR data, JPG_LONG size) = 0;
+  virtual JPG_LONG seek(JPG_LONG offset, JPG_LONG origin) = 0;
+  virtual ~HookDataAccessor();
+};
+
+struct FileHookDataAccessor: public HookDataAccessor
+{
+  FileHookDataAccessor(FILE *file);
+
+  virtual JPG_LONG read(JPG_APTR destination, JPG_LONG size);
+  virtual JPG_LONG write(JPG_CPTR data, JPG_LONG size);
+  virtual JPG_LONG seek(JPG_LONG offset, JPG_LONG origin);
+
+private:
+  FILE *m_file;
+};
+
+struct UserDataHookAccessor: public HookDataAccessor
+{
+  UserDataHookAccessor(JPG_APTR data, JPG_LONG dataSize);
+
+  virtual JPG_LONG read(JPG_APTR destination, JPG_LONG size);
+  virtual JPG_LONG write(JPG_CPTR data, JPG_LONG size);
+  virtual JPG_LONG seek(JPG_LONG offset, JPG_LONG origin);
+
+private:
+  UBYTE* m_data;
+  JPG_LONG m_dataSize;
+  JPG_LONG m_curPosition;
+};
 
 /// Prototypes
 extern JPG_LONG FileHook(struct JPG_Hook *hook, struct JPG_TagItem *tags);

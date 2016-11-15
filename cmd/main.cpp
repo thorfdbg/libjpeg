@@ -199,6 +199,7 @@ void PrintUsage(const char *progname)
           "-N         : enable noise shaping of the prediction residual\n"
           "-l         : enable lossless coding without a residual image by an\n"
           "             int-to-int DCT, also requires -c and -q 100 for true lossless\n"
+          "-raw       : decoding to raw(not ppm)\n"
 #if ACCUSOFT_CODE
           "-p         : JPEG lossless (predictive) mode\n"
           "             also requires -c for true lossless\n"
@@ -379,6 +380,7 @@ int main(int argc,char **argv)
   bool noclamp      = false;
   bool setprofile   = false;
   bool median       = true;
+  bool raw          = false;
   int splitquality  = -1;
   int profile       = 2;    // profile C.
   const char *sub       = NULL;
@@ -428,6 +430,10 @@ int main(int argc,char **argv)
       maxerror = ParseInt(argc,argv);
     } else if (!strcmp(argv[1],"-md")) {
       median = true;
+      argv++;
+      argc--;
+    } else if (!strcmp(argv[1],"-raw")) {
+      raw = true;
       argv++;
       argc--;
     } else if (!strcmp(argv[1],"-ct")) {
@@ -691,7 +697,7 @@ int main(int argc,char **argv)
   }
 
   if (quality < 0 && lossless == false && lsmode < 0) {
-    Reconstruct(argv[1],argv[2],colortrafo,alpha);
+    Reconstruct(argv[1], argv[2], (raw ? RAW : PPM), colortrafo, alpha);
   } else {
     switch(profile) {
     case 0:

@@ -37,6 +37,7 @@
 /// Includes
 #include "interface/types.hpp"
 #include "std/stdio.hpp"
+#include "cmd/iohelpers.hpp"
 ///
 
 /// Forwards
@@ -54,10 +55,10 @@ struct BitmapMemory {
   UWORD        bmm_usDepth;     // number of components.
   UBYTE        bmm_ucPixelType; // precision etc.
   UBYTE        bmm_ucAlphaType; // pixel type of the alpha channel
-  FILE        *bmm_pTarget;     // where to write the data to.
+  HookDataAccessor *bmm_pTarget;     // where to write the data to.
   FILE        *bmm_pSource;     // where the data comes from on reading (encoding)
   FILE        *bmm_pLDRSource;  // if there is a separate source for the LDR image, this is non-NULL.
-  FILE        *bmm_pAlphaTarget;// where the alpha (if any) goes to on decoding
+  HookDataAccessor *bmm_pAlphaTarget;// where the alpha (if any) goes to on decoding
   FILE        *bmm_pAlphaSource;// where the alpha data (if any) comes from. There is no dedicated alpha LDR file
   const UWORD *bmm_HDR2LDR;     // the (simple global) tone mapper used for encoding the image.
   bool         bmm_bFloat;      // is true if the input is floating point
@@ -68,6 +69,7 @@ struct BitmapMemory {
   bool         bmm_bNoAlphaOutputConversion; // ditto for alpha
   bool         bmm_bClamp;      // if set, clamp negative values to zero.
   bool         bmm_bAlphaClamp; // if set, alpha values outside [0,1] will be clamped to range
+  DecodedFormat bmm_decodedFormat; // decoded format(ppm or raw)
 };
 ///
 
