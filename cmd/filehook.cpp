@@ -37,28 +37,90 @@
 #include "interface/hooks.hpp"
 #include "interface/tagitem.hpp"
 #include "interface/parameters.hpp"
-#include "std/stdio.hpp"
+#include "std/assert.hpp"
+#include <algorithm>
 ///
+
+HookDataAccessor::~HookDataAccessor()
+{
+}
+
+FileHookDataAccessor::FileHookDataAccessor(FILE *file): m_file(file)
+{
+}
+
+JPG_LONG FileHookDataAccessor::write(JPG_CPTR data, JPG_LONG size)
+{
+  return fwrite(data, 1, size, m_file);
+}
+
+JPG_LONG FileHookDataAccessor::read(JPG_APTR destination, JPG_LONG size)
+{
+  return fread(destination, 1, size, m_file);
+}
+
+JPG_LONG FileHookDataAccessor::seek(JPG_LONG offset, JPG_LONG origin)
+{
+  return fseek(m_file, offset, origin);
+}
+
+UserDataHookAccessor::UserDataHookAccessor(JPG_APTR data, JPG_LONG dataSize):
+  m_data(reinterpret_cast<UBYTE*>(data)), m_dataSize(dataSize), m_curPosition(0)
+{
+}
+
+JPG_LONG UserDataHookAccessor::read(JPG_APTR destination, JPG_LONG size)
+{
+  const JPG_LONG bytesNumberToCopy = std::min(size, m_dataSize - m_curPosition);
+  memcpy(destination, m_data + m_curPosition, bytesNumberToCopy);
+  m_curPosition += bytesNumberToCopy;
+  return bytesNumberToCopy;
+}
+
+JPG_LONG UserDataHookAccessor::write(JPG_CPTR data, JPG_LONG size)
+{
+  const JPG_LONG bytesNumberToCopy = std::min(size, m_dataSize - m_curPosition);
+  memcpy(m_data + m_curPosition, data, bytesNumberToCopy);
+  m_curPosition += bytesNumberToCopy;
+  return bytesNumberToCopy;
+}
+
+JPG_LONG UserDataHookAccessor::seek(JPG_LONG offset, JPG_LONG origin)
+{
+  switch(origin) {
+    case SEEK_CUR:
+      m_curPosition += offset;
+      break;
+    case SEEK_SET:
+      m_curPosition = offset;
+      break;
+    case SEEK_END:
+      m_curPosition = m_dataSize - offset;
+      break;
+  }
+
+  return 0;
+}
 
 /// The IO hook function
 JPG_LONG FileHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
 {
-  FILE *in = (FILE *)(hook->hk_pData);
+  HookDataAccessor *in = (HookDataAccessor *)(hook->hk_pData);
 
   switch(tags->GetTagData(JPGTAG_FIO_ACTION)) {
   case JPGFLAG_ACTION_READ:
     {
       UBYTE *buffer = (UBYTE *)tags->GetTagPtr(JPGTAG_FIO_BUFFER);
       ULONG  size   = (ULONG  )tags->GetTagData(JPGTAG_FIO_SIZE);
-      
-      return fread(buffer,1,size,in);
+
+      return in->read(buffer, size);
     }
   case JPGFLAG_ACTION_WRITE:
     {
       UBYTE *buffer = (UBYTE *)tags->GetTagPtr(JPGTAG_FIO_BUFFER);
       ULONG  size   = (ULONG  )tags->GetTagData(JPGTAG_FIO_SIZE);
-      
-      return fwrite(buffer,1,size,in);
+
+      return in->write(buffer, size);
     }
   case JPGFLAG_ACTION_SEEK:
     {
@@ -67,11 +129,11 @@ JPG_LONG FileHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
 
       switch(mode) {
       case JPGFLAG_OFFSET_CURRENT:
-        return fseek(in,offset,SEEK_CUR);
+        return in->seek(offset, SEEK_CUR);
       case JPGFLAG_OFFSET_BEGINNING:
-        return fseek(in,offset,SEEK_SET);
+        return in->seek(offset, SEEK_SET);
       case JPGFLAG_OFFSET_END:
-        return fseek(in,offset,SEEK_END);
+        return in->seek(offset, SEEK_END);
       }
     }
   case JPGFLAG_ACTION_QUERY:

@@ -33,7 +33,6 @@
 
 /// Includes
 #include "cmd/bitmaphook.hpp"
-#include "cmd/iohelpers.hpp"
 #include "std/stdio.hpp"
 #include "std/stdlib.hpp"
 #include "std/string.hpp"
@@ -293,8 +292,11 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                   } while(--count);
                 }
 #endif
-                fwrite(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-                       bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pTarget);
+                const size_t dataSize =
+                  (bmm->bmm_ucPixelType & CTYP_SIZE_MASK) * bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+                bmm->bmm_pTarget->write(bmm->bmm_pMemPtr, dataSize);
+                //fwrite(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
+                  //     bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pTarget);
                 break;
               }
             }
@@ -455,8 +457,10 @@ JPG_LONG AlphaHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                 } while(--count);
               }
 #endif
-              fwrite(bmm->bmm_pAlphaPtr,bmm->bmm_ucAlphaType & CTYP_SIZE_MASK,
-                     bmm->bmm_ulWidth * height,bmm->bmm_pAlphaTarget);
+              const size_t dataSize = (bmm->bmm_ucAlphaType & CTYP_SIZE_MASK) * bmm->bmm_ulWidth * height;
+              bmm->bmm_pAlphaTarget->write(bmm->bmm_pMemPtr, dataSize);
+              //fwrite(bmm->bmm_pAlphaPtr,bmm->bmm_ucAlphaType & CTYP_SIZE_MASK,
+                //     bmm->bmm_ulWidth * height,bmm->bmm_pAlphaTarget);
             }
           }
         }

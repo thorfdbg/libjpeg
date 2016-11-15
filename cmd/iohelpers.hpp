@@ -37,6 +37,7 @@
 #include "interface/types.hpp"
 #include "std/stdio.hpp"
 #include "std/math.hpp"
+#include "cmd/filehook.hpp"
 ///
 
 /// Prototypes
@@ -133,7 +134,7 @@ double inline readFloat(FILE *in,bool bigendian)
 
 /// writeFloat
 // Write a floating point number to a file
-void inline writeFloat(FILE *out,FLOAT f,bool bigendian)
+void inline writeFloat(HookDataAccessor *out,FLOAT f,bool bigendian)
 { 
   union {
     LONG  long_buf;
@@ -141,18 +142,19 @@ void inline writeFloat(FILE *out,FLOAT f,bool bigendian)
   } u;
 
   u.float_buf = f;
+  UBYTE* data = reinterpret_cast<UBYTE*>(&u.long_buf);
 
   if (bigendian) {
-    putc(u.long_buf >> 24,out);
-    putc(u.long_buf >> 16,out);
-    putc(u.long_buf >>  8,out);
-    putc(u.long_buf >>  0,out);
-  } else {
-    putc(u.long_buf >>  0,out);
-    putc(u.long_buf >>  8,out);
-    putc(u.long_buf >> 16,out);
-    putc(u.long_buf >> 24,out);
+    UBYTE byteForSwap = data[0];
+    data[0] = data[3];
+    data[3] = byteForSwap;
+
+    byteForSwap = data[1];
+    data[1] = data[2];
+    data[2] = byteForSwap;
   }
+
+  out->write(data, 4);
 }
 ///
 

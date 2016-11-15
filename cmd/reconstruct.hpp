@@ -35,8 +35,16 @@
 #ifndef CMD_RECONSTRUCT_HPP
 #define CMD_RECONSTRUCT_HPP
 
+#include "interface/types.hpp"
+#include "interface/parameters.hpp"
+
 /// Prototypes
-extern void Reconstruct(const char *infile,const char *outfile,int colortrafo,const char *alpha);
+extern void Reconstruct(const char *infile, const char *outfile,
+                        int colortrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE, const char *alpha = NULL);
+
+extern void ReconstructFromUserData(JPG_APTR input, LONG inputSize, JPG_APTR output, LONG outputSize,
+                                    int colortrafo = JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
+                                    JPG_APTR alpha = NULL, LONG alphaSize = 0);
 ///
 
 ///

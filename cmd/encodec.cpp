@@ -326,6 +326,7 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
       }
       //
       FILE *out = fopen(target,"wb");
+      FileHookDataAccessor outFileDataAccessor(out);
       if (out) { 
         int frametype = JPGFLAG_SEQUENTIAL;
         int residualtype = JPGFLAG_RESIDUAL;
@@ -643,7 +644,7 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
                 ok = jpeg->ProvideImage(tags);
                 
                 if (ok) {
-                  struct JPG_Hook filehook(FileHook,out);
+                  struct JPG_Hook filehook(FileHook, &outFileDataAccessor);
                   struct JPG_TagItem iotags[] = {
                     JPG_PointerTag(JPGTAG_HOOK_IOHOOK,&filehook),
                     JPG_PointerTag(JPGTAG_HOOK_IOSTREAM,out),
