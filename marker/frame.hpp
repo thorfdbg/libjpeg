@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.hpp,v 1.66 2016/10/28 13:58:54 thor Exp $
+** $Id: frame.hpp,v 1.67 2017/02/21 15:48:21 thor Exp $
 **
 */
 
@@ -122,6 +122,8 @@ class Frame : public JKeeper {
   // scan even though there is no more data in the IO stream?
   bool                   m_bBuildRefinement;
   bool                   m_bCreatedRefinement;
+  bool                   m_bEndOfFrame;
+  bool                   m_bStartedTables;
   //
   // Counts the refinement scans.
   UWORD                  m_usRefinementCount;
@@ -149,6 +151,10 @@ class Frame : public JKeeper {
   // Start parsing a scan. Returns true if the scan start is found and there is another hidden
   // scan. Returns false otherwise.
   bool ScanForScanHeader(class ByteStream *stream);
+  //
+  // Attach a new scan to the frame, return the scan
+  // and make this the current scan.
+  class Scan *AttachScan(void);
   //
   // Helper function to create a regular scan from the tags.
   // There are no scan tags here, instead all components are included.
@@ -192,6 +198,12 @@ public:
   void SetImageBuffer(class BufferCtrl *img)
   {
     m_pImage = img;
+  }
+  //
+  // Return an indicator whether the end of a frame was reached.
+  bool isEndOfFrame(void) const
+  {
+    return m_bEndOfFrame;
   }
   //
   // Extend the image by a merging process, and install it

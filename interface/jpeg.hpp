@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.hpp,v 1.14 2016/10/28 13:58:54 thor Exp $
+** $Id: jpeg.hpp,v 1.15 2017/02/21 15:48:21 thor Exp $
 **
 */
 
@@ -145,6 +145,19 @@ class JPEG {
   // and insert it into the given tag list.
   void GetOutputInformation(class MergingSpecBox *specs,struct JPG_TagItem *tags) const;
   //
+  // Return the marker at the current stream position or -1 for an error.
+  // tags is currently unused.
+  JPG_LONG InternalPeekMarker(struct JPG_TagItem *) const;
+  //
+  // Read data from the current stream position, return -1 for an error.
+  JPG_LONG InternalReadMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *tags) const;
+  //
+  // Skip over the given number of bytes.
+  JPG_LONG InternalSkipMarker(JPG_LONG bytes,struct JPG_TagItem *) const;
+  //
+  // Write data to the current stream position.
+  JPG_LONG InternalWriteMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *tags) const;
+  //
 public:
   //
   // Create an instance of this class.
@@ -167,6 +180,39 @@ public:
   //
   // Request information from the JPEG object.
   JPG_LONG GetInformation(struct JPG_TagItem *);
+  //
+  // In case reading was interrupted by a JPGTAG_DECODER_STOP mask
+  // at some point in the codestream, this call returns the next
+  // 16 bits at the current stop position without removing them
+  // from the stream. You may want to use these bits to decide
+  // whether you (instead of the library) want to parse the following
+  // data off yourself with the calls below. This call returns -1 on
+  // an EOF or any other error, and it returns 0 in case a marker has
+  // been detected the core MUST handle itself and an external
+  // code CANNOT possibly parse off.
+  // Currently, the tags argument is not used, just pass NULL.
+  JPG_LONG PeekMarker(struct JPG_TagItem *);
+  //
+  // In case reading was interrupted by a JPGTAG_DECODER_STOP mask,
+  // remove parts of the data from the stream outside of the library.
+  // This call reads the given number of bytes into the supplied
+  // buffer and returns the number of bytes it was able to read, or -1
+  // for an error. The tags argument is currently unused and should be
+  // set to NULL.
+  JPG_LONG ReadMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *);
+  //
+  // Skip over the given number of bytes. Returns -1 for failure, anything
+  // else for success. The tags argument is currently unused and should
+  // be set to NULL.
+  JPG_LONG SkipMarker(JPG_LONG bytes,struct JPG_TagItem *);
+  //
+  // In case writing was interrupted by a JPGTAG_ENCODER_STOP mask,
+  // this call can be used to inject additional data into the codestream.
+  // The typical application of this call is to inject custom markers.
+  // It writes the bytes in the buffer of the given size to the stream,
+  // and returns the number of bytes it could write, or -1 for an error.
+  // The tags argument is currently unused and should be set to NULL.
+  JPG_LONG WriteMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *);
   //
   // Return the last exception - the error code, if present - in
   // the primary result code, a pointer to the error string in the

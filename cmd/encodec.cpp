@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.cpp,v 1.36 2016/10/28 13:58:52 thor Exp $
+** $Id: encodec.cpp,v 1.37 2017/02/21 15:48:17 thor Exp $
 **
 */
 
@@ -647,12 +647,36 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
                   struct JPG_TagItem iotags[] = {
                     JPG_PointerTag(JPGTAG_HOOK_IOHOOK,&filehook),
                     JPG_PointerTag(JPGTAG_HOOK_IOSTREAM,out),
+#ifdef TEST_MARKER_INJECTION                
+                    // Stop after the image header...
+                    JPG_ValueTag(JPGTAG_ENCODER_STOP,JPGFLAG_ENCODER_STOP_FRAME),
+#endif              
                     JPG_EndTag
                   };
                   
                   //
                   // Write in one go, could interrupt this on each frame,scan,line or MCU.
                   ok = jpeg->Write(iotags);
+#ifdef TEST_MARKER_INJECTION              
+                  //
+                  if (ok) {
+                    // Now write a custom marker. This is just a dummy for testing.
+                    UBYTE marker[] = {
+                      0xff,0xe9, // APP9
+                      0x00,0x08, // size of the segment, not including the header
+                      'D','u',
+                      'm','m',
+                      'y',0
+                    };
+                    ok = (jpeg->WriteMarker(marker,sizeof(marker),NULL) == sizeof(marker));
+                    // Continue now with the rest of the data.
+                    iotags->SetTagData(JPGTAG_ENCODER_STOP,0);
+                  }               
+                  //
+                  // Continue writing the image.
+                  if (ok)
+                    ok = jpeg->Write(iotags);
+#endif            
                 }
                 if (!ok) {
                   const char *error;

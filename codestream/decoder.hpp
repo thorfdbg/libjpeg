@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@
 /*
 ** This class parses the markers and holds the decoder together.
 **
-** $Id: decoder.hpp,v 1.16 2014/09/30 08:33:15 thor Exp $
+** $Id: decoder.hpp,v 1.17 2017/02/21 15:48:21 thor Exp $
 **
 */
 
@@ -58,8 +58,9 @@ public:
   //
   ~Decoder(void);
   //
-  // Parse off the header.
-  class Image *ParseHeader(class ByteStream *io);
+  // Parse off the header, return the image in case
+  // the header was parsed off completely.
+  class Image *ParseHeaderIncremental(class ByteStream *io);
   //
   // Parse off the EOI marker at the end of the image.
   // Returns true if there are more scans in the file,

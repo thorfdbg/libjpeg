@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 ** command line interface. It doesn't do much except
 ** calling libjpeg.
 **
-** $Id: reconstruct.cpp,v 1.2 2015/03/16 08:55:27 thor Exp $
+** $Id: reconstruct.cpp,v 1.4 2017/02/21 15:48:17 thor Exp $
 **
 */
 
@@ -50,7 +50,7 @@
 // This reconstructs an image from the given input file
 // and writes the output ppm.
 void Reconstruct(const char *infile,const char *outfile,
-                 int colortrafo,const char *alpha)
+                 int colortrafo,const char *alpha,bool serms)
 {  
   FILE *in = fopen(infile,"rb");
   if (in) {
@@ -62,10 +62,49 @@ void Reconstruct(const char *infile,const char *outfile,
         JPG_PointerTag(JPGTAG_HOOK_IOHOOK,&filehook),
         JPG_PointerTag(JPGTAG_HOOK_IOSTREAM,in), 
         JPG_ValueTag(JPGTAG_MATRIX_LTRAFO,colortrafo),
+#ifdef TEST_MARKER_INJECTION                
+        // Stop after the image header...
+        JPG_ValueTag(JPGTAG_DECODER_STOP,JPGFLAG_DECODER_STOP_FRAME),
+#endif  
+        JPG_ValueTag((serms)?(JPGTAG_IMAGE_LOSSLESSDCT):(JPGTAG_TAG_IGNORE),serms),
         JPG_EndTag
       };
-
-      if (jpeg->Read(tags)) {
+      //
+#ifdef TEST_MARKER_INJECTION                
+      LONG marker;
+      //
+      // Check whether this is a marker we care about. Note that
+      // due to the stop-flag the code aborts within each marker in the
+      // main header.
+      do {
+        // First read the header, or the next part of it.
+        ok     = jpeg->Read(tags);
+        // Get the next marker that could be potentially of some
+        // interest for this code.
+        marker = jpeg->PeekMarker(NULL);
+        if (marker == 0xffe9) {
+          UBYTE buffer[4]; // For the marker and the size.
+          ok = (jpeg->ReadMarker(buffer,sizeof(buffer),NULL) == sizeof(buffer));
+          if (ok) {
+            int markersize = (buffer[2] << 8) + buffer[3];
+            // This should better be >= 2!
+            if (markersize < 2) {
+              ok = 0;
+            } else {
+              ok = (jpeg->SkipMarker(markersize - 2,NULL) != -1);
+            }
+          }
+        }
+        //
+        // Abort when we hit an essential marker that ends the tables/misc
+        // section.
+      } while(marker && marker != -1L && ok); 
+      //
+      // Ok, we found the first frame header, do not go for other tables
+      // at all, and disable now the stop-flag
+      tags->SetTagData(JPGTAG_DECODER_STOP,0);
+#endif      
+      if (ok && jpeg->Read(tags)) {
         struct JPG_TagItem atags[] = {
           JPG_ValueTag(JPGTAG_IMAGE_PRECISION,0),
           JPG_ValueTag(JPGTAG_IMAGE_IS_FLOAT,false),

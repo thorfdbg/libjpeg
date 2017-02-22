@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.cpp,v 1.25 2016/10/28 13:58:54 thor Exp $
+** $Id: jpeg.cpp,v 1.26 2017/02/21 15:48:21 thor Exp $
 **
 */
 
@@ -254,8 +254,11 @@ void JPEG::ReadInternal(struct JPG_TagItem *tags)
 
   assert(m_pIOStream);
   
-  if (m_pImage == NULL) {
-    m_pImage = m_pDecoder->ParseHeader(m_pIOStream);
+  while (m_pImage == NULL) {
+    // Several iterations may be necessary to parse
+    // off the header, each taking one marker of the
+    // header.
+    m_pImage = m_pDecoder->ParseHeaderIncremental(m_pIOStream);
     if (stopflags & JPGFLAG_DECODER_STOP_IMAGE)
       return;
   }
@@ -273,20 +276,30 @@ void JPEG::ReadInternal(struct JPG_TagItem *tags)
     }
 
     if (m_pFrame) {
-      if (m_pScan == NULL) {
+      while (m_pScan == NULL) {
         m_pScan = m_pFrame->StartParseScan(m_pImage->InputStreamOf(m_pIOStream),m_pImage->ChecksumOf());
-        if (m_pScan && (stopflags & JPGFLAG_DECODER_STOP_SCAN))
-          return;
+        //
         if (m_pScan == NULL) {
-          if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
-            // Frame done, advance to the next frame.
-            m_pFrame = NULL;
-            if (!m_pImage->ParseTrailer(m_pIOStream)) {
-              // Image done, stop decoding, image is now loaded.
-              StopDecoding();
-              return;
+          // This is not yet the start of the scan, but might
+          // either be a frame trailer, or part of the frame header.
+          if (m_pFrame->isEndOfFrame()) {
+            if (!m_pFrame->ParseTrailer(m_pImage->InputStreamOf(m_pIOStream))) {
+              // Frame done, advance to the next frame.
+              m_pFrame = NULL;
+              if (!m_pImage->ParseTrailer(m_pIOStream)) {
+                // Image done, stop decoding, image is now loaded.
+                StopDecoding();
+                return;
+              }
             }
+          } else {
+            if (stopflags & JPGFLAG_DECODER_STOP_FRAME)
+              return;
           }
+          // else continue looking for the start of scan.
+        } else {
+          if (stopflags & JPGFLAG_DECODER_STOP_SCAN)
+            return;
         }
       }
 
@@ -470,6 +483,193 @@ void JPEG::WriteInternal(struct JPG_TagItem *tags)
       m_bRow = false;
     }
   }
+}
+///
+
+/// JPEG::PeekMarker
+// In case reading was interrupted by a JPGTAG_DECODER_STOP mask
+// at some point in the codestream, this call returns the next
+// 16 bits at the current stop position without removing them
+// from the stream. You may want to use these bits to decide
+// whether you (instead of the library) want to parse the following
+// data off yourself with the calls below. This call returns -1 on
+// an EOF or any other error.
+// Currently, the tags argument is not used, just pass NULL.
+JPG_LONG JPEG::PeekMarker(struct JPG_TagItem *tags)
+{
+  volatile JPG_LONG ret = 0;
+
+  JPG_TRY {
+    ret = InternalPeekMarker(tags);
+  } JPG_CATCH {
+    ret = -1; // Deliver an error.
+  } JPG_ENDTRY;
+
+  return ret;
+}
+///
+
+/// JPEG::InternalPeekMarker
+// Return the marker at the current stream position or -1 for an error.
+// tags is currently unused.
+JPG_LONG JPEG::InternalPeekMarker(struct JPG_TagItem *) const
+{
+  LONG marker;
+  
+  if (m_pEncoder)
+     JPG_THROW(OBJECT_EXISTS,"JPEG::PeekMarker","encoding in process, cannot read data");
+
+  if (m_pDecoder == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::PeekMarker","decoding not in progress");
+
+  if (m_pIOStream == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::PeekMarker","I/O stream does not exist, decoding did not start yet");
+
+  marker = m_pIOStream->PeekWord();
+  
+  switch(marker) {
+  case 0xffc0:
+  case 0xffc1:
+  case 0xffc2:
+  case 0xffc3:
+  case 0xffc5:
+  case 0xffc6:
+  case 0xffc7:
+  case 0xffc8:
+  case 0xffc9:
+  case 0xffca:
+  case 0xffcb:
+  case 0xffcd:
+  case 0xffce:
+  case 0xffcf: // all start of frame markers.
+  case 0xffb1: // residual scan
+  case 0xffb2: // residual scan, progressive
+  case 0xffb3: // residual scan, large dct
+  case 0xffb9: // residual scan, ac coded
+  case 0xffba: // residual scan, ac coded, progressive
+  case 0xffbb: // residual scan, ac coded, large dct
+  case 0xffd9: // EOI
+  case 0xffda: // Start of scan.
+  case 0xffde: // DHP
+  case 0xfff7: // JPEG LS SOS
+    // These are all markers that cannot be handled externally in any case.
+    return 0;
+  }
+  
+  return marker;
+}
+///
+
+/// JPEG::ReadMarker
+// In case reading was interrupted by a JPGTAG_DECODER_STOP mask,
+// remove parts of the data from the stream outside of the library.
+// This call reads the given number of bytes into the supplied
+// buffer and returns the number of bytes it was able to read, or -1
+// for an error. The tags argument is currently unused and should be
+// set to NULL.
+JPG_LONG JPEG::ReadMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *tags)
+{
+  volatile JPG_LONG ret = 0;
+
+  JPG_TRY {
+    ret = InternalReadMarker(buffer,bufsize,tags);
+  } JPG_CATCH {
+    ret = -1; // Deliver an error.
+  } JPG_ENDTRY;
+
+  return ret;
+}
+///
+
+/// JPEG::InternalReadMarker
+// Read data from the current stream position, return -1 for an error.
+JPG_LONG JPEG::InternalReadMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *) const
+{
+  if (m_pEncoder)
+     JPG_THROW(OBJECT_EXISTS,"JPEG::ReadMarker","encoding in process, cannot read data");
+
+  if (m_pDecoder == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::ReadMarker","decoding not in progress");
+
+  if (m_pIOStream == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::ReadMarker","I/O stream does not exist, decoding did not start yet");
+
+  return m_pIOStream->Read((UBYTE *)buffer,bufsize);
+}
+///
+
+/// JPEG::SkipMarker
+// Skip over the given number of bytes. Returns -1 for failure, anything
+// else for success. The tags argument is currently unused and should
+// be set to NULL.
+JPG_LONG JPEG::SkipMarker(JPG_LONG bytes,struct JPG_TagItem *tags)
+{
+  volatile JPG_LONG ret = 0;
+
+  JPG_TRY {
+    ret = InternalSkipMarker(bytes,tags);
+  } JPG_CATCH {
+    ret = -1; // Deliver an error.
+  } JPG_ENDTRY;
+
+  return ret;
+}
+///
+
+/// JPEG::InternalSkipMarker
+// Skip over the given number of bytes.
+JPG_LONG JPEG::InternalSkipMarker(JPG_LONG bytes,struct JPG_TagItem *) const
+{
+  if (m_pEncoder)
+     JPG_THROW(OBJECT_EXISTS,"JPEG::SkipMarker","encoding in process, cannot read data");
+
+  if (m_pDecoder == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::SkipMarker","decoding not in progress");
+
+  if (m_pIOStream == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::SkipMarker","I/O stream does not exist, decoding did not start yet");
+
+  m_pIOStream->SkipBytes(bytes);
+
+  return 0;
+}
+///
+
+/// JPEG::WriteMarker
+// In case writing was interrupted by a JPGTAG_ENCODER_STOP mask,
+// this call can be used to inject additional data into the codestream.
+// The typical application of this call is to inject custom markers.
+// It writes the bytes in the buffer of the given size to the stream,
+// and returns the number of bytes it could write, or -1 for an error.
+// The tags argument is currently unused and should be set to NULL.
+JPG_LONG JPEG::WriteMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *tags)
+{
+  volatile JPG_LONG ret = 0;
+
+  JPG_TRY {
+    ret = InternalWriteMarker(buffer,bufsize,tags);
+  } JPG_CATCH {
+    ret = -1; // Deliver an error.
+  } JPG_ENDTRY;
+
+  return ret;
+}
+///
+
+/// JPEG::InternalWriteMarker
+// Write data to the current stream position.
+JPG_LONG JPEG::InternalWriteMarker(void *buffer,JPG_LONG bufsize,struct JPG_TagItem *) const
+{
+  if (m_pDecoder)
+     JPG_THROW(OBJECT_EXISTS,"JPEG::WriteMarker","decoding in process, cannot write data");
+
+  if (m_pEncoder == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::WriteMarker","encoding not in progress");
+
+  if (m_pIOStream == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"JPEG::WriteMarker","I/O stream does not exist, decoding did not start yet");
+
+  return m_pIOStream->Write((UBYTE *)buffer,bufsize);
 }
 ///
 

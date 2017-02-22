@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.190 2016/10/28 13:58:53 thor Exp $
+** $Id: tables.cpp,v 1.192 2017/02/21 15:48:21 thor Exp $
 **
 */
 
@@ -88,7 +88,8 @@ Tables::Tables(class Environ *env)
     m_pIdentityMapping(NULL), m_pChecksumBox(NULL),
     m_ucMaxError(0), m_bDisableColor(false), m_bTruncateColor(false), m_bRefinement(false), 
     m_bOpenLoop(false), m_bDeadZone(false), m_bOptimize(false), m_bDeRing(false),
-    m_bFoundExp(false), m_bHorizontalExpansion(false), m_bVerticalExpansion(false)
+    m_bFoundExp(false), m_bHorizontalExpansion(false), m_bVerticalExpansion(false),
+    m_bEnforceLosslessDCT(false)
 
 {
   m_NameSpace.DefineSecondaryLookup(&m_pBoxList);
@@ -949,8 +950,23 @@ void Tables::WriteTables(class ByteStream *io)
 // Returns on the first unknown marker.
 void Tables::ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp)
 {
-  
+  bool repeat;
   //
+  ParseTablesIncrementalInit(allowexp);
+  
+  do {
+    // Continue reading markers until the end of the
+    // tables/misc section has been found.
+    repeat = ParseTablesIncremental(io,chk,allowexp);
+  } while(repeat);
+}
+///
+
+/// ParseTablesIncrementalInit
+// Prepare reading an incremental part of the tables. This here must be called first
+// before continuing with one or multiple ParseTableIncremental calls.
+void Tables::ParseTablesIncrementalInit(bool allowexp)
+{
   // no exp-marker here yet. This condition here ensures that the scan header
   // does not overwrite the exp settings of the frame header in a hierarchical
   // scan pattern.
@@ -959,405 +975,415 @@ void Tables::ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp)
     m_bHorizontalExpansion = false;
     m_bVerticalExpansion   = false;
   }
+}
+///
 
-  do {
-    LONG marker = io->PeekWord();
-    switch(marker) {
-    case 0xffdb: // DQT
-      if (m_pQuant == NULL)
-        m_pQuant = new(m_pEnviron) Quantization(m_pEnviron);
-      if (chk && ChecksumTables()) {
-        class ChecksumAdapter csa(io,chk,false);
-        csa.GetWord();
-        m_pQuant->ParseMarker(&csa);
-      } else {
-        io->GetWord();
-        m_pQuant->ParseMarker(io);
-      }
-      break;
-    case 0xffc4: // DHT 
-      if (m_pHuffman == NULL)
-        m_pHuffman = new(m_pEnviron) HuffmanTable(m_pEnviron);
-      if (chk && ChecksumTables()) {
-        class ChecksumAdapter csa(io,chk,false);
-        csa.GetWord();
-        m_pHuffman->ParseMarker(&csa);
-      } else {
-        io->GetWord();
-        m_pHuffman->ParseMarker(io);
-      }
-      break;
-    case 0xffcc: // DAC
-      if (m_pConditioner == NULL)
-        m_pConditioner = new(m_pEnviron) class ACTable(m_pEnviron);
-      if (chk && ChecksumTables()) {
-        class ChecksumAdapter csa(io,chk,false);
-        csa.GetWord();
-        m_pConditioner->ParseMarker(&csa);
-      } else {
-        io->GetWord();
-        m_pConditioner->ParseMarker(io);
-      }
-      break;
-    case 0xffdd: // DRI
-      if (m_pRestart == NULL)
-        m_pRestart = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron);
-      if (chk && ChecksumTables()) {
-        class ChecksumAdapter csa(io,chk,false);
-        csa.GetWord();
-        m_pRestart->ParseMarker(&csa);
-      } else {
-        io->GetWord();
-        m_pRestart->ParseMarker(io);
-      }
-      break;
-    case 0xfffe: // COM
-      { // The COM-Marker is never checksummed.
-        LONG size; 
-        io->GetWord();
-        size = io->GetWord();
-        // Application marker.
-        if (size == ByteStream::EOF)
-          JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","COM marker incomplete, stream truncated");
-        //
-        if (size <= 0x02)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","COM marker size out of range");
-        //
-        // Just skip the contents. For now. More later on.
-        io->SkipBytes(size - 2);
-      }
-      break; 
-    case 0xfff8: // LSE: JPEG LS extensions marker.
-      { // Not part of a XT stream, thus checksumming is not required.
-        io->GetWord();
-        LONG len = io->GetWord();
-        if (len > 3) {
-          UBYTE id = io->Get();
-          if (id == 1) {
-            // Thresholds marker.
-            if (m_pThresholds == NULL)
-              m_pThresholds = new(m_pEnviron) class Thresholds(m_pEnviron);
-            m_pThresholds->ParseMarker(io,len);
-            break;
-          } else if (id == 2 || id == 3) {
-            JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
-                      "JPEG LS mapping tables are not implemented by this code, sorry");
-          } else if (id == 4) {
-            JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
-                      "JPEG LS size extensions are not implemented by this code, sorry");
-          } else if (id == 0x0d) {
-            // LS Reversible Color transformation
-            if (m_pLSColorTrafo)
-              JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                        "found duplicate JPEG LS color transformation specification");
-            m_pLSColorTrafo = new(m_pEnviron) class LSColorTrafo(m_pEnviron);
-            m_pLSColorTrafo->ParseMarker(io,len);
-            break;
-          } else {
-            JPG_WARN(NOT_IMPLEMENTED,"Tables::ParseMarker",
-                     "skipping over unknown JPEG LS extensions marker");
-          }
-        }
-        if (len <= 0x02)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-        //
-        // Just skip the contents. For now. More later on.
-        io->SkipBytes(len - 2);
-      }
-      break;
-    case 0xffe0: // APP0: Maybe the JFIF marker.
-      { // APPx markers are not checksummed.
-        io->GetWord();
-        LONG len = io->GetWord();
-        if (len >= 2 + 5 + 2 + 1 + 2 + 2 + 1 + 1) { 
-          const char *id = "JFIF";
-          while(*id) {
-            len--;
-            if (io->Get() != *id)
-              break;
-            id++;
-          }
-          if (*id == 0) {
-            len--;
-            if (io->Get() == 0) {
-              if (m_pResolutionInfo == NULL)
-                m_pResolutionInfo = new(m_pEnviron) class JFIFMarker(m_pEnviron);
-              m_pResolutionInfo->ParseMarker(io,len + 5);
-              break;
-            }
-          }
-        }
-        if (len <= 0x02)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-        //
-        // Just skip the contents. For now. More later on.
-        io->SkipBytes(len - 2);
-      }
-      break;  
-    case 0xffe1: // APP1: Maybe the EXIF marker.
-      { // APPx markers are not checksummed.
-        io->GetWord();
-        LONG len = io->GetWord();
-        if (len >= 2 + 4 + 2 + 2 + 2 + 4 + 2) { 
-          const char *id = "Exif";
-          while(*id) {
-            len--;
-            if (io->Get() != *id)
-              break;
-            id++;
-          }
-          if (*id == 0) {
-            len -= 2;
-            if (io->GetWord() == 0) {
-              if (m_pCameraInfo == NULL)
-                m_pCameraInfo = new(m_pEnviron) class EXIFMarker(m_pEnviron);
-              m_pCameraInfo->ParseMarker(io,len + 4 + 2);
-              break;
-            }
-          }
-        }
-        if (len < 2)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-        //
-        // Just skip the contents. For now. More later on.
-        io->SkipBytes(len - 2);
-      }
-      break;
-    case 0xffeb: // APP11: Maybe the box marker.
-      { // APPx markers are not checksummed.
-        io->GetWord();
-        LONG len = io->GetWord();
-        if (len >= 2 + 2 + 2 + 4 + 4 + 4) { // At least the box header must be present.
-          LONG ci = io->PeekWord();
-          if (ci == 0x4a50) { 
-            class Box *box;
-            // Is the correct CI, assume it is a box.
-            io->GetWord();
-            // 
-            // The rest of the logic is part of the boxing.
-            if (m_pParent)
-              JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                        "Found a box in the residual codestream.");
-            box = Box::ParseBoxMarker(this,m_pBoxList,io,len);
-            //
-            // If the box is complete, check whether we can short-cut the box-search
-            // by storing the data here as soon as the box is ready.
-            if (box) {
-              switch(box->BoxTypeOf()) {
-              case MergingSpecBox::SpecType:
-                if (m_pResidualSpecs)
-                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                            "Found a duplicate Merging Specification Box, there must be at most one.");
-                m_pResidualSpecs  = (class MergingSpecBox *)box;
-                break;
-              case MergingSpecBox::AlphaType:
-                if (m_pAlphaSpecs)
-                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                            "Found a duplicate Alpha Merging Specification Box, there must be at most one.");
-                m_pAlphaSpecs = (class MergingSpecBox *)box;
-                break;
-              case ChecksumBox::Type:
-                if (m_pChecksumBox)
-                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                            "Found a duplicate Checksum Box, there must be at most one.");
-                m_pChecksumBox = (class ChecksumBox *)box;
-                break;
-              case DataBox::AlphaType:
-                {
-                  class Tables *alpha = CreateAlphaTables();
-                  if (alpha->m_pAlphaData)
-                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                              "Found a duplicate Alpha Data Box, there must be at most one.");
-                  alpha->m_pAlphaData = (class DataBox *)box;
-                }
-                break;
-              case DataBox::ResidualType:
-                if (m_pResidualData)
-                  JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                            "Found a duplicate Residual Data Box, there must be at most one.");
-                m_pResidualData   = (class DataBox *)box;
-                break;
-              case DataBox::AlphaResidualType:
-                {
-                  class Tables *alpha = CreateAlphaTables();
-                  if (alpha->m_pResidualData)
-                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                              "Found a duplicate Residual Alpha Data Box, there must be at most one.");
-                  alpha->m_pResidualData = (class DataBox *)box;
-                }
-                break;
-              case DataBox::RefinementType:
-                m_bRefinement = true;
-                break;
-              case DataBox::ResidualRefinementType:
-                CreateResidualTables()->m_bRefinement = true;
-                break;
-              case DataBox::AlphaRefinementType:
-                CreateAlphaTables()->m_bRefinement = true;
-                break;
-              case DataBox::AlphaResidualRefinementType:
-                CreateAlphaTables()->CreateResidualTables()->m_bRefinement = true;
-                break;
-              case InverseToneMappingBox::Type:
-              case FloatToneMappingBox::Type:
-                {
-                  class ToneMapperBox *tmo = dynamic_cast<ToneMapperBox *>(box);
-                  assert(tmo);
-                  if (!m_NameSpace.isUniqueNonlinearity(tmo->TableDestinationOf()))
-                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                              "Malformed JPEG stream - found a doubly used table destination for a nonlinearity box");
-                }
-                break;
-              case LinearTransformationBox::Type:
-              case FloatTransformationBox::Type:
-                {
-                  class MatrixBox *matrix = dynamic_cast<MatrixBox *>(box);
-                  assert(matrix);
-                  if (!m_NameSpace.isUniqueMatrix(matrix->IdOf()))
-                    JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                              "Malformed JPEG stream - found a doubly used table destination for a matrix box");
-                }
-                break;
-              }
-            }
-            break;
-          }
-        }
-        if (len < 2)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-        
-        io->SkipBytes(len - 2);
-      }
-      break;
-    case 0xffee: // APP14: Maybe the adobe marker.
-      { // APPx markers are not checksummed.
-        io->GetWord();
-        LONG len = io->GetWord();
-        if (len == 2 + 5 + 2 + 2 + 2 + 1) { 
-          const char *id = "Adobe";
-          while(*id) {
-            len--;
-            if (io->Get() != *id)
-              break;
-            id++;
-          }
-          if (*id == 0) {
-            if (m_pColorInfo == NULL)
-              m_pColorInfo = new(m_pEnviron) class AdobeMarker(m_pEnviron);
-            m_pColorInfo->ParseMarker(io,len + 5);
-            break;
-          }
-        }
-        if (len < 2)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-        //
-        // Just skip the contents. For now. More later on.
-        io->SkipBytes(len - 2);
-      }
-      break;
-    case 0xffdf: 
-      // EXP marker.    
-      if (m_bFoundExp) {
-        JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","found a double EXP marker between frames");
-      } else {
-        LONG len;
-        UBYTE ehv,evv;
-        //
-        // This is so simple, no need to have a separate class.
-        io->GetWord(); // remove the marker
-        len = io->GetWord();
-        if (len != 3)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","EXP marker size is invalid, must be three");
-        len = io->Get();
-        if (len == ByteStream::EOF)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","unexpected EOF while parsing the EXP marker");
-        ehv = len >> 4;
-        evv = len & 0x0f;
-        if (ehv > 1 || evv > 1)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                    "invalid EXP marker, horizontal and vertical expansion "
-                    "may be at most one");  
-        if (!allowexp)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
-                    "found an EXP marker outside a hierarchical process");
-        m_bFoundExp            = true;
-        m_bHorizontalExpansion = (ehv)?true:false;
-        m_bVerticalExpansion   = (evv)?true:false;
-      }
-      break;
-    case 0xffc0:
-    case 0xffc1:
-    case 0xffc2:
-    case 0xffc3:
-    case 0xffc5:
-    case 0xffc6:
-    case 0xffc7:
-    case 0xffc8:
-    case 0xffc9:
-    case 0xffca:
-    case 0xffcb:
-    case 0xffcd:
-    case 0xffce:
-    case 0xffcf: // all start of frame markers.
-    case 0xffb1: // residual scan
-    case 0xffb2: // residual scan, progressive
-    case 0xffb3: // residual scan, large dct
-    case 0xffb9: // residual scan, ac coded
-    case 0xffba: // residual scan, ac coded, progressive
-    case 0xffbb: // residual scan, ac coded, large dct
-    case 0xffd9: // EOI
-    case 0xffda: // Start of scan.
-    case 0xffde: // DHP
-    case 0xfff7: // JPEG LS SOS
-      return;
-    case 0xffff: // A filler byte followed by a marker. Skip.
-      io->Get();
-      break;
-    case 0xffd0:
-    case 0xffd1:
-    case 0xffd2:
-    case 0xffd3:
-    case 0xffd4:
-    case 0xffd5:
-    case 0xffd6:
-    case 0xffd7: // Restart markers. These should not go here.
-      io->GetWord();
-      JPG_WARN(MALFORMED_STREAM,"Tables::ParseTables","found a stray restart marker segment, ignoring");
-      break;
-    default: 
-      if (marker >= 0xffc0 && (marker < 0xffd0 || marker >= 0xffd8) && marker < 0xfff0) {
-        LONG size;
-        io->GetWord();
-        size = io->GetWord();
-        // Application marker.
-        if (size == ByteStream::EOF)
-          JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","marker incomplete, stream truncated");
-        //
-        if (size <= 0x02)
-          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
-        //
-        // Just skip the contents. For now. More later on.
-        // APPx is not checksummed.
-        io->SkipBytes(size - 2);
-      } else {
-        LONG dt;
-        //
-        JPG_WARN(MALFORMED_STREAM,"Tables::ParseTables",
-                 "found invalid marker, probably a marker size is out of range");
-        // Advance to the next marker manually.
-        io->Get();
-        do {
-          dt = io->Get();
-        } while(dt != 0xff && dt != ByteStream::EOF);
-        //
-        if (dt == 0xff) {
-          io->LastUnDo();
-        } else {
-          return;
-        }
-      }
-    }
-  } while(true);
+/// Tables::ParseTablesIncremental
+// Read an incremental part of the tables, namely the next marker.
+// Returns true in case the tables/misc section is not yet complete,
+// and this function should be called again. Returns false in case
+// the tables/misc section is complete.
+bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,bool allowexp)
+{
+   LONG marker = io->PeekWord();
+   
+   switch(marker) {
+   case 0xffdb: // DQT
+     if (m_pQuant == NULL)
+       m_pQuant = new(m_pEnviron) Quantization(m_pEnviron);
+     if (chk && ChecksumTables()) {
+       class ChecksumAdapter csa(io,chk,false);
+       csa.GetWord();
+       m_pQuant->ParseMarker(&csa);
+     } else {
+       io->GetWord();
+       m_pQuant->ParseMarker(io);
+     }
+     break;
+   case 0xffc4: // DHT 
+     if (m_pHuffman == NULL)
+       m_pHuffman = new(m_pEnviron) HuffmanTable(m_pEnviron);
+     if (chk && ChecksumTables()) {
+       class ChecksumAdapter csa(io,chk,false);
+       csa.GetWord();
+       m_pHuffman->ParseMarker(&csa);
+     } else {
+       io->GetWord();
+       m_pHuffman->ParseMarker(io);
+     }
+     break;
+   case 0xffcc: // DAC
+     if (m_pConditioner == NULL)
+       m_pConditioner = new(m_pEnviron) class ACTable(m_pEnviron);
+     if (chk && ChecksumTables()) {
+       class ChecksumAdapter csa(io,chk,false);
+       csa.GetWord();
+       m_pConditioner->ParseMarker(&csa);
+     } else {
+       io->GetWord();
+       m_pConditioner->ParseMarker(io);
+     }
+     break;
+   case 0xffdd: // DRI
+     if (m_pRestart == NULL)
+       m_pRestart = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron);
+     if (chk && ChecksumTables()) {
+       class ChecksumAdapter csa(io,chk,false);
+       csa.GetWord();
+       m_pRestart->ParseMarker(&csa);
+     } else {
+       io->GetWord();
+       m_pRestart->ParseMarker(io);
+     }
+     break;
+   case 0xfffe: // COM
+     { // The COM-Marker is never checksummed.
+       LONG size; 
+       io->GetWord();
+       size = io->GetWord();
+       // Application marker.
+       if (size == ByteStream::EOF)
+         JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","COM marker incomplete, stream truncated");
+       //
+       if (size <= 0x02)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","COM marker size out of range");
+       //
+       // Just skip the contents. For now. More later on.
+       io->SkipBytes(size - 2);
+     }
+     break; 
+   case 0xfff8: // LSE: JPEG LS extensions marker.
+     { // Not part of a XT stream, thus checksumming is not required.
+       io->GetWord();
+       LONG len = io->GetWord();
+       if (len > 3) {
+         UBYTE id = io->Get();
+         if (id == 1) {
+           // Thresholds marker.
+           if (m_pThresholds == NULL)
+             m_pThresholds = new(m_pEnviron) class Thresholds(m_pEnviron);
+           m_pThresholds->ParseMarker(io,len);
+           break;
+         } else if (id == 2 || id == 3) {
+           JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
+                     "JPEG LS mapping tables are not implemented by this code, sorry");
+         } else if (id == 4) {
+           JPG_THROW(NOT_IMPLEMENTED,"Tables::ParseTables",
+                     "JPEG LS size extensions are not implemented by this code, sorry");
+         } else if (id == 0x0d) {
+           // LS Reversible Color transformation
+           if (m_pLSColorTrafo)
+             JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                       "found duplicate JPEG LS color transformation specification");
+           m_pLSColorTrafo = new(m_pEnviron) class LSColorTrafo(m_pEnviron);
+           m_pLSColorTrafo->ParseMarker(io,len);
+           break;
+         } else {
+           JPG_WARN(NOT_IMPLEMENTED,"Tables::ParseMarker",
+                    "skipping over unknown JPEG LS extensions marker");
+         }
+       }
+       if (len <= 0x02)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+       //
+       // Just skip the contents. For now. More later on.
+       io->SkipBytes(len - 2);
+     }
+     break;
+   case 0xffe0: // APP0: Maybe the JFIF marker.
+     { // APPx markers are not checksummed.
+       io->GetWord();
+       LONG len = io->GetWord();
+       if (len >= 2 + 5 + 2 + 1 + 2 + 2 + 1 + 1) { 
+         const char *id = "JFIF";
+         while(*id) {
+           len--;
+           if (io->Get() != *id)
+             break;
+           id++;
+         }
+         if (*id == 0) {
+           len--;
+           if (io->Get() == 0) {
+             if (m_pResolutionInfo == NULL)
+               m_pResolutionInfo = new(m_pEnviron) class JFIFMarker(m_pEnviron);
+             m_pResolutionInfo->ParseMarker(io,len + 5);
+             break;
+           }
+         }
+       }
+       if (len <= 0x02)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+       //
+       // Just skip the contents. For now. More later on.
+       io->SkipBytes(len - 2);
+     }
+     break;  
+   case 0xffe1: // APP1: Maybe the EXIF marker.
+     { // APPx markers are not checksummed.
+       io->GetWord();
+       LONG len = io->GetWord();
+       if (len >= 2 + 4 + 2 + 2 + 2 + 4 + 2) { 
+         const char *id = "Exif";
+         while(*id) {
+           len--;
+           if (io->Get() != *id)
+             break;
+           id++;
+         }
+         if (*id == 0) {
+           len -= 2;
+           if (io->GetWord() == 0) {
+             if (m_pCameraInfo == NULL)
+               m_pCameraInfo = new(m_pEnviron) class EXIFMarker(m_pEnviron);
+             m_pCameraInfo->ParseMarker(io,len + 4 + 2);
+             break;
+           }
+         }
+       }
+       if (len < 2)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+       //
+       // Just skip the contents. For now. More later on.
+       io->SkipBytes(len - 2);
+     }
+     break;
+   case 0xffeb: // APP11: Maybe the box marker.
+     { // APPx markers are not checksummed.
+       io->GetWord();
+       LONG len = io->GetWord();
+       if (len >= 2 + 2 + 2 + 4 + 4 + 4) { // At least the box header must be present.
+         LONG ci = io->PeekWord();
+         if (ci == 0x4a50) { 
+           class Box *box;
+           // Is the correct CI, assume it is a box.
+           io->GetWord();
+           // 
+           // The rest of the logic is part of the boxing.
+           if (m_pParent)
+             JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                       "Found a box in the residual codestream.");
+           box = Box::ParseBoxMarker(this,m_pBoxList,io,len);
+           //
+           // If the box is complete, check whether we can short-cut the box-search
+           // by storing the data here as soon as the box is ready.
+           if (box) {
+             switch(box->BoxTypeOf()) {
+             case MergingSpecBox::SpecType:
+               if (m_pResidualSpecs)
+                 JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                           "Found a duplicate Merging Specification Box, there must be at most one.");
+               m_pResidualSpecs  = (class MergingSpecBox *)box;
+               break;
+             case MergingSpecBox::AlphaType:
+               if (m_pAlphaSpecs)
+                 JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                           "Found a duplicate Alpha Merging Specification Box, there must be at most one.");
+               m_pAlphaSpecs = (class MergingSpecBox *)box;
+               break;
+             case ChecksumBox::Type:
+               if (m_pChecksumBox)
+                 JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                           "Found a duplicate Checksum Box, there must be at most one.");
+               m_pChecksumBox = (class ChecksumBox *)box;
+               break;
+             case DataBox::AlphaType:
+               {
+                 class Tables *alpha = CreateAlphaTables();
+                 if (alpha->m_pAlphaData)
+                   JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                             "Found a duplicate Alpha Data Box, there must be at most one.");
+                 alpha->m_pAlphaData = (class DataBox *)box;
+               }
+               break;
+             case DataBox::ResidualType:
+               if (m_pResidualData)
+                 JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                           "Found a duplicate Residual Data Box, there must be at most one.");
+               m_pResidualData   = (class DataBox *)box;
+               break;
+             case DataBox::AlphaResidualType:
+               {
+                 class Tables *alpha = CreateAlphaTables();
+                 if (alpha->m_pResidualData)
+                   JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                             "Found a duplicate Residual Alpha Data Box, there must be at most one.");
+                 alpha->m_pResidualData = (class DataBox *)box;
+               }
+               break;
+             case DataBox::RefinementType:
+               m_bRefinement = true;
+               break;
+             case DataBox::ResidualRefinementType:
+               CreateResidualTables()->m_bRefinement = true;
+               break;
+             case DataBox::AlphaRefinementType:
+               CreateAlphaTables()->m_bRefinement = true;
+               break;
+             case DataBox::AlphaResidualRefinementType:
+               CreateAlphaTables()->CreateResidualTables()->m_bRefinement = true;
+               break;
+             case InverseToneMappingBox::Type:
+             case FloatToneMappingBox::Type:
+               {
+                 class ToneMapperBox *tmo = dynamic_cast<ToneMapperBox *>(box);
+                 assert(tmo);
+                 if (!m_NameSpace.isUniqueNonlinearity(tmo->TableDestinationOf()))
+                   JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                             "Malformed JPEG stream - found a doubly used table destination for a nonlinearity box");
+               }
+               break;
+             case LinearTransformationBox::Type:
+             case FloatTransformationBox::Type:
+               {
+                 class MatrixBox *matrix = dynamic_cast<MatrixBox *>(box);
+                 assert(matrix);
+                 if (!m_NameSpace.isUniqueMatrix(matrix->IdOf()))
+                   JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                             "Malformed JPEG stream - found a doubly used table destination for a matrix box");
+               }
+               break;
+             }
+           }
+           break;
+         }
+       }
+       if (len < 2)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+       
+       io->SkipBytes(len - 2);
+     }
+     break;
+   case 0xffee: // APP14: Maybe the adobe marker.
+     { // APPx markers are not checksummed.
+       io->GetWord();
+       LONG len = io->GetWord();
+       if (len == 2 + 5 + 2 + 2 + 2 + 1) { 
+         const char *id = "Adobe";
+         while(*id) {
+           len--;
+           if (io->Get() != *id)
+             break;
+           id++;
+         }
+         if (*id == 0) {
+           if (m_pColorInfo == NULL)
+             m_pColorInfo = new(m_pEnviron) class AdobeMarker(m_pEnviron);
+           m_pColorInfo->ParseMarker(io,len + 5);
+           break;
+         }
+       }
+       if (len < 2)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+       //
+       // Just skip the contents. For now. More later on.
+       io->SkipBytes(len - 2);
+     }
+     break;
+   case 0xffdf: 
+     // EXP marker.    
+     if (m_bFoundExp) {
+       JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","found a double EXP marker between frames");
+     } else {
+       LONG len;
+       UBYTE ehv,evv;
+       //
+       // This is so simple, no need to have a separate class.
+       io->GetWord(); // remove the marker
+       len = io->GetWord();
+       if (len != 3)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","EXP marker size is invalid, must be three");
+       len = io->Get();
+       if (len == ByteStream::EOF)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","unexpected EOF while parsing the EXP marker");
+       ehv = len >> 4;
+       evv = len & 0x0f;
+       if (ehv > 1 || evv > 1)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                   "invalid EXP marker, horizontal and vertical expansion "
+                   "may be at most one");  
+       if (!allowexp)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables",
+                   "found an EXP marker outside a hierarchical process");
+       m_bFoundExp            = true;
+       m_bHorizontalExpansion = (ehv)?true:false;
+       m_bVerticalExpansion   = (evv)?true:false;
+     }
+     break;
+   case 0xffc0:
+   case 0xffc1:
+   case 0xffc2:
+   case 0xffc3:
+   case 0xffc5:
+   case 0xffc6:
+   case 0xffc7:
+   case 0xffc8:
+   case 0xffc9:
+   case 0xffca:
+   case 0xffcb:
+   case 0xffcd:
+   case 0xffce:
+   case 0xffcf: // all start of frame markers.
+   case 0xffb1: // residual scan
+   case 0xffb2: // residual scan, progressive
+   case 0xffb3: // residual scan, large dct
+   case 0xffb9: // residual scan, ac coded
+   case 0xffba: // residual scan, ac coded, progressive
+   case 0xffbb: // residual scan, ac coded, large dct
+   case 0xffd9: // EOI
+   case 0xffda: // Start of scan.
+   case 0xffde: // DHP
+   case 0xfff7: // JPEG LS SOS
+     return false;
+   case 0xffff: // A filler byte followed by a marker. Skip.
+     io->Get();
+     break;
+   case 0xffd0:
+   case 0xffd1:
+   case 0xffd2:
+   case 0xffd3:
+   case 0xffd4:
+   case 0xffd5:
+   case 0xffd6:
+   case 0xffd7: // Restart markers. These should not go here.
+     io->GetWord();
+     JPG_WARN(MALFORMED_STREAM,"Tables::ParseTables","found a stray restart marker segment, ignoring");
+     break;
+   default: 
+     if (marker >= 0xffc0 && (marker < 0xffd0 || marker >= 0xffd8) && marker < 0xfff0) {
+       LONG size;
+       io->GetWord();
+       size = io->GetWord();
+       // Application marker.
+       if (size == ByteStream::EOF)
+         JPG_THROW(UNEXPECTED_EOF,"Tables::ParseTables","marker incomplete, stream truncated");
+       //
+       if (size <= 0x02)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+       //
+       // Just skip the contents. For now. More later on.
+       // APPx is not checksummed.
+       io->SkipBytes(size - 2);
+     } else {
+       LONG dt;
+       //
+       JPG_WARN(MALFORMED_STREAM,"Tables::ParseTables",
+                "found invalid marker, probably a marker size is out of range");
+       // Advance to the next marker manually.
+       io->Get();
+       do {
+         dt = io->Get();
+       } while(dt != 0xff && dt != ByteStream::EOF);
+       //
+       if (dt == 0xff) {
+         io->LastUnDo();
+       } else {
+         return false;
+       }
+     }
+   }
+
+   return true;
 }
 ///
 
@@ -1582,21 +1608,41 @@ void Tables::ForceColorTrafoOff(void)
 }
 ///
 
+/// Tables::ForceIntegerDCT
+// Enforce the usage of the integer DCT regardless of what the markers
+// tell. This is for testing the precision of the integer vs. fixed point
+// DCT.
+void Tables::ForceIntegerDCT(void)
+{
+  m_bEnforceLosslessDCT = true;
+
+  if (m_pResidualTables)
+    m_pResidualTables->ForceIntegerDCT();
+
+  if (m_pAlphaTables)
+    m_pAlphaTables->ForceIntegerDCT();
+}
+///
+
 /// Tables::UseLosslessDCT
 // Check whether to use the Lossless DCT transformation.
 bool Tables::UseLosslessDCT(void) const
 {
-  class MergingSpecBox *specs = ResidualSpecsOf();
+  if (m_bEnforceLosslessDCT) {
+    return true;
+  } else {
+    class MergingSpecBox *specs = ResidualSpecsOf();
   
-  if (specs) {
-    if (m_pParent) {
-      return (specs->RDCTProcessOf() == DCTBox::IDCT);
-    } else {
-      return (specs->LDCTProcessOf() == DCTBox::IDCT);
+    if (specs) {
+      if (m_pParent) {
+        return (specs->RDCTProcessOf() == DCTBox::IDCT);
+      } else {
+        return (specs->LDCTProcessOf() == DCTBox::IDCT);
+      }
     }
+    
+    return false;
   }
-
-  return false;
 }
 ///
 

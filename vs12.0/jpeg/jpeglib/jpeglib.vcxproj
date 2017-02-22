@@ -81,6 +81,7 @@
     <ClCompile Include="..\..\..\control\linemerger.cpp" />
     <ClCompile Include="..\..\..\control\residualblockhelper.cpp" />
     <ClCompile Include="..\..\..\dct\dct.cpp" />
+    <ClCompile Include="..\..\..\dct\deringing.cpp" />
     <ClCompile Include="..\..\..\dct\idct.cpp" />
     <ClCompile Include="..\..\..\dct\liftingdct.cpp" />
     <ClCompile Include="..\..\..\interface\bitmaphook.cpp" />
@@ -108,6 +109,7 @@
     <ClCompile Include="..\..\..\marker\jfifmarker.cpp" />
     <ClCompile Include="..\..\..\marker\lscolortrafo.cpp" />
     <ClCompile Include="..\..\..\marker\quantization.cpp" />
+    <ClCompile Include="..\..\..\marker\quantizationtable.cpp" />
     <ClCompile Include="..\..\..\marker\restartintervalmarker.cpp" />
     <ClCompile Include="..\..\..\marker\scan.cpp" />
     <ClCompile Include="..\..\..\marker\scantypes.cpp" />
@@ -209,6 +211,7 @@
     <ClInclude Include="..\..\..\control\residualblockhelper.hpp" />
     <ClInclude Include="..\..\..\control\residualbuffer.hpp" />
     <ClInclude Include="..\..\..\dct\dct.hpp" />
+    <ClInclude Include="..\..\..\dct\deringing.hpp" />
     <ClInclude Include="..\..\..\dct\idct.hpp" />
     <ClInclude Include="..\..\..\dct\liftingdct.hpp" />
     <ClInclude Include="..\..\..\interface\bitmaphook.hpp" />
@@ -236,6 +239,7 @@
     <ClInclude Include="..\..\..\marker\jfifmarker.hpp" />
     <ClInclude Include="..\..\..\marker\lscolortrafo.hpp" />
     <ClInclude Include="..\..\..\marker\quantization.hpp" />
+    <ClInclude Include="..\..\..\marker\quantizationtable.hpp" />
     <ClInclude Include="..\..\..\marker\restartintervalmarker.hpp" />
     <ClInclude Include="..\..\..\marker\scan.hpp" />
     <ClInclude Include="..\..\..\marker\scantypes.hpp" />

@@ -427,3 +427,18 @@ part of the regular libjpeg distribution at github or www.jpeg.org:
 -h 		    Optimized Huffman coding (always used, unless noted
 		    otherwise, see section 3.4)
 
+--------------------------------------------------------------------------
+
+Release 1.53:
+
+This release includes additional functionality to inject markers, or
+retrieve markers from a codestream while reading. For that, set
+the JPGTAG_ENCODER_STOP tag of the JPEG::Write() call to a bitmask
+where the encoder should interrupt writing data (this flag already
+existed before) then write custom data with JPEG::WriteMarker(), then
+continue with JPEG::Write(). On decoding, set JPGTAG_DECODER_STOP to
+a bitmask where to stop for markers, then identify markers with
+JPEG::PeekMarker(), and retrieve them with JPEG::ReadMarker(). Details
+can be found in cmd/encodec.cpp for encoding, and cmd/reconstruct.cpp.
+
+Otherwise, no functional changes.

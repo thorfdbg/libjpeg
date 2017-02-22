@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.127 2016/10/28 13:58:54 thor Exp $
+** $Id: frame.cpp,v 1.128 2017/02/21 15:48:21 thor Exp $
 **
 */
 
@@ -62,7 +62,8 @@ Frame::Frame(class Image *image,class Tables *tables,ScanType t)
     m_pScan(NULL), m_pLast(NULL), m_pCurrent(NULL), m_pImage(NULL),
     m_pBlockHelper(NULL), m_Type(t), m_ucPrecision(0), m_ucDepth(0), 
     m_ppComponent(NULL), m_pCurrentRefinement(NULL), m_pAdapter(NULL),
-    m_bWriteDNL(false), m_bBuildRefinement(false), m_bCreatedRefinement(false), 
+    m_bWriteDNL(false), m_bBuildRefinement(false),
+    m_bCreatedRefinement(false), m_bEndOfFrame(false), m_bStartedTables(false),
     m_usRefinementCount(0)
 {
 }
@@ -745,17 +746,13 @@ class Scan *Frame::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth
   return m_pScan;
 }
 ///
- 
-/// Frame::StartParseScan
-class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
+
+/// Frame::AttachScan
+// Attach a new scan to the frame, return the scan
+// and make this the current scan.
+class Scan *Frame::AttachScan(void)
 {
-  class Scan *scan;
-
-  if (m_pImage == NULL)
-    JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartParseScan",
-              "frame is currently not available for parsing");
-
-  scan = new(m_pEnviron) class Scan(this);
+  class Scan *scan = new(m_pEnviron) class Scan(this);
 
   if (m_pScan == NULL) {
     assert(m_pLast == NULL);
@@ -764,9 +761,23 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
     assert(m_pLast != NULL);
     m_pLast->TagOn(scan);
   }
-  m_pLast    = scan;
-  m_pCurrent = scan; 
+  m_pLast          = scan;
+  m_pCurrent       = scan; 
+  m_bStartedTables = false;
+  
+  return scan;
+}
+///
 
+/// Frame::StartParseScan
+class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
+{
+  if (m_pImage == NULL)
+    JPG_THROW(OBJECT_DOESNT_EXIST,"Frame::StartParseScan",
+              "frame is currently not available for parsing");
+  //
+  // Not yet reached the EOF.
+  m_bEndOfFrame = false;
   //
   // If there is a residual marker, and this is the final scan,
   // build it now.
@@ -780,12 +791,23 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
     m_pTables->ParseTables(stream,NULL);
     m_bBuildRefinement = false;
     if (ScanForScanHeader(stream)) {
+      class Scan *scan = AttachScan();
       scan->StartParseHiddenRefinementScan(stream,m_pImage);
       return scan;
     }
   } else {
     // Regular scan.
-    m_pTables->ParseTables(io,chk);
+    if (m_bStartedTables) {
+      if (m_pTables->ParseTablesIncremental(io,chk)) {
+        // Re-iterate the scan header parsing, not yet done.
+        return NULL;
+      }
+    } else {
+      // Indicate that we currently do not yet have a scan, neither an EOF.
+      m_pTables->ParseTablesIncrementalInit();
+      m_bStartedTables = true;
+      return NULL;
+    }
     //
     // The checksum could also come here, i.e. in the scan header.
     chk = m_pParent->CreateChecksumWhenNeeded(chk);
@@ -798,19 +820,23 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
       // call.
       m_pAdapter = new(m_pEnviron) class ChecksumAdapter(io,chk,false);
       if (ScanForScanHeader(m_pAdapter)) {
+        class Scan *scan = AttachScan();
         scan->ParseMarker(m_pAdapter);
         scan->StartParseScan(m_pAdapter,chk,m_pImage);
         return scan;
       }
     } else {
       if (ScanForScanHeader(io)) {
+        class Scan *scan = AttachScan();
         scan->ParseMarker(io);
         scan->StartParseScan(io,chk,m_pImage);
+        return scan;
       }
-      return scan;
     }
   }
 
+  m_bEndOfFrame    = true;
+  m_bStartedTables = false;
   return NULL;
 }
 ///

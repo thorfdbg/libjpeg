@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.hpp,v 1.87 2016/10/28 13:58:53 thor Exp $
+** $Id: tables.hpp,v 1.89 2017/02/21 15:48:21 thor Exp $
 **
 */
 
@@ -193,6 +193,10 @@ class Tables: public JKeeper {
   bool                           m_bHorizontalExpansion;
   bool                           m_bVerticalExpansion;
   //
+  // If this is set, the boxes are ignored and the integer DCT is used,
+  // regardless what.
+  bool                           m_bEnforceLosslessDCT;
+  //
   // Build a tone mapping for the type (base-tag) and the given tag list
   // The base tag is the tag-id for the type of the box. All others are offsets.
   class ToneMapperBox *BuildToneMapping(const struct JPG_TagItem *tags,
@@ -237,6 +241,16 @@ public:
   // If the checksum is non-NULL, all data except boxes and comments
   // are checksummed.
   void ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp = false);
+  //
+  // Prepare reading an incremental part of the tables. This here must be called first
+  // before continuing with one or multiple ParseTableIncremental calls.
+  void ParseTablesIncrementalInit(bool allowexp = false);
+  //
+  // Read an incremental part of the tables, namely the next marker.
+  // Returns true in case the tables/misc section is not yet complete,
+  // and this function should be called again. Returns false in case
+  // the tables/misc section is complete.
+  bool ParseTablesIncremental(class ByteStream *io,class Checksum *chk,bool allowexp = false);
   //
   // Write the tables to the codestream.
   void WriteTables(class ByteStream *io);
@@ -377,6 +391,11 @@ public:
   //
   // Disable the color transformation even in the absense of the Adobe marker.
   void ForceColorTrafoOff(void);
+  //
+  // Enforce the usage of the integer DCT regardless of what the markers
+  // tell. This is for testing the precision of the integer vs. fixed point
+  // DCT.
+  void ForceIntegerDCT(void);
   //
   // Test whether this setup has designated chroma components. For the
   // legacy codestream, this tests whether there is an L transformation in

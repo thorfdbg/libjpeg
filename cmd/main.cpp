@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@
 ** It is here to serve as an entry point for the command line image
 ** compressor.
 **
-** $Id: main.cpp,v 1.209 2016/10/28 13:58:52 thor Exp $
+** $Id: main.cpp,v 1.211 2017/02/21 15:48:17 thor Exp $
 **
 */
 
@@ -444,6 +444,10 @@ int main(int argc,char **argv)
       argc--;
     } else if (!strcmp(argv[1],"-R")) {
       hiddenbits = ParseInt(argc,argv);
+      if (hiddenbits < 0 || hiddenbits > 4) {
+        fprintf(stderr,"JPEG XT allows only between 0 and 4 refinement bits.\n");
+        return 20;
+      }
     } else if (!strcmp(argv[1],"-rR")) {
       riddenbits = ParseInt(argc,argv);
     } else if (!strcmp(argv[1],"-n")) {
@@ -691,7 +695,7 @@ int main(int argc,char **argv)
   }
 
   if (quality < 0 && lossless == false && lsmode < 0) {
-    Reconstruct(argv[1],argv[2],colortrafo,alpha);
+    Reconstruct(argv[1],argv[2],colortrafo,alpha,serms);
   } else {
     switch(profile) {
     case 0:

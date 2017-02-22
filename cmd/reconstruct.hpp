@@ -6,7 +6,7 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2015 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
     Accusoft.
 
     This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 ** command line interface. It doesn't do much except
 ** calling libjpeg.
 **
-** $Id: reconstruct.hpp,v 1.1 2015/03/11 16:02:42 thor Exp $
+** $Id: reconstruct.hpp,v 1.2 2017/01/30 19:41:06 thor Exp $
 **
 */
 
@@ -36,7 +36,7 @@
 #define CMD_RECONSTRUCT_HPP
 
 /// Prototypes
-extern void Reconstruct(const char *infile,const char *outfile,int colortrafo,const char *alpha);
+extern void Reconstruct(const char *infile,const char *outfile,int colortrafo,const char *alpha,bool serms);
 ///
 
 ///
