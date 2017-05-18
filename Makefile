@@ -1,15 +1,7 @@
 #! make
-#*************************************************************************
-#* Copyright (c) 2011-2013 Accusoft Corporation                         **
-#*                                                                      **
-#* Written by Thomas Richter (THOR Software - thor@math.tu-berlin.de)   **
-#* Sponsored by Accusoft Corporation, Tampa, FL and                     **
-#* the Computing Center of the University of Stuttgart                  **
-#*************************************************************************
-#
 #######################################################################
 ##
-## $Id: Makefile,v 1.11 2016/06/22 07:02:15 thor Exp $
+## $Id: Makefile,v 1.12 2017/03/26 09:06:06 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,

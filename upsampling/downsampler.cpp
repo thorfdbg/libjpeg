@@ -26,7 +26,7 @@
 /*
 ** The actual downsampling implementation.
 **
-** $Id: downsampler.cpp,v 1.9 2014/09/30 08:33:18 thor Exp $
+** $Id: downsampler.cpp,v 1.10 2017/05/18 09:28:43 thor Exp $
 **
 */
 
@@ -63,6 +63,8 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
 {
   LONG ofs = (bx * sx) << 3; // first pixel in the buffer.
   LONG yfs = (by * sy) << 3; // first line.
+  LONG *btop = buffer;
+  LONG *bval = NULL;
   int lines = 0; // number of lines already managed to be summed up.
   int cnt   = 8; // number of output lines to go.
   struct Line *line = m_pInputBuffer;
@@ -81,8 +83,17 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
   do {
     //
     // Start of a new line clear the entire output buffer.
-    if (lines == 0)
-      buffer[0] = buffer[1] = buffer[2] = buffer[3] = buffer[4] = buffer[5] = buffer[6] = buffer[7] = 0;
+    if (lines == 0) {
+      // If there are no longer any lines to pull from, just replicate the last buffered line
+      if (line || bval == NULL) {
+        buffer[0] = buffer[1] = buffer[2] = buffer[3] = buffer[4] = buffer[5] = buffer[6] = buffer[7] = 0;
+      } else {
+        memcpy(buffer,bval, 8 * sizeof(LONG));
+        bval -= 8;
+        if (bval < btop)
+          bval = btop;
+      }
+    }
     //
     // Still something in the image?
     if (line) {
@@ -121,6 +132,8 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
           buffer[0] /= norm;buffer[1] /= norm;buffer[2] /= norm;buffer[3] /= norm;
           buffer[4] /= norm;buffer[5] /= norm;buffer[6] /= norm;buffer[7] /= norm;
         }
+        // Keep the last valid (filled) buffer line
+        bval     = buffer;
       }
       // Start the next buffer line.
       buffer    += 8;
