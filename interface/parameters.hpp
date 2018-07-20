@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +38,7 @@
  * client application to define all the parameters the jpeg library
  * needs. 
  *
- * $Id: parameters.hpp,v 1.66 2016/10/28 13:58:54 thor Exp $
+ * $Id: parameters.hpp,v 1.68 2017/11/27 16:24:38 thor Exp $
  *
  * These parameters are specified by the user upon invocation of
  * the library.
@@ -178,6 +188,10 @@
 // another tag list which defines the progression. There should be as many
 // tags as there are scans.
 #define JPGTAG_IMAGE_SCAN (JPGTAG_IMAGE_BASE + 0x0e)
+//
+// Number of entries in the subsampling array. This should be identical to the
+// image depth.
+#define JPGTAG_IMAGE_SUBLENGTH           (JPGTAG_IMAGE_BASE + 0x0f)
 //
 // Enable noise shaping of the coding residuals. This lowers the coding
 // performance but improvides the visual performance of the image.
@@ -1022,6 +1036,12 @@
 // Currently unusued.
 #define JPGTAG_DECODER_MINCOMPONENT    (JPGTAG_DECODER_BASE + 0x05)
 #define JPGTAG_DECODER_MAXCOMPONENT    (JPGTAG_DECODER_BASE + 0x06)
+
+//
+// Set this to TRUE to enable upsampling. The default is TRUE, hence
+// this allows to disable upsampling.
+#define JPGTAG_DECODER_UPSAMPLE        (JPGTAG_DECODER_BASE + 0x08)
+
 //
 // Parsing flags - these define when the decoder (or encoder) stop, i.e.
 // after which syntax elements the call returns. If it does, the code needs

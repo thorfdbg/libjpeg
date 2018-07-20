@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +40,7 @@
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.37 2016/10/28 13:58:53 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.41 2017/11/28 16:13:54 thor Exp $
 **
 */
 
@@ -191,7 +201,9 @@ void HierarchicalBitmapRequester::PrepareForEncoding(void)
 
       if (sx > 1 || sy > 1) {
         m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-                                                                m_ulPixelWidth,m_ulPixelHeight);
+                                                                m_ulPixelWidth,m_ulPixelHeight,
+                                                                m_pFrame->TablesOf()->
+                                                                isDownsamplingInterpolated());
         m_bSubsampling     = true;
       }
     }
@@ -230,7 +242,8 @@ void HierarchicalBitmapRequester::PrepareForDecoding(void)
 
       if (sx > 1 || sy > 1) {
         m_ppUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-                                                          m_ulPixelWidth,m_ulPixelHeight);
+                                                          m_ulPixelWidth,m_ulPixelHeight,
+                                                          m_pFrame->TablesOf()->isChromaCentered());
         m_bSubsampling   = true;
       }
     }
@@ -244,9 +257,10 @@ void HierarchicalBitmapRequester::PrepareForDecoding(void)
 
 /// HierarchicalBitmapRequester::ColorTrafoOf
 // Return the color transformer responsible for this scan.
-class ColorTrafo *HierarchicalBitmapRequester::ColorTrafoOf(bool encoding)
+class ColorTrafo *HierarchicalBitmapRequester::ColorTrafoOf(bool encoding,bool disabletorgb)
 {
-  return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,NULL,PixelTypeOf(),encoding);
+  return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,NULL,PixelTypeOf(),
+                                            encoding,disabletorgb);
 }
 ///
 
@@ -499,6 +513,8 @@ void HierarchicalBitmapRequester::RequestUserDataForDecoding(class BitMapHook *b
 {
 #if ACCUSOFT_CODE
   int i;
+
+  ResetBitmaps();
   
   if (m_pLargestScale->FrameOf()->WidthOf()   != m_pFrame->WidthOf() ||
       (m_pLargestScale->FrameOf()->HeightOf() != m_pFrame->HeightOf() &&
@@ -541,11 +557,9 @@ void HierarchicalBitmapRequester::RequestUserDataForDecoding(class BitMapHook *b
 void HierarchicalBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
 {
 #if ACCUSOFT_CODE
-  class ColorTrafo *ctrafo = ColorTrafoOf(true);
+  class ColorTrafo *ctrafo = ColorTrafoOf(true,false);
   int i;
   // 
-  // Now that the pixel type is known, request the color transformer.
-  ctrafo = ColorTrafoOf(true);
 
   if (m_bSubsampling) { 
     RectAngle<LONG> r;
@@ -672,13 +686,13 @@ void HierarchicalBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
 
 /// HierarchicalBitmapRequester::ReconstructRegion
 // Reconstruct a block, or part of a block
-void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &region,const struct RectangleRequest *rr)
+void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgregion,const struct RectangleRequest *rr)
 {
 #if ACCUSOFT_CODE
-  class ColorTrafo *ctrafo = ColorTrafoOf(false);
+  class ColorTrafo *ctrafo = ColorTrafoOf(false,!rr->rr_bColorTrafo);
   UBYTE i;
   
-  if (m_bSubsampling) { 
+  if (m_bSubsampling && rr->rr_bUpsampling) { 
     for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
       class Component *comp = m_pFrame->ComponentOf(i);
       UBYTE subx            = comp->SubXOf();
@@ -695,10 +709,10 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &regio
         LONG rx               = (subx > 1)?(1):(0);
         LONG ry               = (suby > 1)?(1):(0);
         // The +/-1 include additional lines required for subsampling expansion
-        blocks.ra_MinX        = ((region.ra_MinX / subx - rx) >> 3);
-        blocks.ra_MaxX        = ((region.ra_MaxX / subx + rx) >> 3);
-        blocks.ra_MinY        = ((region.ra_MinY / suby - ry) >> 3);
-        blocks.ra_MaxY        = ((region.ra_MaxY / suby + ry) >> 3);
+        blocks.ra_MinX        = ((orgregion.ra_MinX / subx - rx) >> 3);
+        blocks.ra_MaxX        = ((orgregion.ra_MaxX / subx + rx) >> 3);
+        blocks.ra_MinY        = ((orgregion.ra_MinY / suby - ry) >> 3);
+        blocks.ra_MaxY        = ((orgregion.ra_MaxY / suby + ry) >> 3);
         // Clip.
         if (blocks.ra_MinX < 0)        blocks.ra_MinX = 0;
         if (blocks.ra_MaxX >= bwidth)  blocks.ra_MaxX = bwidth - 1;
@@ -723,24 +737,24 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &regio
     // Now push blocks into the color transformer from the upsampler.
     {
       RectAngle<LONG> r;
-      ULONG minx   = region.ra_MinX >> 3;
-      ULONG maxx   = region.ra_MaxX >> 3;
-      ULONG miny   = region.ra_MinY >> 3;
-      ULONG maxy   = region.ra_MaxY >> 3;
+      ULONG minx   = orgregion.ra_MinX >> 3;
+      ULONG maxx   = orgregion.ra_MaxX >> 3;
+      ULONG miny   = orgregion.ra_MinY >> 3;
+      ULONG maxy   = orgregion.ra_MaxY >> 3;
       ULONG x,y;
       
       if (maxy > m_ulMaxMCU)
         maxy = m_ulMaxMCU;
 
-      for(y = miny,r.ra_MinY = region.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
+      for(y = miny,r.ra_MinY = orgregion.ra_MinY;y <= maxy;y++,r.ra_MinY = r.ra_MaxY + 1) {
         r.ra_MaxY = (r.ra_MinY & -8) + 7;
-        if (r.ra_MaxY > region.ra_MaxY)
-          r.ra_MaxY = region.ra_MaxY;
+        if (r.ra_MaxY > orgregion.ra_MaxY)
+          r.ra_MaxY = orgregion.ra_MaxY;
         
-        for(x = minx,r.ra_MinX = region.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
+        for(x = minx,r.ra_MinX = orgregion.ra_MinX;x <= maxx;x++,r.ra_MinX = r.ra_MaxX + 1) {
           r.ra_MaxX = (r.ra_MinX & -8) + 7;
-          if (r.ra_MaxX > region.ra_MaxX)
-            r.ra_MaxX = region.ra_MaxX;
+          if (r.ra_MaxX > orgregion.ra_MaxX)
+            r.ra_MaxX = orgregion.ra_MaxX;
           
           for(i = 0;i < m_ucCount;i++) {
             if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
@@ -771,7 +785,8 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &regio
   } else { 
     // direct case, no upsampling required, residual coding possible, but not applied here.
     RectAngle<LONG> r;
-    class ColorTrafo *ctrafo = ColorTrafoOf(false);
+    RectAngle<LONG> region = orgregion;
+    SubsampledRegion(region,rr);
     ULONG minx   = region.ra_MinX >> 3;
     ULONG maxx   = region.ra_MaxX >> 3;
     ULONG miny   = region.ra_MinY >> 3;
@@ -810,7 +825,7 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &regio
       } // of loop over x
       //
       // Advance the rows.
-      for(i = 0;i < m_ucCount;i++) {
+      for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
         Release8Lines(i);
       }
     }

@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +36,7 @@
 /*
 ** Parameter definition and encoding for profile B.
 **
-** $Id: encodeb.cpp,v 1.39 2016/10/28 13:58:52 thor Exp $
+** $Id: encodeb.cpp,v 1.40 2017/11/28 16:07:22 thor Exp $
 **
 */
 

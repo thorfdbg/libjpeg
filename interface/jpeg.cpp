@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +41,7 @@
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.cpp,v 1.26 2017/02/21 15:48:21 thor Exp $
+** $Id: jpeg.cpp,v 1.28 2017/11/28 13:08:08 thor Exp $
 **
 */
 
@@ -48,6 +58,7 @@
 #include "codestream/tables.hpp"
 #include "marker/frame.hpp"
 #include "marker/scan.hpp"
+#include "marker/component.hpp"
 #include "boxes/mergingspecbox.hpp"
 #include "boxes/checksumbox.hpp"
 #include "tools/checksum.hpp"
@@ -870,8 +881,39 @@ void JPEG::InternalGetInformation(struct JPG_TagItem *tags)
     class MergingSpecBox *specs = tables->ResidualSpecsOf();
     class MergingSpecBox *alpha = tables->AlphaSpecsOf();
     class Image *alphachannel   = m_pImage->AlphaChannelOf();
+    ULONG tablesz               = tags->GetTagData(JPGTAG_IMAGE_SUBLENGTH);
+    UBYTE *subxtable            = NULL;
+    UBYTE *subytable            = NULL;
+
+    if (tablesz) {
+      UWORD c,depth = m_pImage->DepthOf();
+      subxtable = (UBYTE *)tags->GetTagPtr(JPGTAG_IMAGE_SUBX);
+      subytable = (UBYTE *)tags->GetTagPtr(JPGTAG_IMAGE_SUBY);
+      if (subxtable)
+        memset(subxtable,0,tablesz);
+      if (subytable)
+        memset(subytable,0,tablesz);
+      //
+      // Request now the subsampling parameters of the components in the image.
+      if (depth > tablesz)
+        depth = tablesz;
+      for(c = 0;c < depth;c++) {
+        class Frame *frame    = m_pImage->FirstFrameOf();
+        if (frame) {
+          class Component *comp = frame->ComponentOf(c);
+          if (comp) {
+            if (subxtable)
+              subxtable[c] = comp->SubXOf();
+            if (subytable)
+              subytable[c] = comp->SubYOf();
+          }
+        }
+      }
+    }
 
     GetOutputInformation(specs,tags);
+
+    
     
     if (alpha && alphachannel) {
       ULONG r,g,b;

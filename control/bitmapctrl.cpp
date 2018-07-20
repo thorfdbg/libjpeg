@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 **
 ** Basic control helper for requesting and releasing bitmap data.
 **
-** $Id: bitmapctrl.cpp,v 1.17 2015/03/12 15:58:31 thor Exp $
+** $Id: bitmapctrl.cpp,v 1.18 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -203,7 +213,21 @@ void BitmapCtrl::ExtractLDRBitmap(struct ImageBitMap *ibm,const RectAngle<LONG> 
 }
 ///
 
- 
+/// BitmapCtrl::ResetBitmaps
+// Ensure that unused bitmaps are cleared so we do overwrite memory that is
+// not requested.
+void BitmapCtrl::ResetBitmaps(void)
+{
+  UBYTE i;
+  
+  for(i = 0;i < m_ucCount;i++) {
+    m_ppBitmap[i]->ibm_pData          = NULL;
+    m_ppBitmap[i]->ibm_ucPixelType    = 0;
+    m_ppBitmap[i]->ibm_cBytesPerPixel = 0;
+    m_ppBitmap[i]->ibm_lBytesPerRow   = 0;
+  }
+}
+///
 
 /// BitmapCtrl::ReleaseUserDataFromEncoding 
 // Release user data after encoding.
@@ -233,8 +257,33 @@ void BitmapCtrl::ReleaseUserDataFromDecoding(class BitMapHook *bmh,const struct 
 // First step of a region decoder: Find the region that can be provided in the next step.
 void BitmapCtrl::CropDecodingRegion(RectAngle<LONG> &region,const struct RectangleRequest *)
 {
+  // The easy case
   ClipToImage(region);
 }
 ///
 
-
+/// BitmapCtrl::SubsampledRegion
+// Compute the subsampled rectangle in case we are not upsampling from the
+// region in the rectangle request.
+void BitmapCtrl::SubsampledRegion(RectAngle<LONG> &rect,const struct RectangleRequest *rr) const
+{
+  if (rr->rr_bUpsampling == false) {
+    class Component *comp;
+    UBYTE subx,suby;
+    //
+    if (rr->rr_bColorTrafo)
+      JPG_THROW(INVALID_PARAMETER,"BitmapCtrl::SubsampledRegion","cannot color transform non-upsampled data");
+    if (rr->rr_usFirstComponent != rr->rr_usLastComponent)
+      JPG_THROW(INVALID_PARAMETER,"BitmapCtrl::SubsampledRegion","if upsampling is disabled, components can only be reconstructed one by one");
+    //
+    comp = m_pFrame->ComponentOf(rr->rr_usFirstComponent);
+    subx = comp->SubXOf();
+    suby = comp->SubYOf();
+    //
+    rect.ra_MinX = (rect.ra_MinX + subx - 1) / subx;
+    rect.ra_MaxX = (rect.ra_MaxX + subx    ) / subx - 1;
+    rect.ra_MinY = (rect.ra_MinY + suby - 1) / suby;
+    rect.ra_MaxY = (rect.ra_MaxY + suby    ) / suby - 1;
+  }
+}
+///

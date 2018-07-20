@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +38,7 @@
 ** command line interface. It doesn't do much except
 ** calling libjpeg.
 **
-** $Id: reconstruct.hpp,v 1.2 2017/01/30 19:41:06 thor Exp $
+** $Id: reconstruct.hpp,v 1.4 2017/11/28 13:08:03 thor Exp $
 **
 */
 
@@ -36,7 +46,8 @@
 #define CMD_RECONSTRUCT_HPP
 
 /// Prototypes
-extern void Reconstruct(const char *infile,const char *outfile,int colortrafo,const char *alpha,bool serms);
+extern void Reconstruct(const char *infile,const char *outfile,int colortrafo,const char *alpha,
+                        bool upsample);
 ///
 
 ///

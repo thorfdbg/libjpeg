@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +38,7 @@
 ** Base class for all upsamplers, common for all upsampling processes
 ** and independent of the upsampling factors.
 **
-** $Id: downsamplerbase.hpp,v 1.11 2014/09/30 08:33:18 thor Exp $
+** $Id: downsamplerbase.hpp,v 1.13 2017/06/02 21:17:40 thor Exp $
 **
 */
 
@@ -77,8 +87,17 @@ private:
   // Lines currently not in use.
   struct Line        *m_pFree;
   //
+  // A flag indicating whether this downsampler interpolates and hence
+  // requires additional lines for buffering.
+  bool                m_bInterpolate;
+  //
+protected:
+  //
+  // Only subclasses can create this.
+  DownsamplerBase(class Environ *env,int sx,int sy,
+                  ULONG width,ULONG height,bool interpolate);
+  //
 public:
-  DownsamplerBase(class Environ *env,int sx,int sy,ULONG width,ULONG height);
   //
   virtual ~DownsamplerBase(void);
   //
@@ -112,7 +131,10 @@ public:
   //
   // Create an upsampler for the given upsampling factors. Currently, only
   // factors from 1x1 to 4x4 are supported.
-  static class DownsamplerBase *CreateDownsampler(class Environ *env,int sx,int sy,ULONG width,ULONG height);
+  // If "interpolate" is set, a smarter interpolation filter (instead of the box-filter)
+  // is used. This filter has, however, a larger delay.
+  static class DownsamplerBase *CreateDownsampler(class Environ *env,int sx,int sy,
+                                                  ULONG width,ULONG height,bool interpolate);
   //
 };
 ///

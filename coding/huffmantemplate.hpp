@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class is responsible for parsing the huffman specific part of the
 ** DHT marker and generating the corresponding decoder classes.
 **
-** $Id: huffmantemplate.hpp,v 1.18 2014/09/30 08:33:16 thor Exp $
+** $Id: huffmantemplate.hpp,v 1.20 2017/06/06 10:51:41 thor Exp $
 **
 */
 
@@ -40,6 +50,8 @@
 ///
 
 /// Defines
+// Set this define to collect statistcs over multiple images
+// then define a general Huffman alphabet for it.
 //#define COLLECT_STATISTICS 1
 ///
 
@@ -78,6 +90,10 @@ class HuffmanTemplate : public JKeeper {
   // The chroma/luma switch. True for chroma.
   bool                     m_bChroma;
   //
+  // The scan index in case we are progressive (i.e. have multiple
+  // scans over the data)
+  UBYTE                    m_ucScan;
+  //
 #endif
   //
   // Reset the huffman table for an alphabet with N entries.
@@ -111,16 +127,16 @@ public:
   // might work as well, or should even perform better.
   //
   // Install the default Luminance DC default table.
-  void InitDCLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden);
+  void InitDCLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden,UBYTE scanidx);
   //
   // Install the default Chrominance DC table.
-  void InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden);
+  void InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden,UBYTE scanidx);
   //
   // Install the default Luminance AC default table.
-  void InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden);
+  void InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden,UBYTE scanidx);
   //
   // Install the default Chrominance AC table.
-  void InitACChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden);
+  void InitACChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden,UBYTE scanidx);
   //
   // Use the collected statistics to build an optimized
   // huffman table.

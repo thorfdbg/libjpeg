@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +39,7 @@
 ** lossless predictive mode. It performs the prediction, based
 ** on the mode, in a virtual subclass.
 **
-** $Id: predictorbase.cpp,v 1.4 2014/11/17 12:15:25 thor Exp $
+** $Id: predictorbase.cpp,v 1.5 2017/08/17 13:24:00 thor Exp $
 **
 */
 
@@ -44,7 +54,7 @@
 // Create a predictor of the given preshift and mode.
 template<PredictorBase::PredictionMode mode>
 PredictorBase *PredictorBase::CreatePredictor(class Environ *env,UBYTE preshift,
-                                                    LONG neutral)
+                                              LONG neutral)
 {
   switch(preshift) {
   case 0:

@@ -7,14 +7,14 @@
 #* the Computing Center of the University of Stuttgart                  **
 #*************************************************************************
 ##
-## $Id: Makefile.template,v 1.13 2014/09/30 08:33:11 thor Exp $
+## $Id: Makefile.template,v 1.14 2018/04/14 21:59:35 thor Exp $
 ##
 ## This makefile template is included by all sub-directories
 ## to shorten the apropriate sub-makefiles to the minimum
 ##
 
 .PHONY:		subclean subfinal subprofile suball subvalgrind subvalfinal subcoverage \
-		subzip subisozip subgplzip sublib sublibdebug clean
+		subzip subisozip subgplzip subituzip sublib sublibdebug clean
 
 #####################################################################
 ##
@@ -271,6 +271,31 @@ subgplzip		:	$(SOURCES) $(HEADERS) $(XHEADERS) $(XSOURCES)
 	@ find /tmp/$(DIRNAME) -name "*.asm" -exec echo perl $(shell pwd)/../removepatents.pl \<{} \| perl $(shell pwd)/../cutheader.pl \| cat $(shell pwd)/../gplheader - \| pr -e -t \>/tmp/__out__ \&\& cp /tmp/__out__ {} \; | sh
 	@ rm -rf /tmp/__out__
 	@ cd /tmp && $(ZIP) -r $(shell pwd)/../GPLDistrib.zip \
+		$(SUBSOURCES) $(SUBHEADERS) $(SUBXSOURCES) $(SUBXHEADERS) \
+		$(SUBDIST) $(DIRNAME)/Makefile*
+	@ rm -rf /tmp/$(DIRNAME)
+
+#
+# The next adds the .cpp and .hpp files into the
+# sources expanding TABs to spaces. This is a wierd hack
+# since we must make "zip" believe that it operates on the
+# same local directory.
+# It also removes all private data from the C++ sources and
+# the header.
+subituzip		:	$(SOURCES) $(HEADERS) $(XHEADERS) $(XSOURCES)
+	@ echo "Adding" $(SUBSOURCES) $(SUBHEADERS) $(SUBXSOURCES) $(SUBXHEADERS) \
+			$(DIRNAME)/Makefile /tmp/$(DIRNAME)
+	@ rm -rf /tmp/__out__
+	@ rm -rf /tmp/$(DIRNAME)
+	@ mkdir /tmp/$(DIRNAME)
+	@ cd .. && cp $(SUBSOURCES) $(SUBHEADERS) $(SUBXSOURCES) $(SUBXHEADERS) $(SUBDIST) \
+		$(DIRNAME)/Makefile /tmp/$(DIRNAME)
+	@ cd .. && for i in $(DIRNAME)/Makefile.*[!~];do if test -f $$i; then cp $$i /tmp/$(DIRNAME); fi; done
+	@ find /tmp/$(DIRNAME) -name "*.hpp" -exec echo perl $(shell pwd)/../removepatents.pl \<{} \| perl $(shell pwd)/../cutheader.pl \| cat $(shell pwd)/../ituheader - \| pr -e -t \>/tmp/__out__ \&\& cp /tmp/__out__ {} \; | sh
+	@ find /tmp/$(DIRNAME) -name "*.cpp" -exec echo perl $(shell pwd)/../removepatents.pl \<{} \| perl $(shell pwd)/../cutheader.pl \| cat $(shell pwd)/../ituheader - \| pr -e -t \>/tmp/__out__ \&\& cp /tmp/__out__ {} \; | sh
+	@ find /tmp/$(DIRNAME) -name "*.asm" -exec echo perl $(shell pwd)/../removepatents.pl \<{} \| perl $(shell pwd)/../cutheader.pl \| cat $(shell pwd)/../ituheader - \| pr -e -t \>/tmp/__out__ \&\& cp /tmp/__out__ {} \; | sh
+	@ rm -rf /tmp/__out__
+	@ cd /tmp && $(ZIP) -r $(shell pwd)/../ITUDistrib.zip \
 		$(SUBSOURCES) $(SUBHEADERS) $(SUBXSOURCES) $(SUBXHEADERS) \
 		$(SUBDIST) $(DIRNAME)/Makefile*
 	@ rm -rf /tmp/$(DIRNAME)

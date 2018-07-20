@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +39,7 @@
 ** predictive scan types. They implement, templated by the prediction
 ** mode, the various lookup types from neighbours.
 **
-** $Id: predictor.hpp,v 1.2 2014/11/17 12:15:25 thor Exp $
+** $Id: predictor.hpp,v 1.3 2017/08/18 11:23:35 thor Exp $
 **
 */
 
@@ -87,8 +97,8 @@ public:
     case PredictorBase::Neutral:
       return UWORD(v + m_lNeutral) << preshift;
     }
-        // Code should not go here.
-        return m_lNeutral << preshift;
+    // Code should not go here.
+    return m_lNeutral << preshift;
   }
   // 
   // Compute a symbol to encode from its value and its prediction based on the
@@ -117,7 +127,7 @@ public:
     case PredictorBase::Neutral:
       return WORD((lp[0] >> preshift) - m_lNeutral);
     }
-        return 0; // Code should not go here.
+    return 0; // Code should not go here.
   }
 };
 ///

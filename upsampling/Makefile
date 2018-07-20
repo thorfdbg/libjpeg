@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.3 2012/05/20 16:17:27 thor Exp $
+## $Id: Makefile,v 1.7 2017/06/02 21:17:40 thor Exp $
 ##
 ## Makefile for the jpeg transcoder project,
 ## THOR Software, May 20, 2012, Thomas Richter
@@ -8,7 +8,8 @@
 ## directory.
 ##
 
-FILES	=	upsamplerbase upsampler downsamplerbase downsampler
+FILES	=	upsamplerbase upsampler cositedupsampler \
+		downsamplerbase downsampler interdownsampler
 
 DIRNAME	=	upsampling
 SUPER	=	../

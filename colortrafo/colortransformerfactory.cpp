@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class builds the proper color transformer from the information
 ** in the MergingSpecBox
 **
-** $Id: colortransformerfactory.cpp,v 1.73 2015/10/28 08:45:28 thor Exp $
+** $Id: colortransformerfactory.cpp,v 1.76 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -190,7 +200,8 @@ void ColorTransformerFactory::GetInverseStandardMatrix(MergingSpecBox::Decorrela
 class ColorTrafo *ColorTransformerFactory::BuildColorTransformer(class Frame *frame,class Frame *residual,
                                                                  class MergingSpecBox *specs,
                                                                  UBYTE inbpp,UBYTE outbpp,
-                                                                 UBYTE etype,bool encoding)
+                                                                 UBYTE etype,bool encoding,
+                                                                 bool disabletorgb)
 {
   MergingSpecBox::DecorrelationType rtrafo = MergingSpecBox::Zero;
   MergingSpecBox::DecorrelationType ltrafo = MergingSpecBox::YCbCr;
@@ -206,7 +217,10 @@ class ColorTrafo *ColorTransformerFactory::BuildColorTransformer(class Frame *fr
   ltrafo = m_pTables->LTrafoTypeOf(count);
   rtrafo = m_pTables->RTrafoTypeOf(count);
   ctrafo = m_pTables->CTrafoTypeOf(count);
-  rbits  = m_pTables->FractionalRBitsOf(count);
+  rbits  = m_pTables->FractionalRBitsOf(count,frame->isDCTBased());
+
+  if (ltrafo == MergingSpecBox::YCbCr && disabletorgb)
+    ltrafo = MergingSpecBox::Identity;
 
   if (specs) {
     ocflags |= ColorTrafo::Extended;
@@ -723,6 +737,37 @@ IntegerTrafo *ColorTransformerFactory::BuildIntegerTransformationSimple(class Fr
 }
 ///
 
+/// ColorTransformerFactory::BuildRTransformationFour
+// Build the color transformer for the case that the ltrafo is the identity and the rtrafo is zero.
+// This covers the four component cases that are currently not included in JPEG XT.
+template<typename type>
+IntegerTrafo *ColorTransformerFactory::BuildIntegerTransformationFour(class Frame *frame,
+                                                                      class Frame *residualframe,
+                                                                      class MergingSpecBox *,
+                                                                      UBYTE oc,int ltrafo,int rtrafo)
+{
+  ULONG maxval   = (1UL << frame->HiddenPrecisionOf()) - 1;
+  ULONG outmax   = (1UL << (frame->PrecisionOf() + frame->PointPreShiftOf())) - 1;
+  ULONG outshift = (outmax + 1) >> 1;
+  ULONG rmaxval  = (residualframe)?((1UL << residualframe->HiddenPrecisionOf()) - 1):(0);
+  class IntegerTrafo *t = NULL;
+
+  if (rtrafo != MergingSpecBox::Zero)
+    return NULL;
+  if (oc != ColorTrafo::ClampFlag)
+    return NULL;
+  if (ltrafo != MergingSpecBox::Identity)
+    return NULL;
+
+  m_pTrafo = t = new(m_pEnviron) YCbCrTrafo<type,4,ColorTrafo::ClampFlag,
+                                            MergingSpecBox::Identity,
+                                            MergingSpecBox::Zero>
+    (m_pEnviron,(maxval + 1) >> 1,maxval,(rmaxval + 1) >> 1,rmaxval,outshift,outmax);
+  
+  return t;
+}
+///
+
 /// ColorTransformerFactory::BuildRTransformationExtensive
 template<int count,typename type>
 IntegerTrafo *ColorTransformerFactory::BuildIntegerTransformationExtensive(class Frame *frame,
@@ -967,6 +1012,22 @@ class IntegerTrafo *ColorTransformerFactory::BuildIntegerTransformation(UBYTE ty
         JPG_THROW(OVERFLOW_PARAMETER,"ColorTransformerFactory::BuildRTransformation",
                   "invalid data type selected for the image, image precision is deeper than 16 bits");
       return BuildIntegerTransformationExtensive<3,UWORD>(frame,residualframe,specs,ocflags,ltrafo,rtrafo);
+    }
+    break;
+    //
+    // For JPEG reference testing, we also need four components. It may also come handy for CMYK images.
+  case 4:
+    switch(type) {
+    case CTYP_UBYTE:
+      if (outmax > MAX_UBYTE)
+        JPG_THROW(OVERFLOW_PARAMETER,"ColorTransformerFactory::BuildRTransformation",
+                  "invalid data type selected for the image, image precision is deeper than 8 bits");
+      return BuildIntegerTransformationFour<UBYTE>(frame,residualframe,specs,ocflags,ltrafo,rtrafo);
+    case CTYP_UWORD:
+      if (outmax > MAX_UWORD)
+        JPG_THROW(OVERFLOW_PARAMETER,"ColorTransformerFactory::BuildRTransformation",
+                  "invalid data type selected for the image, image precision is deeper than 16 bits");
+      return BuildIntegerTransformationFour<UWORD>(frame,residualframe,specs,ocflags,ltrafo,rtrafo);
     }
     break;
   }

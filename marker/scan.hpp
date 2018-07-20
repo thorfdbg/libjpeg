@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.hpp,v 1.65 2016/10/28 13:58:54 thor Exp $
+** $Id: scan.hpp,v 1.66 2017/06/06 10:51:41 thor Exp $
 **
 */
 
@@ -89,6 +99,10 @@ class Scan : public JKeeper {
   //
   // Number of the components in the scan.
   UBYTE                  m_ucCount;
+  //
+  // Index of the scan. This is just for housekeeping and not
+  // part of the JPEG syntax.
+  UBYTE                  m_ucScanIndex;
   //
   // Components selected for the scan, there are as many as
   // indicated above.
@@ -152,7 +166,9 @@ public:
   void TagOn(class Scan *next)
   {
     assert(m_pNext == NULL);
+    
     m_pNext = next;
+    next->m_ucScanIndex = m_ucScanIndex + 1;
   }
   //
   // Return the i'th component of the scan.

@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.192 2017/02/21 15:48:21 thor Exp $
+** $Id: tables.cpp,v 1.202 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -86,11 +96,9 @@ Tables::Tables(class Environ *env)
     m_pAlphaData(NULL), m_pResidualData(NULL), m_pRefinementData(NULL), m_pColorTrafo(NULL), 
     m_pThresholds(NULL), m_pLSColorTrafo(NULL), m_pResidualSpecs(NULL), m_pAlphaSpecs(NULL),
     m_pIdentityMapping(NULL), m_pChecksumBox(NULL),
-    m_ucMaxError(0), m_bDisableColor(false), m_bTruncateColor(false), m_bRefinement(false), 
+    m_ucMaxError(0), m_bTruncateColor(false), m_bRefinement(false), 
     m_bOpenLoop(false), m_bDeadZone(false), m_bOptimize(false), m_bDeRing(false),
-    m_bFoundExp(false), m_bHorizontalExpansion(false), m_bVerticalExpansion(false),
-    m_bEnforceLosslessDCT(false)
-
+    m_bFoundExp(false), m_bHorizontalExpansion(false), m_bVerticalExpansion(false)
 {
   m_NameSpace.DefineSecondaryLookup(&m_pBoxList);
   m_AlphaNameSpace.DefineSecondaryLookup(&m_pBoxList);
@@ -962,7 +970,7 @@ void Tables::ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp)
 }
 ///
 
-/// ParseTablesIncrementalInit
+/// Tables::ParseTablesIncrementalInit
 // Prepare reading an incremental part of the tables. This here must be called first
 // before continuing with one or multiple ParseTableIncremental calls.
 void Tables::ParseTablesIncrementalInit(bool allowexp)
@@ -1389,14 +1397,15 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,boo
 
 /// Tables::FindDCHuffmanTable
 // Find the DC huffman table of the indicated index.
-class HuffmanTemplate *Tables::FindDCHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden) const
+class HuffmanTemplate *Tables::FindDCHuffmanTable(UBYTE idx,ScanType type,
+                                                  UBYTE depth,UBYTE hidden,UBYTE scan) const
 {
   class HuffmanTemplate *t;
 
   if (m_pHuffman == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindDCHuffmanTable","DHT marker missing for huffman encoded scan");
 
-  t = m_pHuffman->DCTemplateOf(idx,type,depth,hidden);
+  t = m_pHuffman->DCTemplateOf(idx,type,depth,hidden,scan);
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindDCHuffmanTable","requested DC huffman coding table not defined");
   return t;
@@ -1405,14 +1414,15 @@ class HuffmanTemplate *Tables::FindDCHuffmanTable(UBYTE idx,ScanType type,UBYTE 
 
 /// Tables::FindACHuffmanTable
 // Find the AC huffman table of the indicated index.
-class HuffmanTemplate *Tables::FindACHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden) const
+class HuffmanTemplate *Tables::FindACHuffmanTable(UBYTE idx,ScanType type,
+                                                  UBYTE depth,UBYTE hidden,UBYTE scan) const
 { 
   class HuffmanTemplate *t;
 
   if (m_pHuffman == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindACHuffmanTable","DHT marker missing for huffman encoded scan");
 
-  t = m_pHuffman->ACTemplateOf(idx,type,depth,hidden);
+  t = m_pHuffman->ACTemplateOf(idx,type,depth,hidden,scan);
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindACHuffmanTable","requested AC huffman coding table not defined");
   return t;
@@ -1420,10 +1430,11 @@ class HuffmanTemplate *Tables::FindACHuffmanTable(UBYTE idx,ScanType type,UBYTE 
 ///
 
 /// Tables::FindDCConditioner
-class ACTemplate *Tables::FindDCConditioner(UBYTE idx) const
+class ACTemplate *Tables::FindDCConditioner(UBYTE idx,ScanType type,
+                                            UBYTE depth,UBYTE hidden,UBYTE scan) const
 {
   if (m_pConditioner) {
-    return m_pConditioner->DCTemplateOf(idx);
+    return m_pConditioner->DCTemplateOf(idx,type,depth,hidden,scan);
   }
 
   return NULL;
@@ -1431,10 +1442,11 @@ class ACTemplate *Tables::FindDCConditioner(UBYTE idx) const
 ///
 
 /// Tables::FindACConditioner
-class ACTemplate *Tables::FindACConditioner(UBYTE idx) const
+class ACTemplate *Tables::FindACConditioner(UBYTE idx,ScanType type,
+                                            UBYTE depth,UBYTE hidden,UBYTE scan) const
 {
   if (m_pConditioner) {
-    return m_pConditioner->ACTemplateOf(idx);
+    return m_pConditioner->ACTemplateOf(idx,type,depth,hidden,scan);
   }
 
   return NULL;
@@ -1459,7 +1471,8 @@ class QuantizationTable *Tables::FindQuantizationTable(UBYTE idx) const
 
 /// Tables::ColorTrafoOf
 // Return the color transformer.
-class ColorTrafo *Tables::ColorTrafoOf(class Frame *frame,class Frame *residualframe,UBYTE type,bool encoding)
+class ColorTrafo *Tables::ColorTrafoOf(class Frame *frame,class Frame *residualframe,UBYTE type,
+                                       bool encoding,bool disabletorgb)
 {
   if (m_pColorTrafo == NULL) {
     UBYTE dctbits,spatialbits;
@@ -1492,7 +1505,7 @@ class ColorTrafo *Tables::ColorTrafoOf(class Frame *frame,class Frame *residualf
     assert(!m_bTruncateColor);
     m_pColorTrafo = m_pColorFactory->BuildColorTransformer(frame,residualframe,
                                                            specs,dctbits,spatialbits,
-                                                           type,encoding);
+                                                           type,encoding,disabletorgb);
   }
   
   return m_pColorTrafo;
@@ -1537,29 +1550,32 @@ bool Tables::UseRefinements(void) const
 
 /// Tables::FractionalLBitsOf
 // Return the number of fractional bits in the L-path.
-UBYTE Tables::FractionalLBitsOf(UBYTE count) const
+UBYTE Tables::FractionalLBitsOf(UBYTE count,bool dct) const
 {
   if (m_pParent)
-    return m_pParent->FractionalColorBitsOf(count);
+    return m_pParent->FractionalColorBitsOf(count,dct);
   else
-    return FractionalColorBitsOf(count);
+    return FractionalColorBitsOf(count,dct);
 }
 ///
 
 /// Tables::FractionalRBitsOf
 // Return the number of fractional bits in the R-path.
-UBYTE Tables::FractionalRBitsOf(UBYTE count) const
+UBYTE Tables::FractionalRBitsOf(UBYTE count,bool dct) const
 {
   if (m_pResidualTables)
-    return m_pResidualTables->FractionalColorBitsOf(count);
+    return m_pResidualTables->FractionalColorBitsOf(count,dct);
   else
-    return FractionalColorBitsOf(count);
+    return FractionalColorBitsOf(count,dct);
 }
 ///
 
 /// Tables::FractionalColorBitsOf
 // Check how many fractional bits the color transformation will use.
-UBYTE Tables::FractionalColorBitsOf(UBYTE count) const
+// The DCT flag indicates whether a DCT is in the path. If so, more bits might be allocated
+// to accomodate fractional output bits of the DCT. Note that this
+// is an implementation detail.
+UBYTE Tables::FractionalColorBitsOf(UBYTE count,bool) const
 {  
   MergingSpecBox::DecorrelationType dm;
 
@@ -1572,7 +1588,8 @@ UBYTE Tables::FractionalColorBitsOf(UBYTE count) const
   switch (dm) {
   case MergingSpecBox::Identity:
     // This is a strange beast. For residual, there are no fractional bits.
-    // For legacy, there are for the full DCT.
+    // For legacy, there are for the full DCT and also for the color transformer,
+    // so the bits must be there, regardless of the dct.
     // NOTE: The standard specifies for the lifting DCT a preshift of zero bits.
     // What happens here is that the DCT in the legacy pass also preshifts by four bits,
     // but this preshift is removed in the color transformer which operates with a consistent
@@ -1600,49 +1617,21 @@ UBYTE Tables::FractionalColorBitsOf(UBYTE count) const
 }
 ///
 
-/// Tables::ForceColorTrafoOff
-// Disable the color transformation even in the absense of the Adobe marker.
-void Tables::ForceColorTrafoOff(void)
-{
-  m_bDisableColor = true;
-}
-///
-
-/// Tables::ForceIntegerDCT
-// Enforce the usage of the integer DCT regardless of what the markers
-// tell. This is for testing the precision of the integer vs. fixed point
-// DCT.
-void Tables::ForceIntegerDCT(void)
-{
-  m_bEnforceLosslessDCT = true;
-
-  if (m_pResidualTables)
-    m_pResidualTables->ForceIntegerDCT();
-
-  if (m_pAlphaTables)
-    m_pAlphaTables->ForceIntegerDCT();
-}
-///
-
 /// Tables::UseLosslessDCT
 // Check whether to use the Lossless DCT transformation.
 bool Tables::UseLosslessDCT(void) const
 {
-  if (m_bEnforceLosslessDCT) {
-    return true;
-  } else {
-    class MergingSpecBox *specs = ResidualSpecsOf();
+  class MergingSpecBox *specs = ResidualSpecsOf();
   
-    if (specs) {
-      if (m_pParent) {
-        return (specs->RDCTProcessOf() == DCTBox::IDCT);
-      } else {
-        return (specs->LDCTProcessOf() == DCTBox::IDCT);
-      }
+  if (specs) {
+    if (m_pParent) {
+      return (specs->RDCTProcessOf() == DCTBox::IDCT);
+    } else {
+      return (specs->LDCTProcessOf() == DCTBox::IDCT);
     }
-    
-    return false;
   }
+    
+  return false;
 }
 ///
 
@@ -1656,6 +1645,33 @@ bool Tables::isLossless(void) const
     return true;
   
   return false;
+}
+///
+
+/// Tables::isChromaCentered
+// Return a flag that indicates whether chroma samples are
+// centered or cosited. Returns true if they are cosited.
+bool Tables::isChromaCentered(void) const
+{
+  // Currently, upsampling is centered.
+  return true;
+}
+///
+
+/// Tables::isDownsamplingInterpolated
+// Return a flag indicating whether the downsampler at encoder
+// side should enable interpolation (then true) or if a simple
+// box filter is sufficient (then false).
+// Currently, residual coding requires the box filter.
+bool Tables::isDownsamplingInterpolated(void) const
+{
+  /* This is currently disabled. */
+  return false;
+  /*
+  if (UseResiduals())
+    return false;
+  return true;
+  */
 }
 ///
 
@@ -1681,7 +1697,7 @@ bool Tables::hasSeparateChroma(UBYTE depth) const
 // recorded in this class. This is the DCT for the L-branch.
 class DCT *Tables::BuildDCT(class Component *comp,UBYTE count,UBYTE precision) const
 {
-  UBYTE fractional = FractionalColorBitsOf(count);
+  UBYTE fractional = FractionalColorBitsOf(count,true); // This is always with the DCT, of course
   bool  lossless   = UseLosslessDCT();
   class DCT *dct   = NULL;
   class QuantizationTable *quant;
@@ -1961,7 +1977,7 @@ MergingSpecBox::DecorrelationType Tables::LTrafoTypeOf(UBYTE components) const
   }
   //
   // No specs, use the default mechanism of JPEG.
-  if (components == 1 || m_bDisableColor || 
+  if (components == 1 || components > 3 ||
       (m_pColorInfo && m_pColorInfo->EnumeratedColorSpaceOf() == AdobeMarker::None)) {
     return MergingSpecBox::Identity; // Do not transform.
   } else if (m_pLSColorTrafo) {

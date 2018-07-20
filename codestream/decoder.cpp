@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +36,7 @@
 /*
 ** This class parses the markers and holds the decoder together.
 **
-** $Id: decoder.cpp,v 1.27 2017/02/21 15:48:21 thor Exp $
+** $Id: decoder.cpp,v 1.28 2017/11/28 13:08:06 thor Exp $
 **
 */
 
@@ -90,18 +100,7 @@ class Image *Decoder::ParseHeaderIncremental(class ByteStream *io)
 
 /// Decoder::ParseTags
 // Accept decoder options.
-void Decoder::ParseTags(const struct JPG_TagItem *tags)
+void Decoder::ParseTags(const struct JPG_TagItem *)
 {
-  if (tags->GetTagData(JPGTAG_MATRIX_LTRAFO,JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR) == 
-      JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE) {
-    if (m_pImage) {
-      m_pImage->TablesOf()->ForceColorTrafoOff();
-    }
-  }
-  if (tags->GetTagData(JPGTAG_IMAGE_LOSSLESSDCT,false)) {
-    if (m_pImage) {
-      m_pImage->TablesOf()->ForceIntegerDCT();
-    }
-  }
 }
 ///

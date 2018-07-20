@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +38,7 @@
 ** Base class for all upsamplers, common for all upsampling processes
 ** and independent of the upsampling factors.
 **
-** $Id: upsamplerbase.cpp,v 1.16 2014/09/30 08:33:18 thor Exp $
+** $Id: upsamplerbase.cpp,v 1.20 2017/05/23 11:40:15 thor Exp $
 **
 */
 
@@ -38,6 +48,7 @@
 #include "upsampling/upsamplerbase.hpp"
 #include "coding/quantizedrow.hpp"
 #include "upsampling/upsampler.hpp"
+#include "upsampling/cositedupsampler.hpp"
 #include "std/string.hpp"
 ///
 
@@ -311,73 +322,144 @@ void UpsamplerBase::DefineRegion(LONG bx,LONG by,const LONG *data)
 /// UpsamplerBase::CreateUpsampler
 // Create an upsampler for the given upsampling factors. Currently, only
 // factors from 1x1 to 4x4 are supported.
-class UpsamplerBase *UpsamplerBase::CreateUpsampler(class Environ *env,int sx,int sy,ULONG width,ULONG height)
+class UpsamplerBase *UpsamplerBase::CreateUpsampler(class Environ *env,int sx,int sy,
+                                                    ULONG width,ULONG height,bool centered)
 {
-  switch(sy) {
-  case 1:
-    switch(sx) {
+
+  if (centered) {
+    switch(sy) {
     case 1:
-      return new(env) Upsampler<1,1>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) Upsampler<1,1>(env,width,height);
+        break;
+      case 2:
+        return new(env) Upsampler<2,1>(env,width,height);
+        break;
+      case 3:
+        return new(env) Upsampler<3,1>(env,width,height);
+        break;
+      case 4:
+        return new(env) Upsampler<4,1>(env,width,height);
+        break;
+      }
       break;
     case 2:
-      return new(env) Upsampler<2,1>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) Upsampler<1,2>(env,width,height);
+        break;
+      case 2:
+        return new(env) Upsampler<2,2>(env,width,height);
+        break;
+      case 3:
+        return new(env) Upsampler<3,2>(env,width,height);
+        break;
+      case 4:
+        return new(env) Upsampler<4,2>(env,width,height);
+        break;
+      }
       break;
     case 3:
-      return new(env) Upsampler<3,1>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) Upsampler<1,3>(env,width,height);
+        break;
+      case 2:
+        return new(env) Upsampler<2,3>(env,width,height);
+        break;
+      case 3:
+        return new(env) Upsampler<3,3>(env,width,height);
+        break;
+      case 4:
+        return new(env) Upsampler<4,3>(env,width,height);
+        break;
+      }
       break;
     case 4:
-      return new(env) Upsampler<4,1>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) Upsampler<1,4>(env,width,height);
+        break;
+      case 2:
+        return new(env) Upsampler<2,4>(env,width,height);
+        break;
+      case 3:
+        return new(env) Upsampler<3,4>(env,width,height);
+        break;
+      case 4:
+        return new(env) Upsampler<4,4>(env,width,height);
+        break;
+      }
       break;
     }
-    break;
-  case 2:
-    switch(sx) {
+  } else {
+    switch(sy) {
     case 1:
-      return new(env) Upsampler<1,2>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) CositedUpsampler<1,1>(env,width,height);
+        break;
+      case 2:
+        return new(env) CositedUpsampler<2,1>(env,width,height);
+        break;
+      case 3:
+        return new(env) CositedUpsampler<3,1>(env,width,height);
+        break;
+      case 4:
+        return new(env) CositedUpsampler<4,1>(env,width,height);
+        break;
+      }
       break;
     case 2:
-      return new(env) Upsampler<2,2>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) CositedUpsampler<1,2>(env,width,height);
+        break;
+      case 2:
+        return new(env) CositedUpsampler<2,2>(env,width,height);
+        break;
+      case 3:
+        return new(env) CositedUpsampler<3,2>(env,width,height);
+        break;
+      case 4:
+        return new(env) CositedUpsampler<4,2>(env,width,height);
+        break;
+      }
       break;
     case 3:
-      return new(env) Upsampler<3,2>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) CositedUpsampler<1,3>(env,width,height);
+        break;
+      case 2:
+        return new(env) CositedUpsampler<2,3>(env,width,height);
+        break;
+      case 3:
+        return new(env) CositedUpsampler<3,3>(env,width,height);
+        break;
+      case 4:
+        return new(env) CositedUpsampler<4,3>(env,width,height);
+        break;
+      }
       break;
     case 4:
-      return new(env) Upsampler<4,2>(env,width,height);
+      switch(sx) {
+      case 1:
+        return new(env) CositedUpsampler<1,4>(env,width,height);
+        break;
+      case 2:
+        return new(env) CositedUpsampler<2,4>(env,width,height);
+        break;
+      case 3:
+        return new(env) CositedUpsampler<3,4>(env,width,height);
+        break;
+      case 4:
+        return new(env) CositedUpsampler<4,4>(env,width,height);
+        break;
+      }
       break;
     }
-    break;
-  case 3:
-    switch(sx) {
-    case 1:
-      return new(env) Upsampler<1,3>(env,width,height);
-      break;
-    case 2:
-      return new(env) Upsampler<2,3>(env,width,height);
-      break;
-    case 3:
-      return new(env) Upsampler<3,3>(env,width,height);
-      break;
-    case 4:
-      return new(env) Upsampler<4,3>(env,width,height);
-      break;
-    }
-    break;
-  case 4:
-    switch(sx) {
-    case 1:
-      return new(env) Upsampler<1,4>(env,width,height);
-      break;
-    case 2:
-      return new(env) Upsampler<2,4>(env,width,height);
-      break;
-    case 3:
-      return new(env) Upsampler<3,4>(env,width,height);
-      break;
-    case 4:
-      return new(env) Upsampler<4,4>(env,width,height);
-      break;
-    }
-    break;
   }
 
   return NULL;

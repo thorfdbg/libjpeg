@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 **
 ** Basic control helper for requesting and releasing bitmap data.
 **
-** $Id: bitmapctrl.hpp,v 1.25 2016/10/28 13:58:53 thor Exp $
+** $Id: bitmapctrl.hpp,v 1.26 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -106,6 +116,10 @@ protected:
     return *m_ppBitmap[i];
   }
   //
+  // Ensure that unused bitmaps are cleared so we do overwrite memory that is
+  // not requested.
+  void ResetBitmaps(void);
+  //
   // Extract the region of the bitmap covering the indicated rectangle
   void ExtractBitmap(struct ImageBitMap *ibm,const RectAngle<LONG> &rect,UBYTE i);
   //
@@ -182,6 +196,11 @@ public:
   {
     m_ulPixelHeight = lines;
   }
+  //
+  // Compute the subsampled rectangle in case we are not upsampling from the
+  // region in the rectangle request.
+  void SubsampledRegion(RectAngle<LONG> &rect,const struct RectangleRequest *rr) const;
+  //
 };
 ///
 

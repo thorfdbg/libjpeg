@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +36,7 @@
 /*
 ** This file provides the trival transformation from RGB to RGB
 **
-** $Id: trivialtrafo.cpp,v 1.17 2014/09/30 08:33:16 thor Exp $
+** $Id: trivialtrafo.cpp,v 1.18 2017/11/24 11:30:50 thor Exp $
 **
 */
 
@@ -67,6 +77,8 @@ void TrivialTrafo<internal,external,count>::RGB2YCbCr(const RectAngle<LONG> &r,c
 
   if (xmax < 7 || ymax < 7 || xmin > 0 || ymin > 0) {
     switch(count) {
+    case 4:
+      memset(target[3],0,sizeof(Block));
     case 3:
       memset(target[2],0,sizeof(Block));
       memset(target[1],0,sizeof(Block));
@@ -83,8 +95,10 @@ void TrivialTrafo<internal,external,count>::RGB2YCbCr(const RectAngle<LONG> &r,c
   }
 
   {
-    const external *rptr,*gptr,*bptr;
+    const external *rptr,*gptr,*bptr,*kptr;
     switch(count) {
+    case 4:
+      kptr = (const external *)(source[3]->ibm_pData);
     case 3:
       bptr = (const external *)(source[2]->ibm_pData);
       gptr = (const external *)(source[1]->ibm_pData);
@@ -92,9 +106,12 @@ void TrivialTrafo<internal,external,count>::RGB2YCbCr(const RectAngle<LONG> &r,c
       rptr = (const external *)(source[0]->ibm_pData);
     }
     for(y = ymin;y <= ymax;y++) {
-      internal *ydst,*cbdst,*crdst;
-      const external *r,*g,*b;
+      internal *ydst,*cbdst,*crdst,*kdst;
+      const external *r,*g,*b,*k;
       switch(count) {
+      case 4:
+        kdst    = (internal *)target[3] + xmin + (y << 3);
+        k       = kptr;
       case 3:
         crdst   = (internal *)target[2] + xmin + (y << 3);
         b       = bptr;
@@ -106,6 +123,10 @@ void TrivialTrafo<internal,external,count>::RGB2YCbCr(const RectAngle<LONG> &r,c
       }
       for(x = xmin;x <= xmax;x++) { 
         switch(count) {
+        case 4:
+          *kdst = *k;
+          assert(TypeTrait<external>::isFloat || *kdst <= m_lMax);
+          kdst++;
         case 3:
           *crdst = *b;
           assert(TypeTrait<external>::isFloat || *crdst <= m_lMax);
@@ -123,6 +144,8 @@ void TrivialTrafo<internal,external,count>::RGB2YCbCr(const RectAngle<LONG> &r,c
         }
       }
       switch(count) {
+      case 4:
+        kptr  = (const external *)((const UBYTE *)(kptr) + source[3]->ibm_lBytesPerRow);
       case 3:
         bptr  = (const external *)((const UBYTE *)(bptr) + source[2]->ibm_lBytesPerRow);
         gptr  = (const external *)((const UBYTE *)(gptr) + source[1]->ibm_lBytesPerRow);
@@ -160,8 +183,10 @@ void TrivialTrafo<internal,external,count>::YCbCr2RGB(const RectAngle<LONG> &r,c
   }
 
   {
-    external *rptr,*gptr,*bptr;
+    external *rptr,*gptr,*bptr,*kptr;
     switch(count) {
+    case 4:
+      kptr = (external *)(dest[3]->ibm_pData);
     case 3:
       bptr = (external *)(dest[2]->ibm_pData);
       gptr = (external *)(dest[1]->ibm_pData);
@@ -169,10 +194,13 @@ void TrivialTrafo<internal,external,count>::YCbCr2RGB(const RectAngle<LONG> &r,c
       rptr = (external *)(dest[0]->ibm_pData);
     }
     for(y = ymin;y <= ymax;y++) {
-      internal *ysrc,*cbsrc,*crsrc;
-      external *r,*g,*b;
+      internal *ysrc,*cbsrc,*crsrc,*ksrc;
+      external *r,*g,*b,*k;
       
       switch(count) {
+      case 4:
+        ksrc   = (internal *)source[3]   + xmin + (y << 3);
+        k      = kptr;
       case 3:
         crsrc  = (internal *)source[2]   + xmin + (y << 3);
         b      = bptr;
@@ -183,9 +211,17 @@ void TrivialTrafo<internal,external,count>::YCbCr2RGB(const RectAngle<LONG> &r,c
         r      = rptr;
       }
       for(x = xmin;x <= xmax;x++) {
-        internal rv,gv,bv;
+        internal rv,gv,bv,kv;
 
         switch(count) {
+        case 4:
+          kv = *ksrc++;
+          if (!TypeTrait<external>::isFloat) {
+            if (kv < 0)      kv = 0;
+            if (kv > m_lMax) kv = m_lMax;
+          }
+          *k = kv;
+          k  = (external *)((UBYTE *)(k) + dest[3]->ibm_cBytesPerPixel);
         case 3:
           bv = *crsrc++; 
           if (!TypeTrait<external>::isFloat) {
@@ -212,6 +248,8 @@ void TrivialTrafo<internal,external,count>::YCbCr2RGB(const RectAngle<LONG> &r,c
         }
       }
       switch(count) {
+      case 4:
+        kptr  = (external *)((UBYTE *)(kptr) + dest[3]->ibm_lBytesPerRow);
       case 3:
         bptr  = (external *)((UBYTE *)(bptr) + dest[2]->ibm_lBytesPerRow);
         gptr  = (external *)((UBYTE *)(gptr) + dest[1]->ibm_lBytesPerRow);
@@ -232,5 +270,8 @@ template class TrivialTrafo<LONG,UWORD,3>;
 template class TrivialTrafo<LONG,LONG,3>;
 template class TrivialTrafo<FLOAT,FLOAT,1>;
 template class TrivialTrafo<FLOAT,FLOAT,3>;
+template class TrivialTrafo<LONG,UBYTE,4>;
+template class TrivialTrafo<LONG,UWORD,4>;
+template class TrivialTrafo<LONG,LONG,4>;
 ///
 

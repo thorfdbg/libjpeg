@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
  * Definition of how to request a given rectangle for display,
  * for load or for checking for a necessary update.
  * 
- * $Id: rectanglerequest.cpp,v 1.13 2015/03/11 16:02:42 thor Exp $
+ * $Id: rectanglerequest.cpp,v 1.15 2017/11/28 13:08:06 thor Exp $
  *
  */
 
@@ -66,10 +76,9 @@ void RectangleRequest::ParseTags(const struct JPG_TagItem *tags,const class Imag
   rr_ucThumbSize        = 0;
   */
   rr_cPriority          = 0;
-  /*
-  rr_ucUpsampling       = 0;
-  */
+  rr_bUpsampling        = true;
   rr_bIncludeAlpha      = true;
+  rr_bColorTrafo        = true;
   //
   // Changed a bit the reaction on coordinates: We no longer throw
   // errors, but rather clip into the valid coordinates. This goes
@@ -130,10 +139,19 @@ void RectangleRequest::ParseTags(const struct JPG_TagItem *tags,const class Imag
     case JPGTAG_DECODER_INCLUDE_ALPHA:
       rr_bIncludeAlpha = (coord != 0)?true:false;
       break;
+    case JPGTAG_DECODER_UPSAMPLE:
+      rr_bUpsampling   = (coord != 0)?true:false;
+      break;
+    case JPGTAG_MATRIX_LTRAFO:
+      rr_bColorTrafo   = (coord != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE)?true:false;
+      break;
     }
     tags = tags->NextTagItem();
   }
   //
+  // If upsampling is disabled, disable the color transformation as well.
+  if (!rr_bUpsampling)
+    rr_bColorTrafo = FALSE;
   // Make a consistency check for the rectangle. Otherwise, the decoder
   // will fall over...
   if (rr_Request.IsEmpty())

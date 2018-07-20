@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.112 2016/10/28 13:58:54 thor Exp $
+** $Id: scan.cpp,v 1.114 2017/06/06 10:51:41 thor Exp $
 **
 */
 
@@ -61,10 +71,13 @@ Scan::Scan(class Frame *frame)
   : JKeeper(frame->EnvironOf()), m_pNext(NULL), m_pFrame(frame), m_pParser(NULL),
     m_pHuffman(NULL), m_pConditioner(NULL), m_bHidden(false)
 {
+  m_ucScanIndex = 0;
+  
   for(int i = 0;i < 4;i++) {
     m_pComponent[i]     = NULL;
     m_ucMappingTable[i] = 0;
   }
+  
 }
 ///
 
@@ -1064,7 +1077,7 @@ class HuffmanDecoder *Scan::DCHuffmanDecoderOf(UBYTE idx) const
   assert(idx < 4);
   
   t = m_pFrame->TablesOf()->FindDCHuffmanTable(m_ucDCTable[idx],sc,m_pFrame->PrecisionOf(),
-                                               m_pFrame->HiddenPrecisionOf());
+                                               m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::DCHuffmanDecoderOf","requested DC Huffman coding table not defined");
 
@@ -1083,7 +1096,7 @@ class HuffmanDecoder *Scan::ACHuffmanDecoderOf(UBYTE idx) const
   assert(idx < 4);
 
   t = m_pFrame->TablesOf()->FindACHuffmanTable(m_ucACTable[idx],sc,m_pFrame->PrecisionOf(),
-                                               m_pFrame->HiddenPrecisionOf());
+                                               m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   if (t == NULL)
     JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanDecoderOf","requested AC Huffman coding table not defined");
 
@@ -1101,7 +1114,7 @@ class HuffmanCoder *Scan::DCHuffmanCoderOf(UBYTE idx) const
   assert(idx < 4);
 
   t = m_pHuffman->DCTemplateOf(m_ucDCTable[idx],sc,m_pFrame->PrecisionOf(),
-                               m_pFrame->HiddenPrecisionOf());
+                               m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   if (t == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::DCHuffmanCoderOf","requested DC Huffman coding table not defined");
 
@@ -1121,9 +1134,9 @@ class HuffmanCoder *Scan::ACHuffmanCoderOf(UBYTE idx) const
   assert(idx < 4);
 
   t = m_pHuffman->ACTemplateOf(m_ucACTable[idx],sc,m_pFrame->PrecisionOf(),
-                               m_pFrame->HiddenPrecisionOf());
+                               m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   if (t == NULL)
-      JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanCoderOf","requested DC Huffman coding table not defined");
+      JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanCoderOf","requested AC Huffman coding table not defined");
 
   t->AdjustToStatistics();
   
@@ -1141,7 +1154,7 @@ class HuffmanStatistics *Scan::DCHuffmanStatisticsOf(UBYTE idx) const
   assert(idx < 4);
 
   t = m_pHuffman->DCTemplateOf(m_ucDCTable[idx],sc,m_pFrame->PrecisionOf(),
-                               m_pFrame->HiddenPrecisionOf());
+                               m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   if (t == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::DCHuffmanStatisticsOf","requested DC Huffman coding table not defined");
 
@@ -1159,7 +1172,7 @@ class HuffmanStatistics *Scan::ACHuffmanStatisticsOf(UBYTE idx) const
   assert(idx < 4);
 
   t = m_pHuffman->ACTemplateOf(m_ucACTable[idx],sc,m_pFrame->PrecisionOf(),
-                               m_pFrame->HiddenPrecisionOf());
+                               m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   
   if (t == NULL)
       JPG_THROW(OBJECT_DOESNT_EXIST,"Scan::ACHuffmanStatisticsOf","requested AC Huffman coding table not defined");
@@ -1173,13 +1186,16 @@ class HuffmanStatistics *Scan::ACHuffmanStatisticsOf(UBYTE idx) const
 // component and the DC band.
 class ACTemplate *Scan::DCConditionerOf(UBYTE idx) const
 { 
+  ScanType sc = m_pFrame->ScanTypeOf();
   assert(idx < 4);
 
   if (m_pConditioner) {
-    return m_pConditioner->DCTemplateOf(m_ucDCTable[idx]);
+    return m_pConditioner->DCTemplateOf(m_ucDCTable[idx],sc,m_pFrame->PrecisionOf(),
+                                        m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   }
 
-  return m_pFrame->TablesOf()->FindDCConditioner(m_ucDCTable[idx]);
+  return m_pFrame->TablesOf()->FindDCConditioner(m_ucDCTable[idx],sc,m_pFrame->PrecisionOf(),
+                                                 m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
 }
 ///
 
@@ -1187,13 +1203,16 @@ class ACTemplate *Scan::DCConditionerOf(UBYTE idx) const
 // The same for the AC band.
 class ACTemplate *Scan::ACConditionerOf(UBYTE idx) const
 { 
+  ScanType sc = m_pFrame->ScanTypeOf();
   assert(idx < 4);
 
   if (m_pConditioner) {
-    return m_pConditioner->ACTemplateOf(m_ucACTable[idx]);
+    return m_pConditioner->ACTemplateOf(m_ucACTable[idx],sc,m_pFrame->PrecisionOf(),
+                                        m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
   }
 
-  return m_pFrame->TablesOf()->FindACConditioner(m_ucACTable[idx]);
+  return m_pFrame->TablesOf()->FindACConditioner(m_ucACTable[idx],sc,m_pFrame->PrecisionOf(),
+                                                 m_pFrame->HiddenPrecisionOf(),m_ucScanIndex);
 }
 ///
 

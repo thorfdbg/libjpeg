@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class contains and maintains the AC conditioning
 ** parameter templates.
 **
-** $Id: actable.cpp,v 1.11 2015/03/25 08:45:43 thor Exp $
+** $Id: actable.cpp,v 1.12 2017/06/06 10:51:41 thor Exp $
 **
 */
 
@@ -142,7 +152,7 @@ void ACTable::ParseMarker(class ByteStream *io)
 
 /// ACTable::DCTemplateOf
 // Get the template for the indicated DC table or NULL if it doesn't exist.
-class ACTemplate *ACTable::DCTemplateOf(UBYTE idx)
+class ACTemplate *ACTable::DCTemplateOf(UBYTE idx,ScanType,UBYTE,UBYTE,UBYTE)
 {
 #if ACCUSOFT_CODE
   assert(m_pParameters && idx < 4);
@@ -162,7 +172,7 @@ class ACTemplate *ACTable::DCTemplateOf(UBYTE idx)
 
 /// ACTable::ACTemplateOf
 // Get the template for the indicated AC table or NULL if it doesn't exist.
-class ACTemplate *ACTable::ACTemplateOf(UBYTE idx)
+class ACTemplate *ACTable::ACTemplateOf(UBYTE idx,ScanType,UBYTE,UBYTE,UBYTE)
 {
 #if ACCUSOFT_CODE
   assert(m_pParameters && idx < 4);

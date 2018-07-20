@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class is responsible for parsing the huffman specific part of the
 ** DHT marker and generating the corresponding decoder classes.
 **
-** $Id: huffmantemplate.cpp,v 1.36 2015/08/02 19:41:52 thor Exp $
+** $Id: huffmantemplate.cpp,v 1.39 2017/06/06 10:51:41 thor Exp $
 **
 */
 
@@ -124,18 +134,21 @@ void HuffmanTemplate::ResetEntries(ULONG count)
 
 /// HuffmanTemplate::InitDCLuminanceDefault
 // Install the default Luminance DC table.
-void HuffmanTemplate::InitDCLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden)
+void HuffmanTemplate::InitDCLuminanceDefault(ScanType type,UBYTE depth,UBYTE,UBYTE scanidx)
 {
 
 #ifdef COLLECT_STATISTICS
   m_bAC     = false;
   m_bChroma = false;
+  m_ucScan  = scanidx;
+#else
+  NOREF(scanidx);
 #endif
 
   switch(type) {
   case Baseline:
   case Sequential:
-    if (depth == 8 && hidden == 8) { 
+    if (depth == 8) { 
       static const UBYTE bits_dc_luminance[] = { 0, 1, 5, 1, 1, 1, 1, 1, 1 };
       static const UBYTE val_dc_luminance[]  = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
 
@@ -144,15 +157,37 @@ void HuffmanTemplate::InitDCLuminanceDefault(ScanType type,UBYTE depth,UBYTE hid
       memcpy(m_ucLengths,bits_dc_luminance,sizeof(bits_dc_luminance));
       memcpy(m_pucValues,val_dc_luminance ,sizeof(val_dc_luminance));
       return;
+    } else if (depth == 12) {
+      static const UBYTE bits_dc_luminance[] = {0, 0, 6, 2, 3, 1, 1, 1, 1, 1 };
+      static const UBYTE val_dc_luminance[]  = {5, 6, 7, 8, 9, 10,
+                                                4, 11,
+                                                2, 3, 12,
+                                                1, 0, 13, 14, 15};
+      ResetEntries(sizeof(val_dc_luminance));
+      
+      memcpy(m_ucLengths,bits_dc_luminance,sizeof(bits_dc_luminance));
+      memcpy(m_pucValues,val_dc_luminance ,sizeof(val_dc_luminance));
+      return;
     }
     break;  
   case Progressive:
-    if (depth == 8 && hidden == 8) { 
+    if (depth == 8) { 
       static const UBYTE bits_dc_luminance[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
       static const UBYTE val_dc_luminance[]  = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
 
       ResetEntries(sizeof(val_dc_luminance));
 
+      memcpy(m_ucLengths,bits_dc_luminance,sizeof(bits_dc_luminance));
+      memcpy(m_pucValues,val_dc_luminance ,sizeof(val_dc_luminance));
+      return;
+    } else if (depth == 12) {
+      static const UBYTE bits_dc_luminance[] = {0, 0, 6, 2, 3, 1, 1, 1, 1, 1 };
+      static const UBYTE val_dc_luminance[]  = {5, 6, 7, 8, 9, 10,
+                                                4, 11,
+                                                2, 3, 12,
+                                                1, 0, 13, 14, 15};
+      ResetEntries(sizeof(val_dc_luminance));
+      
       memcpy(m_ucLengths,bits_dc_luminance,sizeof(bits_dc_luminance));
       memcpy(m_pucValues,val_dc_luminance ,sizeof(val_dc_luminance));
       return;
@@ -213,20 +248,36 @@ void HuffmanTemplate::InitDCLuminanceDefault(ScanType type,UBYTE depth,UBYTE hid
 
 /// HuffmanTemplate::InitDCChrominanceDefault
 // Install the default Chrominance DC table.
-void HuffmanTemplate::InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden)
+void HuffmanTemplate::InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE,UBYTE scanidx)
 {
 
 #ifdef COLLECT_STATISTICS
   m_bAC     = false;
   m_bChroma = true;
+  m_ucScan  = scanidx;
+#else
+  NOREF(scanidx);
 #endif
 
   switch(type) {
   case Baseline:
   case Sequential:
-    if (depth == 8 && hidden == 8) {
+    if (depth == 8) {
       static const UBYTE bits_dc_chrominance[] = { 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1};
       static const UBYTE val_dc_chrominance[]  = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+      
+      ResetEntries(sizeof(val_dc_chrominance));
+      
+      memcpy(m_ucLengths,bits_dc_chrominance,sizeof(bits_dc_chrominance));
+      memcpy(m_pucValues,val_dc_chrominance ,sizeof(val_dc_chrominance));
+      return;
+    } else if (depth == 12) {
+      static const UBYTE bits_dc_chrominance[] = { 0, 1, 4, 2, 3, 1, 1, 1, 1, 1, 1 };
+      static const UBYTE val_dc_chrominance[]  = { 5,
+                                                   3, 4, 6, 7,
+                                                   2, 8,
+                                                   1, 9, 10,
+                                                   0, 11, 12, 13, 14, 15 };
       
       ResetEntries(sizeof(val_dc_chrominance));
       
@@ -236,7 +287,7 @@ void HuffmanTemplate::InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE h
     }
     break; 
   case Progressive:
-    if (depth == 8 && hidden == 8) { 
+    if (depth == 8) { 
       static const UBYTE bits_dc_luminance[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
       static const UBYTE val_dc_luminance[]  = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
       
@@ -244,6 +295,19 @@ void HuffmanTemplate::InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE h
 
       memcpy(m_ucLengths,bits_dc_luminance,sizeof(bits_dc_luminance));
       memcpy(m_pucValues,val_dc_luminance ,sizeof(val_dc_luminance));
+      return;
+    } else if (depth == 12) {
+      static const UBYTE bits_dc_chrominance[] = { 0, 1, 4, 2, 3, 1, 1, 1, 1, 1, 1 };
+      static const UBYTE val_dc_chrominance[]  = { 5,
+                                                   3, 4, 6, 7,
+                                                   2, 8,
+                                                   1, 9, 10,
+                                                   0, 11, 12, 13, 14, 15 };
+      
+      ResetEntries(sizeof(val_dc_chrominance));
+      
+      memcpy(m_ucLengths,bits_dc_chrominance,sizeof(bits_dc_chrominance));
+      memcpy(m_pucValues,val_dc_chrominance ,sizeof(val_dc_chrominance));
       return;
     }
     break; 
@@ -308,20 +372,23 @@ void HuffmanTemplate::InitDCChrominanceDefault(ScanType type,UBYTE depth,UBYTE h
 
 /// HuffmanTemplate::InitACLuminanceDefault
 // Install the default luminance AC table
-void HuffmanTemplate::InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE hidden)
+void HuffmanTemplate::InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE,UBYTE scanidx)
 { 
  
 
 #ifdef COLLECT_STATISTICS
   m_bAC     = true;
   m_bChroma = false;
+  m_ucScan  = scanidx;
+#else
+  NOREF(scanidx);
 #endif
 
   switch(type) {
   case Baseline:
   case Sequential:
   case DifferentialSequential:
-    if (depth == 8 && hidden == 8) { 
+    if (depth == 8) { 
       static const UBYTE bits_ac_luminance[] = { 0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d };
       static const UBYTE val_ac_luminance[]  = { 0x01, 0x02, 
                                                  0x03, 
@@ -356,10 +423,57 @@ void HuffmanTemplate::InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE hid
       memcpy(m_ucLengths,bits_ac_luminance,sizeof(bits_ac_luminance));
       memcpy(m_pucValues,val_ac_luminance ,sizeof(val_ac_luminance));
       return;
+    } else if (depth == 12) {
+      static const UBYTE bits_ac_luminance[] = {0, 1, 3, 3, 2, 4, 4, 2, 5, 3, 4, 6, 5, 6,
+                                                207, 1};
+      static const UBYTE val_ac_luminance[]  = { 1,
+                                                 2, 3, 4,
+                                                 5, 6, 17,
+                                                 7, 18,
+                                                 0, 8, 9, 33,
+                                                 10, 19, 34, 49,
+                                                 20, 65,
+                                                 11, 21, 50, 81, 97,
+                                                 35, 113, 129,
+                                                 12, 22, 66, 145,
+                                                 23, 36, 51, 82, 161, 177,
+                                                 13, 98, 193, 209, 240,
+                                                 24, 37, 67, 114, 225, 241,
+                                                 14, 15, 16, 25, 26, 27, 28, 29, 30, 31,
+                                                 32, 38, 39, 40, 41, 42, 43, 44, 45, 46,
+                                                 47, 48, 52, 53, 54, 55, 56, 57, 58, 59,
+                                                 60, 61, 62, 63, 64, 68, 69, 70, 71, 72,
+                                                 73, 74, 75, 76, 77, 78, 79, 80, 83, 84,
+                                                 85, 86, 87, 88, 89, 90, 91, 92, 93, 94,
+                                                 95, 96, 99, 100, 101, 102, 103, 104, 105,
+                                                 106, 107, 108, 109, 110, 111, 112, 115,
+                                                 116, 117, 118, 119, 120, 121, 122, 123,
+                                                 124, 125, 126, 127, 128, 130, 131, 132,
+                                                 133, 134, 135, 136, 137, 138, 139, 140,
+                                                 141, 142, 143, 144, 146, 147, 148, 149,
+                                                 150, 151, 152, 153, 154, 155, 156, 157,
+                                                 158, 159, 160, 162, 163, 164, 165, 166,
+                                                 167, 168, 169, 170, 171, 172, 173, 174,
+                                                 175, 176, 178, 179, 180, 181, 182, 183,
+                                                 184, 185, 186, 187, 188, 189, 190, 191,
+                                                 192, 194, 195, 196, 197, 198, 199, 200,
+                                                 201, 202, 203, 204, 205, 206, 207, 208,
+                                                 210, 211, 212, 213, 214, 215, 216, 217,
+                                                 218, 219, 220, 221, 222, 223, 224, 226,
+                                                 227, 228, 229, 230, 231, 232, 233, 234,
+                                                 235, 236, 237, 238, 239, 242, 243, 244,
+                                                 245, 246, 247, 248, 249, 250, 251, 252,
+                                                 253, 254,
+                                                 255};
+      ResetEntries(sizeof(val_ac_luminance));
+      
+      memcpy(m_ucLengths,bits_ac_luminance,sizeof(bits_ac_luminance));
+      memcpy(m_pucValues,val_ac_luminance ,sizeof(val_ac_luminance));
+      return;
     }
     break;
   case Progressive:  
-    if (depth == 8 && hidden == 8) {
+    if (depth == 8) {
       static const UBYTE bits_ac_chrominance[] = { 0,3,0,1,2,4,4,3,4,5,4,4,3,2,4,133};
       static const UBYTE val_ac_chrominance[]  = { 0, 1, 17,
                                                    33,
@@ -397,6 +511,53 @@ void HuffmanTemplate::InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE hid
       memcpy(m_ucLengths,bits_ac_chrominance,sizeof(bits_ac_chrominance));
       memcpy(m_pucValues,val_ac_chrominance ,sizeof(val_ac_chrominance));
       return;
+    } else if (depth == 12) {
+      static const UBYTE bits_ac_luminance[] = {0, 1, 3, 3, 2, 4, 4, 2, 5, 3, 4, 6, 5, 6,
+                                                207, 1};
+      static const UBYTE val_ac_luminance[]  = { 1,
+                                                 2, 3, 4,
+                                                 5, 6, 17,
+                                                 7, 18,
+                                                 0, 8, 9, 33,
+                                                 10, 19, 34, 49,
+                                                 20, 65,
+                                                 11, 21, 50, 81, 97,
+                                                 35, 113, 129,
+                                                 12, 22, 66, 145,
+                                                 23, 36, 51, 82, 161, 177,
+                                                 13, 98, 193, 209, 240,
+                                                 24, 37, 67, 114, 225, 241,
+                                                 14, 15, 16, 25, 26, 27, 28, 29, 30, 31,
+                                                 32, 38, 39, 40, 41, 42, 43, 44, 45, 46,
+                                                 47, 48, 52, 53, 54, 55, 56, 57, 58, 59,
+                                                 60, 61, 62, 63, 64, 68, 69, 70, 71, 72,
+                                                 73, 74, 75, 76, 77, 78, 79, 80, 83, 84,
+                                                 85, 86, 87, 88, 89, 90, 91, 92, 93, 94,
+                                                 95, 96, 99, 100, 101, 102, 103, 104, 105,
+                                                 106, 107, 108, 109, 110, 111, 112, 115,
+                                                 116, 117, 118, 119, 120, 121, 122, 123,
+                                                 124, 125, 126, 127, 128, 130, 131, 132,
+                                                 133, 134, 135, 136, 137, 138, 139, 140,
+                                                 141, 142, 143, 144, 146, 147, 148, 149,
+                                                 150, 151, 152, 153, 154, 155, 156, 157,
+                                                 158, 159, 160, 162, 163, 164, 165, 166,
+                                                 167, 168, 169, 170, 171, 172, 173, 174,
+                                                 175, 176, 178, 179, 180, 181, 182, 183,
+                                                 184, 185, 186, 187, 188, 189, 190, 191,
+                                                 192, 194, 195, 196, 197, 198, 199, 200,
+                                                 201, 202, 203, 204, 205, 206, 207, 208,
+                                                 210, 211, 212, 213, 214, 215, 216, 217,
+                                                 218, 219, 220, 221, 222, 223, 224, 226,
+                                                 227, 228, 229, 230, 231, 232, 233, 234,
+                                                 235, 236, 237, 238, 239, 242, 243, 244,
+                                                 245, 246, 247, 248, 249, 250, 251, 252,
+                                                 253, 254,
+                                                 255};
+      ResetEntries(sizeof(val_ac_luminance));
+      
+      memcpy(m_ucLengths,bits_ac_luminance,sizeof(bits_ac_luminance));
+      memcpy(m_pucValues,val_ac_luminance ,sizeof(val_ac_luminance));
+      return;
     }
     break;
   case ACSequential:
@@ -422,20 +583,21 @@ void HuffmanTemplate::InitACLuminanceDefault(ScanType type,UBYTE depth,UBYTE hid
 
 /// HuffmanTemplate::InitACChrominanceDefault
 // Install the default chrominance AC table
-void HuffmanTemplate::InitACChrominanceDefault(ScanType type,UBYTE depth,UBYTE hidden)
+void HuffmanTemplate::InitACChrominanceDefault(ScanType type,UBYTE depth,UBYTE,UBYTE scanidx)
 {  
- 
-
 #ifdef COLLECT_STATISTICS
   m_bAC     = true;
   m_bChroma = true;
+  m_ucScan  = scanidx;
+#else
+  NOREF(scanidx);
 #endif
 
   switch(type) {
   case Baseline:
   case Sequential:
   case DifferentialSequential:
-    if (depth == 8 && hidden == 8) { 
+    if (depth == 8) { 
       static const UBYTE bits_ac_chrominance[] = { 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 0x77 };
       static const UBYTE val_ac_chrominance[] =  { 0x00, 0x01, 
                                                    0x02, 
@@ -470,10 +632,57 @@ void HuffmanTemplate::InitACChrominanceDefault(ScanType type,UBYTE depth,UBYTE h
       memcpy(m_ucLengths,bits_ac_chrominance,sizeof(bits_ac_chrominance));
       memcpy(m_pucValues,val_ac_chrominance ,sizeof(val_ac_chrominance));
       return;
-    }
+    } else if (depth == 12) {
+      static const UBYTE bits_ac_chrominance[] = { 0, 1, 3, 2, 4, 4, 4, 2, 6, 5, 4, 4,
+                                                   3, 3, 8, 203};
+      static const UBYTE val_ac_chrominance[] =  { 1,
+                                                   2, 3, 4,
+                                                   5, 17,
+                                                   0, 6, 18, 33,
+                                                   7, 19, 49, 65,
+                                                   8, 34, 81, 97,
+                                                   20, 113,
+                                                   9, 35, 50, 129, 145, 161,
+                                                   21, 66, 177, 193, 240,
+                                                   10, 22, 209, 225,
+                                                   36, 51, 82, 241,
+                                                   11, 23, 98,
+                                                   37, 67, 114,
+                                                   12, 13, 14, 15, 24, 52, 130, 146,
+                                                   16, 25, 26, 27, 28, 29, 30, 31, 32,
+                                                   38, 39, 40, 41, 42, 43, 44, 45, 46,
+                                                   47, 48, 53, 54, 55, 56, 57, 58, 59,
+                                                   60, 61, 62, 63, 64, 68, 69, 70, 71,
+                                                   72, 73, 74, 75, 76, 77, 78, 79, 80,
+                                                   83, 84, 85, 86, 87, 88, 89, 90, 91,
+                                                   92, 93, 94, 95, 96, 99, 100, 101, 102,
+                                                   103, 104, 105, 106, 107, 108, 109, 110,
+                                                   111, 112, 115, 116, 117, 118, 119, 120,
+                                                   121, 122, 123, 124, 125, 126, 127, 128,
+                                                   131, 132, 133, 134, 135, 136, 137, 138,
+                                                   139, 140, 141, 142, 143, 144, 147, 148,
+                                                   149, 150, 151, 152, 153, 154, 155, 156,
+                                                   157, 158, 159, 160, 162, 163, 164, 165,
+                                                   166, 167, 168, 169, 170, 171, 172, 173,
+                                                   174, 175, 176, 178, 179, 180, 181, 182,
+                                                   183, 184, 185, 186, 187, 188, 189, 190,
+                                                   191, 192, 194, 195, 196, 197, 198, 199,
+                                                   200, 201, 202, 203, 204, 205, 206, 207,
+                                                   208, 210, 211, 212, 213, 214, 215, 216,
+                                                   217, 218, 219, 220, 221, 222, 223, 224,
+                                                   226, 227, 228, 229, 230, 231, 232, 233,
+                                                   234, 235, 236, 237, 238, 239, 242, 243,
+                                                   244, 245, 246, 247, 248, 249, 250, 251,
+                                                   252, 253, 254, 255};
+      ResetEntries(sizeof(val_ac_chrominance));
+      
+      memcpy(m_ucLengths,bits_ac_chrominance,sizeof(bits_ac_chrominance));
+      memcpy(m_pucValues,val_ac_chrominance ,sizeof(val_ac_chrominance));
+      return;
+    }   
     break;  
   case Progressive:
-    if (depth == 8 && hidden == 8) {
+    if (depth == 8) {
       static const UBYTE bits_ac_chrominance[] = { 0,3,0,1,2,4,4,3,4,5,4,4,3,2,4,133};
       static const UBYTE val_ac_chrominance[]  = { 0, 1, 17,
                                                    33,
@@ -511,7 +720,49 @@ void HuffmanTemplate::InitACChrominanceDefault(ScanType type,UBYTE depth,UBYTE h
       memcpy(m_ucLengths,bits_ac_chrominance,sizeof(bits_ac_chrominance));
       memcpy(m_pucValues,val_ac_chrominance ,sizeof(val_ac_chrominance));
       return;
+    } else if (depth == 12) {
+      static const UBYTE bits_ac_chrominance[] = { 0, 1, 3, 2, 4, 4, 4, 2, 6, 5, 4, 4, 3, 3, 8, 203};
+      static const UBYTE val_ac_chrominance[] =  { 1,
+                                                   2, 3, 4,
+                                                   5, 17,
+                                                   0, 6, 18, 33,
+                                                   7, 19, 49, 65,
+                                                   8, 34, 81, 97,
+                                                   20, 113,
+                                                   9, 35, 50, 129, 145, 161,
+                                                   21, 66, 177, 193, 240,
+                                                   10, 22, 209, 225,
+                                                   36, 51, 82, 241,
+                                                   11, 23, 98,
+                                                   37, 67, 114,
+                                                   12, 13, 14, 15, 24, 52, 130, 146,
+                                                   16, 25, 26, 27, 28, 29, 30, 31, 32, 38, 39, 40, 41,
+                                                   42, 43, 44, 45, 46, 47, 48, 53, 54, 55, 56, 57,
+                                                   58, 59, 60, 61, 62, 63, 64, 68, 69, 70, 71,
+                                                   72, 73, 74, 75, 76, 77, 78, 79, 80, 83, 84, 85,
+                                                   86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 99,
+                                                   100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                                                   110, 111, 112, 115, 116, 117, 118, 119, 120, 121,
+                                                   122, 123, 124, 125, 126, 127, 128, 131, 132, 133,
+                                                   134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
+                                                   144, 147, 148, 149, 150, 151, 152, 153, 154, 155,
+                                                   156, 157, 158, 159, 160, 162, 163, 164, 165, 166,
+                                                   167, 168, 169, 170, 171, 172, 173, 174, 175, 176,
+                                                   178, 179, 180, 181, 182, 183, 184, 185, 186, 187,
+                                                   188, 189, 190, 191, 192, 194, 195, 196, 197, 198,
+                                                   199, 200, 201, 202, 203, 204, 205, 206, 207, 208,
+                                                   210, 211, 212, 213, 214, 215, 216, 217, 218, 219,
+                                                   220, 221, 222, 223, 224, 226, 227, 228, 229, 230,
+                                                   231, 232, 233, 234, 235, 236, 237, 238, 239, 242,
+                                                   243, 244, 245, 246, 247, 248, 249, 250, 251, 252,
+                                                   253, 254, 255};
+      ResetEntries(sizeof(val_ac_chrominance));
+      
+      memcpy(m_ucLengths,bits_ac_chrominance,sizeof(bits_ac_chrominance));
+      memcpy(m_pucValues,val_ac_chrominance ,sizeof(val_ac_chrominance));
+      return;
     }
+    break;
   case ACSequential:
   case ACProgressive:
   case Lossless:
@@ -670,14 +921,14 @@ void HuffmanTemplate::AdjustToStatistics(void)
   if (m_pStatistics) {
     FILE *stats;
     char filename[30];
-    snprintf(filename,sizeof(filename),"stat_%d_%d.dat",m_bAC,m_bChroma);
+    snprintf(filename,sizeof(filename),"stat_%d_%d_%d.dat",m_bAC,m_bChroma,0);
     
     if ((stats = fopen(filename,"r"))) {
-      m_pStatistics->MergeStatistics(stats);
+      m_pStatistics->MergeStatistics(stats,m_bAC);
       fclose(stats);
     }
     if ((stats = fopen(filename,"w"))) {
-      m_pStatistics->WriteStatistics(stats);
+      m_pStatistics->WriteStatistics(stats,m_bAC);
       fclose(stats);
     }
   }
@@ -703,6 +954,7 @@ void HuffmanTemplate::AdjustToStatistics(void)
     assert(m_pucValues == NULL);
     m_ulCodewords = total;
     m_pucValues   = (UBYTE *)m_pEnviron->AllocMem(sizeof(UBYTE) * m_ulCodewords);
+    memset(m_pucValues,0,sizeof(UBYTE) * m_ulCodewords);
     //
     // Sort codevalues in. i enumerates the
     // code size in increasing order, j
@@ -714,7 +966,27 @@ void HuffmanTemplate::AdjustToStatistics(void)
         }
       }
     }
-    
+#ifdef COLLECT_STATISTICS
+    {
+      FILE *file;
+      char filename[30];
+      snprintf(filename,sizeof(filename),"lengths_%d_%d_%d.dat",m_bAC,m_bChroma,0);
+      int length = m_bAC?256:16;
+
+      if ((file = fopen(filename,"w"))) {
+        for(i = 0;i < length;i++) {
+          fprintf(file,"%d\n",codesizes[i]);
+        }
+        fclose(file);
+      }
+      snprintf(filename,sizeof(filename),"values_%d_%d_%d.dat",m_bAC,m_bChroma,0);
+      if ((file = fopen(filename,"w"))) {
+        for(i = 0;i < length;i++) {
+          fprintf(file,"%d\n",m_pucValues[i]);
+        }
+      }
+    }
+#endif
     delete m_pStatistics;
     m_pStatistics = NULL;
   }

@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
  * Defininition of the ImageBitMap structure, used to specify
  * rectangular memory blocks for image representation.
  * 
- * $Id: imagebitmap.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
+ * $Id: imagebitmap.cpp,v 1.9 2017/11/28 13:08:08 thor Exp $
  *
  *
  */
@@ -95,7 +105,9 @@ void ImageBitMap::ExtractBitMap(const struct ImageBitMap *source,const RectAngle
       yshift * ptrdiff_t(source->ibm_lBytesPerRow);
 
   } else {
-    ibm_pData       = NULL;
+    ibm_pData          = NULL;
+    ibm_cBytesPerPixel = 0;
+    ibm_lBytesPerRow   = 0;
     // ibm_ucPixelType = 0;  // FIX: Leave the pixel type valid such that further
     // requests can still find that data can be extracted from here, though the
     // result will always be blank.

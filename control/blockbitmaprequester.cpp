@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +38,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.cpp,v 1.69 2016/10/28 13:58:53 thor Exp $
+** $Id: blockbitmaprequester.cpp,v 1.73 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -260,7 +270,8 @@ void BlockBitmapRequester::PrepareForEncoding(void)
       
       if (sx > 1 || sy > 1) {
         m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-                                                                m_ulPixelWidth,m_ulPixelHeight);
+                                                                m_ulPixelWidth,m_ulPixelHeight,
+                                                                tables->isDownsamplingInterpolated());
         m_bSubsampling     = true;
       }
     }
@@ -296,7 +307,8 @@ void BlockBitmapRequester::PrepareForDecoding(void)
       
       if (sx > 1 || sy > 1) {
         m_ppUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-                                                          m_ulPixelWidth,m_ulPixelHeight);
+                                                          m_ulPixelWidth,m_ulPixelHeight,
+                                                          m_pFrame->TablesOf()->isChromaCentered());
         m_bSubsampling   = true;
       }
     }
@@ -325,8 +337,11 @@ void BlockBitmapRequester::SetBlockHelper(class ResidualBlockHelper *helper)
         UBYTE sy = comp->SubYOf();
         
         if (sx > 1 || sy > 1) {
+          // Residual coding does not work with interpolation.
           m_ppResidualDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-                                                                          m_ulPixelWidth,m_ulPixelHeight);
+                                                                          m_ulPixelWidth,m_ulPixelHeight,
+                                                                          residualframe->TablesOf()->
+                                                                          isDownsamplingInterpolated());
           m_bSubsampling     = true;
         }
       }
@@ -346,7 +361,8 @@ void BlockBitmapRequester::SetBlockHelper(class ResidualBlockHelper *helper)
 
         if (sx > 1 || sy > 1) {
           m_ppResidualUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-                                                                    m_ulPixelWidth,m_ulPixelHeight);
+                                                                    m_ulPixelWidth,m_ulPixelHeight,
+                                                                    m_pFrame->TablesOf()->isChromaCentered());
           
           m_bSubsampling     = true;
         }
@@ -407,27 +423,32 @@ void BlockBitmapRequester::SetBlockHelper(class ResidualBlockHelper *helper)
         }
 
         if (m_ppUpsampler[i] == NULL) {
+          bool centered = m_pFrame->TablesOf()->isChromaCentered();
           // For closed loop coding, the upsampler has to upsample the reconstructed data,
           // hence, real upsampling is needed. Otherwise, it just stores the original
           // LDR image.
           if (m_bOpenLoop) {
             m_ppUpsampler[i]   = UpsamplerBase::CreateUpsampler(m_pEnviron,1,1,
-                                                                m_ulPixelWidth,m_ulPixelHeight);
+                                                                m_ulPixelWidth,m_ulPixelHeight,
+                                                                false);
           } else {
             m_ppUpsampler[i]   = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
-                                                                m_ulPixelWidth,m_ulPixelHeight);
+                                                                m_ulPixelWidth,m_ulPixelHeight,
+                                                                centered);
           }
         }
         
         if (m_ppDownsampler[i] == NULL)
           m_ppDownsampler[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,sx,sy,
-                                                                  m_ulPixelWidth,m_ulPixelHeight);
-
+                                                                  m_ulPixelWidth,m_ulPixelHeight,
+                                                                  false);
+        
         // We need to buffer the original image until the encoded image becomes available as reference.
         // This is done here.
         if (m_ppOriginalImage[i] == NULL) {
           m_ppOriginalImage[i] = DownsamplerBase::CreateDownsampler(m_pEnviron,1,1,
-                                                                    m_ulPixelWidth,m_ulPixelHeight);
+                                                                    m_ulPixelWidth,m_ulPixelHeight,
+                                                                    false);
         }
       }
     }
@@ -452,10 +473,10 @@ void BlockBitmapRequester::ResetToStartOfImage(void)
 
 /// BlockBitmapRequester::ColorTrafoOf
 // Return the color transformer responsible for this scan.
-class ColorTrafo *BlockBitmapRequester::ColorTrafoOf(bool encoding)
+class ColorTrafo *BlockBitmapRequester::ColorTrafoOf(bool encoding,bool disabletorgb)
 {
   return m_pFrame->TablesOf()->ColorTrafoOf(m_pFrame,(m_pResidualHelper)?(m_pResidualHelper->ResidualFrameOf()):(NULL),
-                                            PixelTypeOf(),encoding);
+                                            PixelTypeOf(),encoding,disabletorgb);
 }
 ///
 
@@ -964,7 +985,7 @@ void BlockBitmapRequester::RequestUserDataForEncoding(class BitMapHook *bmh,Rect
 // Encode a region with downsampling and color transformation
 void BlockBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
 {
-  class ColorTrafo *ctrafo = ColorTrafoOf(true);
+  class ColorTrafo *ctrafo = ColorTrafoOf(true,false);
  
   if (m_bSubsampling) { 
     // Step one: Pull the source data into the input buffers
@@ -984,11 +1005,13 @@ void BlockBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
 
 /// BlockBitmapRequester::ReconstructUnsampled
 // Reconstruct a region not using any subsampling.
-void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *rr,const RectAngle<LONG> &region,
+void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *rr,const RectAngle<LONG> &orgregion,
                                                 ULONG maxmcu,class ColorTrafo *ctrafo)
 {   
   ULONG maxval  = (1UL << m_pFrame->HiddenPrecisionOf()) - 1;
   RectAngle<LONG> r;
+  RectAngle<LONG> region = orgregion;
+  SubsampledRegion(region,rr);
   ULONG minx   = region.ra_MinX >> 3;
   ULONG maxx   = region.ra_MaxX >> 3;
   ULONG miny   = region.ra_MinY >> 3;
@@ -1023,8 +1046,6 @@ void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *r
       }
       //
       // Perform the color transformation now.
-      //if (x == 117 && y == 34)
-      //printf("gotcha");       
       if (m_pResidualHelper) {
         for(i = rr->rr_usFirstComponent; i <= rr->rr_usLastComponent; i++) {
           class QuantizedRow *rrow = *m_pppRImage[i];
@@ -1037,7 +1058,7 @@ void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *r
     } // of loop over x
     //
     // Advance the rows.
-    for(i = 0;i < m_ucCount;i++) {
+    for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
       class QuantizedRow *qrow = *m_pppQImage[i];
       class QuantizedRow *rrow = *m_pppRImage[i];
       if (qrow) m_pppQImage[i] = &(qrow->NextOf());
@@ -1199,6 +1220,8 @@ void BlockBitmapRequester::RequestUserDataForDecoding(class BitMapHook *bmh,Rect
   UBYTE i;
   
   m_ulMaxMCU = MAX_ULONG;
+
+  ResetBitmaps();
   
   for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
     RequestUserData(bmh,region,i,alpha);
@@ -1213,9 +1236,9 @@ void BlockBitmapRequester::RequestUserDataForDecoding(class BitMapHook *bmh,Rect
 // Reconstruct a block, or part of a block
 void BlockBitmapRequester::ReconstructRegion(const RectAngle<LONG> &region,const struct RectangleRequest *rr)
 {
-  class ColorTrafo *ctrafo = ColorTrafoOf(false);
+  class ColorTrafo *ctrafo = ColorTrafoOf(false,!rr->rr_bColorTrafo);
 
-  if (m_bSubsampling) {
+  if (m_bSubsampling && rr->rr_bUpsampling) {
     //
     // Feed data into the regular upsampler
     PullQData(rr,region);

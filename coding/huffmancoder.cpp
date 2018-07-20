@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class implements an encoder for a single group of bits in a huffman
 ** decoder.
 **
-** $Id: huffmancoder.cpp,v 1.10 2014/09/30 08:33:16 thor Exp $
+** $Id: huffmancoder.cpp,v 1.11 2017/06/02 21:17:40 thor Exp $
 **
 */
 
@@ -55,6 +65,11 @@ HuffmanCoder::HuffmanCoder(const UBYTE *lengths,const UBYTE *symbols)
         m_ucBits[symbol] = i + 1; // size in bits
         m_usCode[symbol] = value;
         value++;                  // next code
+        // Note: This test also checks that there is no code with all 1 bits set
+        // This is what Annex K.2 says, and the introduction of Annex C
+        // enforces. There is, from a pure coding perspective, no need to
+        // enforce this rule, i.e. a all-1 codeword would still create a
+        // valid prefix-free code.
         assert(value < (1UL << (i + 1))); // Overflow?
         cnt++;                    // next entry in the table.
       } while(--j);

@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +36,7 @@
 /*
 ** This class contains and maintains the huffman code parsers.
 **
-** $Id: huffmantable.hpp,v 1.16 2015/09/17 11:20:35 thor Exp $
+** $Id: huffmantable.hpp,v 1.17 2017/06/06 10:51:41 thor Exp $
 **
 */
 
@@ -65,10 +75,12 @@ public:
   void ParseMarker(class ByteStream *io);
   //
   // Get the template for the indicated DC table or NULL if it doesn't exist.
-  class HuffmanTemplate *DCTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden);
+  class HuffmanTemplate *DCTemplateOf(UBYTE idx,ScanType type,
+                                      UBYTE depth,UBYTE hidden,UBYTE scan);
   //
   // Get the template for the indicated AC table or NULL if it doesn't exist.
-  class HuffmanTemplate *ACTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden);
+  class HuffmanTemplate *ACTemplateOf(UBYTE idx,ScanType type,
+                                      UBYTE depth,UBYTE hidden,UBYTE scan);
   //
   // Adjust all coders in here to the statistics collected before, i.e.
   // find optimal codes.

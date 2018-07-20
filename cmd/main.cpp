@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +39,7 @@
 ** It is here to serve as an entry point for the command line image
 ** compressor.
 **
-** $Id: main.cpp,v 1.211 2017/02/21 15:48:17 thor Exp $
+** $Id: main.cpp,v 1.215 2018/07/20 06:18:56 thor Exp $
 **
 */
 
@@ -161,12 +171,9 @@ void PrintLicense(void)
 {
 
   printf(""
-         "jpeg Copyright (C) 2012-2014 Thomas Richter, University of Stuttgart\n"
+         "jpeg Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart\n"
          "and Accusoft\n\n"
-         "This program comes with ABSOLUTELY NO WARRANTY; for details see \n"
-         "README.license.gpl\n"
-         "This is free software, and you are welcome to redistribute it\n"
-         "under certain conditions, see again README.license.gpl for details.\n\n"
+         "For license conditions, see README.license for details.\n\n"
          );
 }
 ///
@@ -197,6 +204,7 @@ void PrintUsage(const char *progname)
           "             This works like -r but in the DCT domain.\n"
           "-rR bits   : specify refinement bits for the residual image.\n"
           "-N         : enable noise shaping of the prediction residual\n"
+          "-U         : disable automatic upsampling\n"
           "-l         : enable lossless coding without a residual image by an\n"
           "             int-to-int DCT, also requires -c and -q 100 for true lossless\n"
 #if ACCUSOFT_CODE
@@ -211,9 +219,9 @@ void PrintUsage(const char *progname)
           "             to implement a XYZ colorspace conversion.\n"
           "-sp        : use separate LUTs for each component.\n"
           "-md        : use the median instead of the center of mass\n"
-          "             for constructing the inverse TMO of profile C.\n"
+          "             for constructing the inverse TMO of ISO/IEC 18477-7 profile C.\n"
           "-ct        : use the center of mass instead of the median\n"
-          "             for constructing the inverse TMO of profile C.\n"
+          "             for constructing the inverse TMO of ISO/IEC 18477-7 profile C.\n"
           "-sm iter   : use <iter> iterations to smooth out the histogram for\n"
           "             inverse-TMO based algorithms. Default is not to smooth\n"
           "             the histogram.\n"
@@ -272,7 +280,7 @@ void PrintUsage(const char *progname)
           "-dr        : include the optional de-ringing (Gibbs Phenomenon) filter on encoding\n"
 #endif   
           "-qt n      : define the quantization table. The following tables are currently defined:\n"
-          "             n = 0 the default tables from Annex K of the JPEG standard (default)\n"
+          "             n = 0 the example tables from Rec. ITU-T T.81 | ISO/IEC 10918-1 (default)\n"
           "             n = 1 a completely flat table that should be PSNR-optimal\n"
           "             n = 2 a MS-SSIM optimized table\n"
           "             n = 3 the table suggested by ImageMagick\n"
@@ -311,21 +319,23 @@ void PrintUsage(const char *progname)
           "-aquality q: specify a combined quality for both\n"
 #if ACCUSOFT_CODE
           "-ra        : enable arithmetic coding for residual image (*NOT SPECIFIED*)\n"
-          "-ls mode   : encode in JPEG LS (NOT 10918) mode, where 0 is scan-interleaved,\n"
+          "-ls mode   : encode in JPEG LS mode, where 0 is scan-interleaved,\n"
           "             1 is line interleaved and 2 is sample interleaved.\n"
-          "             NOTE THAT THIS IS NOT 10918 (JPEG) COMPLIANT, BUT COMPLIANT TO\n"
-          "             14495-1 (JPEG-LS) WHICH IS A DIFFERENT STANDARD.\n"
+          "             NOTE THAT THIS IS NOT CONFORMING TO REC. ITU-T T.81 | ISO/IEC 10918 BUT\n"
+          "             COMPLIANT TO REC. ITU-T T.87 | ISO/IEC 14495-1 (JPEG-LS) WHICH IS A\n"
+          "             DIFFERENT STANDARD.\n"
           "             Use -c to bypass the YCbCr color transformation for true lossless,\n"
           "             also use -c for decoding images encoded by the UBC reference software\n"
           "             as it does not write an indicator marker to disable the\n"
           "             transformation itself.\n"
-          "             Note that the UBC software will not able to decode streams created by\n"
+          "             Note that the UBC implementation will not able to decode streams created by\n"
           "             this software due to a limitation of the UBC code - the streams are\n"
           "             nevertheless fully conforming.\n"
           "-cls       : Use a JPEG LS part-2 conforming pseudo-RCT color transformation.\n"
-          "             Note that this transformation is only CONFORMING TO 14495-2\n"
-          "             AND NOT CONFORMING TO 10918-1. Works for near-lossless JPEG LS\n"
-          "             DO NOT USE FOR LOSSY 10918-1, it will also create artifacts.\n"
+          "             Note that this transformation is only CONFORMING TO\n"
+          "             REC. ITU-T T.870 | ISO/IEC 14495-2 AND NOT CONFORMING TO\n"
+          "             REC. ITU-T T.81 | ISO/IEC 10918-1. Works for near-lossless JPEG LS\n"
+          "             DO NOT USE FOR LOSSY JPEG, it will also create artifacts.\n"
 #endif
           ,progname);
 }
@@ -378,6 +388,7 @@ int main(int argc,char **argv)
   bool separate     = false;
   bool noclamp      = false;
   bool setprofile   = false;
+  bool upsample     = true;
   bool median       = true;
   int splitquality  = -1;
   int profile       = 2;    // profile C.
@@ -566,6 +577,10 @@ int main(int argc,char **argv)
       openloop = true;
       argv++;
       argc--;
+    } else if (!strcmp(argv[1],"-U")) {
+      upsample = false;
+      argv++;
+      argc--;
     } else if (!strcmp(argv[1],"-dz")) {
       deadzone = true;
       argv++;
@@ -695,7 +710,7 @@ int main(int argc,char **argv)
   }
 
   if (quality < 0 && lossless == false && lsmode < 0) {
-    Reconstruct(argv[1],argv[2],colortrafo,alpha,serms);
+    Reconstruct(argv[1],argv[2],colortrafo,alpha,upsample);
   } else {
     switch(profile) {
     case 0:

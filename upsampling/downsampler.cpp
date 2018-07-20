@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,9 +34,9 @@
 
 *************************************************************************/
 /*
-** The actual downsampling implementation.
+** The actual downsampling implementation. This is a simple box filter.
 **
-** $Id: downsampler.cpp,v 1.10 2017/05/18 09:28:43 thor Exp $
+** $Id: downsampler.cpp,v 1.13 2017/06/02 21:17:40 thor Exp $
 **
 */
 
@@ -41,7 +51,7 @@
 /// Downsampler::Downsampler
 template<int sx,int sy>
 Downsampler<sx,sy>::Downsampler(class Environ *env,ULONG width,ULONG height)
-  : DownsamplerBase(env,sx,sy,width,height)
+  : DownsamplerBase(env,sx,sy,width,height,false)
 {
 }
 ///
@@ -63,8 +73,6 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
 {
   LONG ofs = (bx * sx) << 3; // first pixel in the buffer.
   LONG yfs = (by * sy) << 3; // first line.
-  LONG *btop = buffer;
-  LONG *bval = NULL;
   int lines = 0; // number of lines already managed to be summed up.
   int cnt   = 8; // number of output lines to go.
   struct Line *line = m_pInputBuffer;
@@ -83,17 +91,8 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
   do {
     //
     // Start of a new line clear the entire output buffer.
-    if (lines == 0) {
-      // If there are no longer any lines to pull from, just replicate the last buffered line
-      if (line || bval == NULL) {
-        buffer[0] = buffer[1] = buffer[2] = buffer[3] = buffer[4] = buffer[5] = buffer[6] = buffer[7] = 0;
-      } else {
-        memcpy(buffer,bval, 8 * sizeof(LONG));
-        bval -= 8;
-        if (bval < btop)
-          bval = btop;
-      }
-    }
+    if (lines == 0)
+      buffer[0] = buffer[1] = buffer[2] = buffer[3] = buffer[4] = buffer[5] = buffer[6] = buffer[7] = 0;
     //
     // Still something in the image?
     if (line) {
@@ -132,8 +131,6 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
           buffer[0] /= norm;buffer[1] /= norm;buffer[2] /= norm;buffer[3] /= norm;
           buffer[4] /= norm;buffer[5] /= norm;buffer[6] /= norm;buffer[7] /= norm;
         }
-        // Keep the last valid (filled) buffer line
-        bval     = buffer;
       }
       // Start the next buffer line.
       buffer    += 8;

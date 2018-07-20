@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +38,7 @@
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.cpp,v 1.21 2014/10/08 12:05:02 thor Exp $
+** $Id: entropyparser.cpp,v 1.22 2017/08/17 13:24:00 thor Exp $
 **
 */
 
@@ -231,6 +241,6 @@ bool EntropyParser::ParseDNLMarker(class ByteStream *io)
 // transformation.
 UBYTE EntropyParser::FractionalColorBitsOf(void) const
 {
-  return m_pFrame->TablesOf()->FractionalColorBitsOf(m_pFrame->DepthOf());
+  return m_pFrame->TablesOf()->FractionalColorBitsOf(m_pFrame->DepthOf(),m_pFrame->isDCTBased());
 }
 ///

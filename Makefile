@@ -1,7 +1,7 @@
 #! make
 #######################################################################
 ##
-## $Id: Makefile,v 1.12 2017/03/26 09:06:06 thor Exp $
+## $Id: Makefile,v 1.14 2018/04/14 21:59:35 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -326,6 +326,8 @@ ISODistrib.zip	:	doc configure autoconfig.h.in
 
 gpldistrib:	GPLDistrib.zip
 
+itudistrib:	ITUDistrib.zip
+
 ##
 ## The public distribution, no patented code, with the stripped headers.
 GPLDistrib.zip	:	doc configure autoconfig.h.in
@@ -337,11 +339,28 @@ GPLDistrib.zip	:	doc configure autoconfig.h.in
 	@ sleep 2
 	@ touch configure
 	@ $(MAKE) --no-print-directory $(DIRLIBS) TARGET="gplzip"
-	@ $(ZIPASCII) -r GPLDistrib.zip README README.license.gpl README.history Compile.txt config.h
+	@ $(ZIPASCII) -r GPLDistrib.zip README README.license.gpl README.license.itu README.history Compile.txt config.h
 	@ $(ZIP) -r GPLDistrib.zip Makefile Makefile.template Makefile_Settings.*
 	@ $(ZIP) -r GPLDistrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r GPLDistrib.zip vs10.0 --exclude '*CVS*'
 	@ $(ZIP) -r GPLDistrib.zip vs12.0 --exclude '*CVS*'
+
+##
+## The public distribution, no patented code, with the stripped headers.
+ITUDistrib.zip	:	doc configure autoconfig.h.in
+	@ touch interface/jpeg.hpp
+	@ sleep 2
+	@ touch configure.in
+	@ sleep 2
+	@ touch autoconfig.h.in
+	@ sleep 2
+	@ touch configure
+	@ $(MAKE) --no-print-directory $(DIRLIBS) TARGET="ituzip"
+	@ $(ZIPASCII) -r ITUDistrib.zip README README.license.itu README.history Compile.txt config.h
+	@ $(ZIP) -r ITUDistrib.zip Makefile Makefile.template Makefile_Settings.*
+	@ $(ZIP) -r ITUDistrib.zip configure configure.in automakefile.in autoconfig.h.in
+	@ $(ZIP) -r ITUDistrib.zip vs10.0 --exclude '*CVS*'
+	@ $(ZIP) -r ITUDistrib.zip vs12.0 --exclude '*CVS*'
 
 tar		:	distrib.tgz
 

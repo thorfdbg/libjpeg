@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +36,7 @@
 /*
 ** This class contains and maintains the huffman code parsers.
 **
-** $Id: huffmantable.cpp,v 1.19 2015/09/17 11:20:35 thor Exp $
+** $Id: huffmantable.cpp,v 1.20 2017/06/06 10:51:41 thor Exp $
 **
 */
 
@@ -168,7 +178,8 @@ void HuffmanTable::AdjustToStatistics(void)
 
 /// HuffmanTable::DCTemplateOf
 // Get the template for the indicated DC table or NULL if it doesn't exist.
-class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden)
+class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,
+                                                  UBYTE depth,UBYTE hidden,UBYTE scan)
 {
   assert(m_pCoder && idx < 4);
   
@@ -177,9 +188,9 @@ class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE 
     // Provide a default that seems sensible. Everything else requires
     // measurement.
     if (idx == 0) {
-      m_pCoder[idx]->InitDCLuminanceDefault(type,depth,hidden);
+      m_pCoder[idx]->InitDCLuminanceDefault(type,depth,hidden,scan);
     } else {
-      m_pCoder[idx]->InitDCChrominanceDefault(type,depth,hidden);
+      m_pCoder[idx]->InitDCChrominanceDefault(type,depth,hidden,scan);
     }
   }
   
@@ -189,7 +200,8 @@ class HuffmanTemplate *HuffmanTable::DCTemplateOf(UBYTE idx,ScanType type,UBYTE 
 
 /// HuffmanTable::ACTemplateOf
 // Get the template for the indicated AC table or NULL if it doesn't exist.
-class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden)
+class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx,ScanType type,
+                                                  UBYTE depth,UBYTE hidden,UBYTE scan)
 {
   assert(m_pCoder && idx < 4);
 
@@ -200,9 +212,9 @@ class HuffmanTemplate *HuffmanTable::ACTemplateOf(UBYTE idx,ScanType type,UBYTE 
     // Provide a default that seems sensible. Everything else requires
     // measurement.
     if (idx == 4) {
-      m_pCoder[idx]->InitACLuminanceDefault(type,depth,hidden);
+      m_pCoder[idx]->InitACLuminanceDefault(type,depth,hidden,scan);
     } else {
-      m_pCoder[idx]->InitACChrominanceDefault(type,depth,hidden);
+      m_pCoder[idx]->InitACChrominanceDefault(type,depth,hidden,scan);
     }
   }
   

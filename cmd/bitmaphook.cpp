@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This header provides the interface for the bitmap hook that 
 ** delivers the bitmap data to the core library.
 **
-** $Id: bitmaphook.cpp,v 1.12 2016/10/28 13:58:52 thor Exp $
+** $Id: bitmaphook.cpp,v 1.15 2017/12/05 13:43:02 thor Exp $
 **
 */
 
@@ -88,9 +98,10 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
 {
   static ULONG OpenComponents = 0;
   struct BitmapMemory *bmm  = (struct BitmapMemory *)(hook->hk_pData);
-  UWORD comp = tags->GetTagData(JPGTAG_BIO_COMPONENT);
-  ULONG miny = tags->GetTagData(JPGTAG_BIO_MINY);
-  ULONG maxy = tags->GetTagData(JPGTAG_BIO_MAXY);
+  UWORD comp  = tags->GetTagData(JPGTAG_BIO_COMPONENT);
+  ULONG miny  = tags->GetTagData((bmm->bmm_bUpsampling)?(JPGTAG_BIO_MINY):(JPGTAG_BIO_PIXEL_MINY));
+  ULONG maxy  = tags->GetTagData((bmm->bmm_bUpsampling)?(JPGTAG_BIO_MAXY):(JPGTAG_BIO_PIXEL_MAXY));
+  ULONG width = 1 + (tags->GetTagData((bmm->bmm_bUpsampling)?(JPGTAG_BIO_MAXX):(JPGTAG_BIO_PIXEL_MAXX)));
   assert(comp < bmm->bmm_usDepth);
   assert(maxy - miny < bmm->bmm_ulHeight);
   
@@ -100,31 +111,31 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
       if (bmm->bmm_ucPixelType == CTYP_UBYTE) {
         UBYTE *mem = (UBYTE *)(bmm->bmm_pMemPtr);
         mem += comp;
-        mem -= miny * bmm->bmm_usDepth * bmm->bmm_ulWidth;
+        mem -= miny * bmm->bmm_usDepth * width;
         tags->SetTagPtr(JPGTAG_BIO_MEMORY        ,mem);
-        tags->SetTagData(JPGTAG_BIO_WIDTH        ,bmm->bmm_ulWidth);
+        tags->SetTagData(JPGTAG_BIO_WIDTH        ,width);
         tags->SetTagData(JPGTAG_BIO_HEIGHT       ,8 + miny);
-        tags->SetTagData(JPGTAG_BIO_BYTESPERROW  ,bmm->bmm_usDepth * bmm->bmm_ulWidth * sizeof(UBYTE));
+        tags->SetTagData(JPGTAG_BIO_BYTESPERROW  ,bmm->bmm_usDepth * width * sizeof(UBYTE));
         tags->SetTagData(JPGTAG_BIO_BYTESPERPIXEL,bmm->bmm_usDepth * sizeof(UBYTE));
         tags->SetTagData(JPGTAG_BIO_PIXELTYPE    ,bmm->bmm_ucPixelType);
       } else if (bmm->bmm_ucPixelType == CTYP_UWORD) {  
         UWORD *mem = (UWORD *)(bmm->bmm_pMemPtr);
         mem += comp;
-        mem -= miny * bmm->bmm_usDepth * bmm->bmm_ulWidth;
+        mem -= miny * bmm->bmm_usDepth * width;
         tags->SetTagPtr(JPGTAG_BIO_MEMORY        ,mem);
-        tags->SetTagData(JPGTAG_BIO_WIDTH        ,bmm->bmm_ulWidth);
+        tags->SetTagData(JPGTAG_BIO_WIDTH        ,width);
         tags->SetTagData(JPGTAG_BIO_HEIGHT       ,8 + miny);
-        tags->SetTagData(JPGTAG_BIO_BYTESPERROW  ,bmm->bmm_usDepth * bmm->bmm_ulWidth * sizeof(UWORD));
+        tags->SetTagData(JPGTAG_BIO_BYTESPERROW  ,bmm->bmm_usDepth * width * sizeof(UWORD));
         tags->SetTagData(JPGTAG_BIO_BYTESPERPIXEL,bmm->bmm_usDepth * sizeof(UWORD));
         tags->SetTagData(JPGTAG_BIO_PIXELTYPE    ,bmm->bmm_ucPixelType);
      } else if (bmm->bmm_ucPixelType == CTYP_FLOAT) {   
         FLOAT *mem = (FLOAT *)(bmm->bmm_pMemPtr);
         mem += comp;
-        mem -= miny * bmm->bmm_usDepth * bmm->bmm_ulWidth;
+        mem -= miny * bmm->bmm_usDepth * width;
         tags->SetTagPtr(JPGTAG_BIO_MEMORY        ,mem);
-        tags->SetTagData(JPGTAG_BIO_WIDTH        ,bmm->bmm_ulWidth);
+        tags->SetTagData(JPGTAG_BIO_WIDTH        ,width);
         tags->SetTagData(JPGTAG_BIO_HEIGHT       ,8 + miny);
-        tags->SetTagData(JPGTAG_BIO_BYTESPERROW  ,bmm->bmm_usDepth * bmm->bmm_ulWidth * sizeof(FLOAT));
+        tags->SetTagData(JPGTAG_BIO_BYTESPERROW  ,bmm->bmm_usDepth * width * sizeof(FLOAT));
         tags->SetTagData(JPGTAG_BIO_BYTESPERPIXEL,bmm->bmm_usDepth * sizeof(FLOAT));
         tags->SetTagData(JPGTAG_BIO_PIXELTYPE    ,bmm->bmm_ucPixelType);
       } else {
@@ -144,14 +155,14 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
           if (bmm->bmm_pLDRSource && bmm->bmm_pLDRMemPtr) {
             // A designated LDR source is available. Read from here rather than using
             // our primitive tone mapper.
-            fread(bmm->bmm_pLDRMemPtr,sizeof(UBYTE),bmm->bmm_ulWidth * height * bmm->bmm_usDepth,
+            fread(bmm->bmm_pLDRMemPtr,sizeof(UBYTE),width * height * bmm->bmm_usDepth,
                   bmm->bmm_pLDRSource);
           }
           //
           if (bmm->bmm_pSource) {
             if (bmm->bmm_bFloat) {
               if (bmm->bmm_bNoOutputConversion) {
-                ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+                ULONG count = width * height * bmm->bmm_usDepth;
                 FLOAT *data = (FLOAT *)bmm->bmm_pMemPtr;
                 UBYTE *ldr  = (UBYTE *)bmm->bmm_pLDRMemPtr;
                 do {
@@ -167,7 +178,7 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                   data++,ldr++;
                 } while(--count);
               } else {
-                ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+                ULONG count = width * height * bmm->bmm_usDepth;
                 UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
                 UBYTE *ldr  = (UBYTE *)bmm->bmm_pLDRMemPtr;
                 do {
@@ -188,12 +199,12 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
               }
             } else {
               fread(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-                    bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pSource);
+                    width * height * bmm->bmm_usDepth,bmm->bmm_pSource);
 #ifdef JPG_LIL_ENDIAN
               // On those bloddy little endian machines, an endian swap is necessary
               // as PNM is big-endian.
               if (bmm->bmm_ucPixelType == CTYP_UWORD) {
-                ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+                ULONG count = width * height * bmm->bmm_usDepth;
                 UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
                 do {
                   *data = (*data >> 8) | ((*data & 0xff) << 8);
@@ -205,14 +216,14 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
               // if there is no designated LDR input.
               if (bmm->bmm_pLDRMemPtr && bmm->bmm_pLDRSource == NULL) {
                 if (bmm->bmm_ucPixelType == CTYP_UWORD) {
-                  ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+                  ULONG count = width * height * bmm->bmm_usDepth;
                   UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
                   UBYTE *ldr  = (UBYTE *)bmm->bmm_pLDRMemPtr;
                   do {
                     *ldr++ = bmm->bmm_HDR2LDR[*data++];
                   } while(--count);
                 } else { // Huh, why tone mapping on 8 bit input? Ok, anyhow....
-                  ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+                  ULONG count = width * height * bmm->bmm_usDepth;
                   UBYTE *data = (UBYTE *)bmm->bmm_pMemPtr;
                   UBYTE *ldr  = (UBYTE *)bmm->bmm_pLDRMemPtr;
                   do {
@@ -231,7 +242,8 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
   case JPGFLAG_BIO_RELEASE:
     {
       assert(OpenComponents & (1UL << comp));
-      if (comp == bmm->bmm_usDepth - 1) {
+      // PGX writes plane-interleaved, not line-interleaved.
+      if (bmm->bmm_bWritePGX || comp == bmm->bmm_usDepth - 1) {
         ULONG height = maxy + 1 - miny;
         if (bmm->bmm_ucPixelType == CTYP_UBYTE || 
             bmm->bmm_ucPixelType == CTYP_UWORD || 
@@ -239,53 +251,76 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
           if (bmm->bmm_pTarget) {
             if (bmm->bmm_bFloat) {
               if (bmm->bmm_bNoOutputConversion) {
-                ULONG count = bmm->bmm_ulWidth * height;
+                ULONG count = width * height;
                 FLOAT *data = (FLOAT *)bmm->bmm_pMemPtr;
                 double r = 0.0,g = 0.0,b = 0.0; // shut up the compiler.
                 do {
-                  switch(bmm->bmm_usDepth) {
-                  case 1:
-                    writeFloat(bmm->bmm_pTarget,*data++,bmm->bmm_bBigEndian);
-                    break;
-                  case 3:
-                    r = *data++;
-                    g = *data++;
-                    b = *data++;
-                    writeFloat(bmm->bmm_pTarget,r,bmm->bmm_bBigEndian);
-                    writeFloat(bmm->bmm_pTarget,g,bmm->bmm_bBigEndian);
-                    writeFloat(bmm->bmm_pTarget,b,bmm->bmm_bBigEndian);
-                    break;
-                  }
+                  if (bmm->bmm_bWritePGX) {
+                    writeFloat(bmm->bmm_PGXFiles[comp],data[comp],bmm->bmm_bBigEndian);
+                    data += bmm->bmm_usDepth;
+                  } else switch(bmm->bmm_usDepth) {
+                    case 1:
+                      writeFloat(bmm->bmm_pTarget,*data++,bmm->bmm_bBigEndian);
+                      break;
+                    case 3:
+                      r = *data++;
+                      g = *data++;
+                      b = *data++;
+                      writeFloat(bmm->bmm_pTarget,r,bmm->bmm_bBigEndian);
+                      writeFloat(bmm->bmm_pTarget,g,bmm->bmm_bBigEndian);
+                      writeFloat(bmm->bmm_pTarget,b,bmm->bmm_bBigEndian);
+                      break;
+                    }
                 } while(--count);
               } else {
-                ULONG count = bmm->bmm_ulWidth * height;
+                ULONG count = width * height;
                 UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
                 double r = 0.0,g = 0.0,b = 0.0; // shut up the compiler.
                 do {
-                  switch(bmm->bmm_usDepth) {
-                  case 1:
-                    writeFloat(bmm->bmm_pTarget,HalfToDouble(*data++),bmm->bmm_bBigEndian);
-                    break;
-                  case 3:
-                    r = HalfToDouble(*data++);
-                    g = HalfToDouble(*data++);
-                    b = HalfToDouble(*data++);
-                    writeFloat(bmm->bmm_pTarget,r,bmm->bmm_bBigEndian);
-                    writeFloat(bmm->bmm_pTarget,g,bmm->bmm_bBigEndian);
-                    writeFloat(bmm->bmm_pTarget,b,bmm->bmm_bBigEndian);
-                    break;
-                  }
+                  if (bmm->bmm_bWritePGX) {
+                    writeFloat(bmm->bmm_PGXFiles[comp],HalfToDouble(data[comp]),bmm->bmm_bBigEndian);
+                    data += bmm->bmm_usDepth;
+                  } else switch(bmm->bmm_usDepth) {
+                    case 1:
+                      writeFloat(bmm->bmm_pTarget,HalfToDouble(*data++),bmm->bmm_bBigEndian);
+                      break;
+                    case 3:
+                      r = HalfToDouble(*data++);
+                      g = HalfToDouble(*data++);
+                      b = HalfToDouble(*data++);
+                      writeFloat(bmm->bmm_pTarget,r,bmm->bmm_bBigEndian);
+                      writeFloat(bmm->bmm_pTarget,g,bmm->bmm_bBigEndian);
+                      writeFloat(bmm->bmm_pTarget,b,bmm->bmm_bBigEndian);
+                      break;
+                    }
                 } while(--count);
               }
             } else {
-              switch(bmm->bmm_usDepth) {
+              if (bmm->bmm_bWritePGX) {
+                if (bmm->bmm_ucPixelType == CTYP_UWORD) {
+                  UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
+                  ULONG count = width * height;
+                  do {
+                    fputc(data[comp] >> 8,bmm->bmm_PGXFiles[comp]);
+                    fputc(data[comp]     ,bmm->bmm_PGXFiles[comp]);
+                    data += bmm->bmm_usDepth;
+                  } while(--count);
+                } else {
+                  UBYTE *data = (UBYTE *)bmm->bmm_pMemPtr;
+                  ULONG count = width * height;
+                  do {
+                    fputc(data[comp],bmm->bmm_PGXFiles[comp]);
+                    data += bmm->bmm_usDepth;
+                  } while(--count);
+                }
+              } else switch(bmm->bmm_usDepth) {
               case 1:
               case 3: // The direct cases, can write PPM right away.
 #ifdef JPG_LIL_ENDIAN
                 // On those bloddy little endian machines, an endian swap is necessary
                 // as PNM is big-endian.
                 if (bmm->bmm_ucPixelType == CTYP_UWORD) {
-                  ULONG count = bmm->bmm_ulWidth * height * bmm->bmm_usDepth;
+                  ULONG count = width * height * bmm->bmm_usDepth;
                   UWORD *data = (UWORD *)bmm->bmm_pMemPtr;
                   do {
                     *data = (*data >> 8) | ((*data & 0xff) << 8);
@@ -294,7 +329,7 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                 }
 #endif
                 fwrite(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-                       bmm->bmm_ulWidth * height * bmm->bmm_usDepth,bmm->bmm_pTarget);
+                       width * height * bmm->bmm_usDepth,bmm->bmm_pTarget);
                 break;
               }
             }

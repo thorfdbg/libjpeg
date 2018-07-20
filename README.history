@@ -442,3 +442,21 @@ JPEG::PeekMarker(), and retrieve them with JPEG::ReadMarker(). Details
 can be found in cmd/encodec.cpp for encoding, and cmd/reconstruct.cpp.
 
 Otherwise, no functional changes.
+
+--------------------------------------------------------------------------
+
+Release 1.54:
+
+In this release, upsampling has been made conforming to the latest
+corrigendum of 18477-1 and 18477-8. In particular, upsampling is now
+by design always centered and never co-sited. The co-sited upsampling
+procedure is still included in the source code, but never executed.
+
+--------------------------------------------------------------------------
+
+Release 1.55:
+
+This release only addresses some minor formulation issues of the
+command line such that references are formatted properly to make this
+software package acceptable as a JPEG reference software.
+No functional changes.

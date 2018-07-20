@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class builds the proper color transformer from the information
 ** in the MergingSpecBox
 **
-** $Id: colortransformerfactory.hpp,v 1.22 2015/01/27 18:31:03 thor Exp $
+** $Id: colortransformerfactory.hpp,v 1.24 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -95,6 +105,12 @@ class ColorTransformerFactory : public JKeeper {
                                                        class MergingSpecBox *specs,
                                                        UBYTE ocflags,int ltrafo,int rtrafo);
   //
+  template<typename type>
+  IntegerTrafo *BuildIntegerTransformationFour(class Frame *frame,
+                                               class Frame *residualframe,
+                                               class MergingSpecBox *,
+                                               UBYTE oc,int ltrafo,int rtrafo);
+  //
   template<int count,typename type>
   IntegerTrafo *BuildIntegerTransformationExtensive(class Frame *frame,class Frame *residualframe,
                                                           class MergingSpecBox *specs,
@@ -140,7 +156,8 @@ public:
   class ColorTrafo *BuildColorTransformer(class Frame *frame,class Frame *residual,
                                           class MergingSpecBox *specs,
                                           UBYTE dctbits,UBYTE spatialbits,
-                                          UBYTE external_type,bool encoding);
+                                          UBYTE external_type,bool encoding,
+                                          bool disabletorgb);
   //
 };
 ///

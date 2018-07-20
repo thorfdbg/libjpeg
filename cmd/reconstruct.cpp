@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,12 +38,13 @@
 ** command line interface. It doesn't do much except
 ** calling libjpeg.
 **
-** $Id: reconstruct.cpp,v 1.4 2017/02/21 15:48:17 thor Exp $
+** $Id: reconstruct.cpp,v 1.8 2017/11/28 13:08:03 thor Exp $
 **
 */
 
 /// Includes
 #include "std/stdio.hpp"
+#include "std/string.hpp"
 #include "cmd/reconstruct.hpp"
 #include "cmd/bitmaphook.hpp"
 #include "cmd/filehook.hpp"
@@ -50,7 +61,7 @@
 // This reconstructs an image from the given input file
 // and writes the output ppm.
 void Reconstruct(const char *infile,const char *outfile,
-                 int colortrafo,const char *alpha,bool serms)
+                 int colortrafo,const char *alpha,bool upsample)
 {  
   FILE *in = fopen(infile,"rb");
   if (in) {
@@ -61,12 +72,10 @@ void Reconstruct(const char *infile,const char *outfile,
       struct JPG_TagItem tags[] = {
         JPG_PointerTag(JPGTAG_HOOK_IOHOOK,&filehook),
         JPG_PointerTag(JPGTAG_HOOK_IOSTREAM,in), 
-        JPG_ValueTag(JPGTAG_MATRIX_LTRAFO,colortrafo),
 #ifdef TEST_MARKER_INJECTION                
         // Stop after the image header...
         JPG_ValueTag(JPGTAG_DECODER_STOP,JPGFLAG_DECODER_STOP_FRAME),
 #endif  
-        JPG_ValueTag((serms)?(JPGTAG_IMAGE_LOSSLESSDCT):(JPGTAG_TAG_IGNORE),serms),
         JPG_EndTag
       };
       //
@@ -105,6 +114,7 @@ void Reconstruct(const char *infile,const char *outfile,
       tags->SetTagData(JPGTAG_DECODER_STOP,0);
 #endif      
       if (ok && jpeg->Read(tags)) {
+        UBYTE subx[4],suby[4];
         struct JPG_TagItem atags[] = {
           JPG_ValueTag(JPGTAG_IMAGE_PRECISION,0),
           JPG_ValueTag(JPGTAG_IMAGE_IS_FLOAT,false),
@@ -120,6 +130,9 @@ void Reconstruct(const char *infile,const char *outfile,
           JPG_ValueTag(JPGTAG_IMAGE_OUTPUT_CONVERSION,true),
           JPG_ValueTag(JPGTAG_ALPHA_MODE,JPGFLAG_ALPHA_OPAQUE),
           JPG_PointerTag(JPGTAG_ALPHA_TAGLIST,atags),
+          JPG_PointerTag(JPGTAG_IMAGE_SUBX,subx),
+          JPG_PointerTag(JPGTAG_IMAGE_SUBY,suby),
+          JPG_ValueTag(JPGTAG_IMAGE_SUBLENGTH,4),
           JPG_EndTag
         };
         if (jpeg->GetInformation(itags)) {
@@ -133,6 +146,7 @@ void Reconstruct(const char *infile,const char *outfile,
           bool doalpha = itags->GetTagData(JPGTAG_ALPHA_MODE,JPGFLAG_ALPHA_OPAQUE)?true:false;
           bool apfm    = false;
           bool aconvert= false;
+          bool writepgx= false;
           
           if (alpha && doalpha) {
             aprec    = atags->GetTagData(JPGTAG_IMAGE_PRECISION);
@@ -168,7 +182,7 @@ void Reconstruct(const char *infile,const char *outfile,
           UBYTE *mem   = (UBYTE *)malloc(width * 8 * depth * bytesperpixel);
           if (doalpha)
             amem = (UBYTE *)malloc(width * 8 * alphabytesperpixel); // only one component!
-
+          
           if (mem) {
             struct BitmapMemory bmm;
             bmm.bmm_pMemPtr      = mem;
@@ -189,47 +203,125 @@ void Reconstruct(const char *infile,const char *outfile,
             bmm.bmm_bAlphaBigEndian          = true;
             bmm.bmm_bNoOutputConversion      = !convert;
             bmm.bmm_bNoAlphaOutputConversion = !aconvert;
+            bmm.bmm_bUpsampling  = upsample;
+
+            memset(bmm.bmm_PGXFiles,0,sizeof(bmm.bmm_PGXFiles));
+
+            if (depth != 1 && depth != 3)
+              writepgx = true;
+            if (!upsample)
+              writepgx = true;
+            //
+            // If upsampling is enabled, the subsampling factors are
+            // all implicitly 1.
+            if (upsample) {
+              memset(subx,1,sizeof(subx));
+              memset(suby,1,sizeof(suby));
+            }
+
+            bmm.bmm_bWritePGX = writepgx;
+
+            if (writepgx) {
+              for(int i = 0;i < depth;i++) {
+                char headername[256],rawname[256];
+                FILE *hdr;
+                sprintf(headername,"%s_%d.h",outfile,i);
+                sprintf(rawname   ,"%s_%d.raw"  ,outfile,i);
+                fprintf(bmm.bmm_pTarget,"%s\n",rawname);
+                hdr = fopen(headername,"wb");
+                // FIXME: component dimensions have to differ without subsampling expansion
+                if (hdr) {
+                  fprintf(hdr,"P%c ML +%d %d %d\n",pfm?'F':'G',prec,
+                          (width  + subx[i] - 1) / subx[i],
+                          (height + suby[i] - 1) / suby[i]);
+                  fclose(hdr);
+                }
+                bmm.bmm_PGXFiles[i] = fopen(rawname,"wb");
+              }
+            }
 
             if (bmm.bmm_pTarget) {
-              ULONG y = 0; // Just as a demo, run a stripe-based reconstruction.
-              ULONG lastline;
               struct JPG_Hook bmhook(BitmapHook,&bmm);
               struct JPG_Hook alphahook(AlphaHook,&bmm);
-              struct JPG_TagItem tags[] = {
-                JPG_PointerTag(JPGTAG_BIH_HOOK,&bmhook),
-                JPG_PointerTag(JPGTAG_BIH_ALPHAHOOK,&alphahook),
-                JPG_ValueTag(JPGTAG_DECODER_MINY,y),
-                JPG_ValueTag(JPGTAG_DECODER_MAXY,y+7),
-                JPG_EndTag
-              };
-              fprintf(bmm.bmm_pTarget,"P%c\n%d %d\n%d\n",
-                      (pfm)?((depth > 1)?'F':'f'):((depth > 1)?('6'):('5')),
-                      width,height,(pfm)?(1):((1 << prec) - 1));
-
-              if (bmm.bmm_pAlphaTarget)
-                fprintf(bmm.bmm_pAlphaTarget,"P%c\n%d %d\n%d\n",
-                        (apfm)?('f'):('5'),
-                        width,height,(apfm)?(1):((1 << aprec) - 1));
-
-              //
-              // Reconstruct now the buffered image, line by line. Could also
-              // reconstruct the image as a whole. What we have here is just a demo
-              // that is not necessarily the most efficient way of handling images.
-              do {
-                lastline = height;
-                if (lastline > y + 8)
-                  lastline = y + 8;
-                tags[2].ti_Data.ti_lData = y;
-                tags[3].ti_Data.ti_lData = lastline - 1;
-                ok = jpeg->DisplayRectangle(tags);
-                y  = lastline;
-              } while(y < height && ok);
-
-              fclose(bmm.bmm_pTarget);
+              // pgx reconstruction is component by component since
+              // we cannot interleave non-upsampled components of differing
+              // subsampling factors.
+              if (writepgx) {
+                int comp;
+                for(comp = 0;comp < depth;comp++) {
+                  ULONG y = 0;
+                  ULONG lastline;
+                  ULONG thisheight = height;
+                  struct JPG_TagItem tags[] = {
+                    JPG_PointerTag(JPGTAG_BIH_HOOK,&bmhook),
+                    JPG_PointerTag(JPGTAG_BIH_ALPHAHOOK,&alphahook),
+                    JPG_ValueTag(JPGTAG_DECODER_MINY,y),
+                    JPG_ValueTag(JPGTAG_DECODER_MAXY,y + (suby[comp] << 3) - 1),
+                    JPG_ValueTag(JPGTAG_DECODER_UPSAMPLE,upsample),
+                    JPG_ValueTag(JPGTAG_MATRIX_LTRAFO,colortrafo),
+                    JPG_ValueTag(JPGTAG_DECODER_MINCOMPONENT,comp),
+                    JPG_ValueTag(JPGTAG_DECODER_MAXCOMPONENT,comp),
+                    JPG_EndTag
+                  };
+                  
+                  // Reconstruct now the buffered image, line by line. Could also
+                  // reconstruct the image as a whole. What we have here is just a demo
+                  // that is not necessarily the most efficient way of handling images.
+                  do {
+                    lastline = height;
+                    if (lastline > y + (suby[comp] << 3))
+                      lastline = y + (suby[comp] << 3);
+                    tags[2].ti_Data.ti_lData = y;
+                    tags[3].ti_Data.ti_lData = lastline - 1;
+                    ok = jpeg->DisplayRectangle(tags);
+                    y  = lastline;
+                  } while(y < thisheight && ok);
+                }
+                for(int i = 0;i < depth;i++) {
+                  if (bmm.bmm_PGXFiles[i]) {
+                    fclose(bmm.bmm_PGXFiles[i]);
+                  }
+                }
+              } else {
+                ULONG y = 0; // Just as a demo, run a stripe-based reconstruction.
+                ULONG lastline;
+                struct JPG_TagItem tags[] = {
+                  JPG_PointerTag(JPGTAG_BIH_HOOK,&bmhook),
+                  JPG_PointerTag(JPGTAG_BIH_ALPHAHOOK,&alphahook),
+                  JPG_ValueTag(JPGTAG_DECODER_MINY,y),
+                  JPG_ValueTag(JPGTAG_DECODER_MAXY,y+7),
+                  JPG_ValueTag(JPGTAG_DECODER_UPSAMPLE,upsample),
+                  JPG_ValueTag(JPGTAG_MATRIX_LTRAFO,colortrafo),
+                  JPG_EndTag
+                };
+                fprintf(bmm.bmm_pTarget,"P%c\n%d %d\n%d\n",
+                        (pfm)?((depth > 1)?'F':'f'):((depth > 1)?('6'):('5')),
+                        width,height,(pfm)?(1):((1 << prec) - 1));
+                
+                if (bmm.bmm_pAlphaTarget)
+                  fprintf(bmm.bmm_pAlphaTarget,"P%c\n%d %d\n%d\n",
+                          (apfm)?('f'):('5'),
+                          width,height,(apfm)?(1):((1 << aprec) - 1));
+                //
+                // Reconstruct now the buffered image, line by line. Could also
+                // reconstruct the image as a whole. What we have here is just a demo
+                // that is not necessarily the most efficient way of handling images.
+                do {
+                  lastline = height;
+                  if (lastline > y + 8)
+                    lastline = y + 8;
+                  tags[2].ti_Data.ti_lData = y;
+                  tags[3].ti_Data.ti_lData = lastline - 1;
+                  ok = jpeg->DisplayRectangle(tags);
+                  y  = lastline;
+                } while(y < height && ok);
+              }
             } else {
               perror("failed to open the output file");
             }
 
+            fclose(bmm.bmm_pTarget);
+            
             if (bmm.bmm_pAlphaTarget)
               fclose(bmm.bmm_pAlphaTarget);
             

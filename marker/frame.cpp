@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.128 2017/02/21 15:48:21 thor Exp $
+** $Id: frame.cpp,v 1.129 2017/08/17 13:24:01 thor Exp $
 **
 */
 
@@ -1267,4 +1277,24 @@ class Scan *Frame::StartOptimizeScan(void)
   return m_pCurrent;
 }
 ///
- 
+
+/// Frame::isDCTBased
+// Return an indicator whether this is a DCT-based frame type.
+bool Frame::isDCTBased(void) const
+{
+  switch(m_Type) {
+  case Lossless:
+  case ACLossless:
+  case JPEG_LS:
+    return false;
+  case DifferentialLossless:
+  case ACDifferentialLossless:
+    // This is a bit touchy. We are in a hiearchical process, hence the
+    // DCT mode (and for that the preshift) is determined by the first
+    // frame of the hierarchical process.
+    return (m_pParent->FirstFrameOf()->isDCTBased());
+  default:
+    return true;
+  }
+}
+///

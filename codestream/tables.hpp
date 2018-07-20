@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.hpp,v 1.89 2017/02/21 15:48:21 thor Exp $
+** $Id: tables.hpp,v 1.94 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -159,9 +169,6 @@ class Tables: public JKeeper {
   // The maximum error bound.
   UBYTE                          m_ucMaxError;
   //
-  // Boolean indicator that the color trafo must be off.
-  bool                           m_bDisableColor;
-  //
   // Indicator whether the color transformation should only
   // code residuals if the LDR domain is out of range.
   bool                           m_bTruncateColor;
@@ -192,10 +199,6 @@ class Tables: public JKeeper {
   // expansion flags for the exp marker (if present)
   bool                           m_bHorizontalExpansion;
   bool                           m_bVerticalExpansion;
-  //
-  // If this is set, the boxes are ignored and the integer DCT is used,
-  // regardless what.
-  bool                           m_bEnforceLosslessDCT;
   //
   // Build a tone mapping for the type (base-tag) and the given tag list
   // The base tag is the tag-id for the type of the box. All others are offsets.
@@ -262,17 +265,21 @@ public:
   void InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct JPG_TagItem *tags);
   //
   // Find the DC huffman table of the indicated index.
-  class HuffmanTemplate *FindDCHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden) const;
+  class HuffmanTemplate *FindDCHuffmanTable(UBYTE idx,ScanType type,
+                                            UBYTE depth,UBYTE hidden,UBYTE scanidx) const;
   //
   // Find the AC huffman table of the indicated index.
-  class HuffmanTemplate *FindACHuffmanTable(UBYTE idx,ScanType type,UBYTE depth,UBYTE hidden) const;
+  class HuffmanTemplate *FindACHuffmanTable(UBYTE idx,ScanType type,
+                                            UBYTE depth,UBYTE hidden,UBYTE scanidx) const;
   //
   // Find the AC conditioner table for the indicated index
   // and the DC band.
-  class ACTemplate *FindDCConditioner(UBYTE idx) const;
+  class ACTemplate *FindDCConditioner(UBYTE idx,ScanType type,
+                                      UBYTE depth,UBYTE hidden,UBYTE scanidx) const;
   //
   // The same for the AC band.
-  class ACTemplate *FindACConditioner(UBYTE idx) const;
+  class ACTemplate *FindACConditioner(UBYTE idx,ScanType type,
+                                      UBYTE depth,UBYTE hidden,UBYTE scanidx) const;
   //
   // Find the quantization table of the given index.
   class QuantizationTable *FindQuantizationTable(UBYTE idx) const;
@@ -339,7 +346,7 @@ public:
   // Return the color transformer suitable for the external data
   // type and the color space indicated in the application markers.
   class ColorTrafo *ColorTrafoOf(class Frame *frame,class Frame *residualframe,
-                                 UBYTE external_type,bool encoding); 
+                                 UBYTE external_type,bool encoding,bool disabletorgb); 
   //
   // Check whether residual data in the APP11 marker shall be written.
   bool UseResiduals(void) const;
@@ -353,6 +360,16 @@ public:
   //
   // Check whether the lossless flag is set.
   bool isLossless(void) const;
+  //
+  // Return a flag that indicates whether chroma samples are
+  // centered or cosited. Returns true if they are cosited.
+  bool isChromaCentered(void) const;
+  //
+  // Return a flag indicating whether the downsampler at encoder
+  // side should enable interpolation (then true) or if a simple
+  // box filter is sufficient (then false).
+  // Currently, residual coding requires the box filter.
+  bool isDownsamplingInterpolated(void) const;
   //
   // Return the maximal masking error.
   UBYTE MaxErrorOf(void) const
@@ -377,25 +394,20 @@ public:
   //
   // Check how many fractional bits the color transformation will use.
   // This is either from the L or the R transformation depending on
-  // which tables this is (residual or legacy).
-  UBYTE FractionalColorBitsOf(UBYTE count) const;
+  // which tables this is (residual or legacy). The DCT flag indicates
+  // whether a DCT is in the path. If so, more bits might be allocated
+  // to accomodate fractional output bits of the DCT. Note that this
+  // is an implementation detail.
+  UBYTE FractionalColorBitsOf(UBYTE count,bool dct) const;
   //
   // Return the number of fractional bits in the L-path.
-  UBYTE FractionalLBitsOf(UBYTE count) const;
+  UBYTE FractionalLBitsOf(UBYTE count,bool dct) const;
   //
   // Return the number of fractional bits in the R-path.
-  UBYTE FractionalRBitsOf(UBYTE count) const;
+  UBYTE FractionalRBitsOf(UBYTE count,bool dct) const;
   //
   // Check how many bits are hidden in invisible refinement scans.
   UBYTE HiddenDCTBitsOf(void) const;
-  //
-  // Disable the color transformation even in the absense of the Adobe marker.
-  void ForceColorTrafoOff(void);
-  //
-  // Enforce the usage of the integer DCT regardless of what the markers
-  // tell. This is for testing the precision of the integer vs. fixed point
-  // DCT.
-  void ForceIntegerDCT(void);
   //
   // Test whether this setup has designated chroma components. For the
   // legacy codestream, this tests whether there is an L transformation in
@@ -405,7 +417,8 @@ public:
   // Build the proper DCT transformation for the specification
   // recorded in this class. The DCT is not owned by this class
   // and must be deleted by the caller.
-  class DCT *BuildDCT(class Component *comp,UBYTE count,UBYTE precision) const;
+  class DCT *BuildDCT(class Component *comp,UBYTE count,
+                      UBYTE precision) const;
   //
   // Return the currently active restart interval in MCUs or zero
   // in case restart markers are disabled.

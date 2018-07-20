@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
  * Definition of how to request a given rectangle for display,
  * for load or for checking for a necessary update.
  * 
- * $Id: rectanglerequest.hpp,v 1.10 2015/03/11 16:02:42 thor Exp $
+ * $Id: rectanglerequest.hpp,v 1.12 2017/11/28 13:08:07 thor Exp $
  *
  */
 
@@ -79,6 +89,8 @@ struct RectangleRequest : public JObject, private Explicit {
   UWORD                    rr_usLastComponent;  // inclusive end component
   BYTE                     rr_cPriority;        // order of rectangles
   bool                     rr_bIncludeAlpha;    // include the alpha channel in the request
+  bool                     rr_bUpsampling;      // disable or enable upsampling. Default is to upsample
+  bool                     rr_bColorTrafo;      // disable or enable the output color transformation. Default is to run it.
   //
   RectangleRequest(void)
     : rr_pNext(NULL)
@@ -129,7 +141,6 @@ struct RectangleRequest : public JObject, private Explicit {
   //
   // Enqueue a rectangle into a list according to its priority.
   void Enqueue(struct RectangleRequest *&first);
-  //
 };
 ///
 

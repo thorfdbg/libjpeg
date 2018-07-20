@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +39,7 @@
 ** based processing. It abstracts parts of the residual coding
 ** process.
 **
-** $Id: residualblockhelper.hpp,v 1.33 2016/10/28 13:58:53 thor Exp $
+** $Id: residualblockhelper.hpp,v 1.34 2017/11/28 13:08:08 thor Exp $
 **
 */
 
@@ -104,7 +114,8 @@ public:
   //
   // Dequantize the already decoded residual (possibly taking the decoded
   // image as predictor) and return it, ready for the color transformation.
-  void DequantizeResidual(const LONG *legacy,LONG *target,const LONG *residual,UBYTE i);
+  void DequantizeResidual(const LONG *legacy,LONG *target,const LONG *residual,
+                          UBYTE i);
   //
   // Quantize the residuals of a block given the DCT data
   void QuantizeResidual(const LONG *legacy,LONG *residual,UBYTE i,LONG bx,LONG by);

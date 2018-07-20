@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +37,7 @@
 ** This header provides the interface for the bitmap hook that 
 ** delivers the bitmap data to the core library.
 **
-** $Id: bitmaphook.hpp,v 1.5 2016/10/28 13:58:52 thor Exp $
+** $Id: bitmaphook.hpp,v 1.7 2017/11/28 13:08:03 thor Exp $
 **
 */
 
@@ -59,6 +69,7 @@ struct BitmapMemory {
   FILE        *bmm_pLDRSource;  // if there is a separate source for the LDR image, this is non-NULL.
   FILE        *bmm_pAlphaTarget;// where the alpha (if any) goes to on decoding
   FILE        *bmm_pAlphaSource;// where the alpha data (if any) comes from. There is no dedicated alpha LDR file
+  FILE        *bmm_PGXFiles[4]; // in case we write PGX, here are the individual pgx files.
   const UWORD *bmm_HDR2LDR;     // the (simple global) tone mapper used for encoding the image.
   bool         bmm_bFloat;      // is true if the input is floating point
   bool         bmm_bAlphaFloat; // is true if the opacity information is floating point
@@ -68,6 +79,8 @@ struct BitmapMemory {
   bool         bmm_bNoAlphaOutputConversion; // ditto for alpha
   bool         bmm_bClamp;      // if set, clamp negative values to zero.
   bool         bmm_bAlphaClamp; // if set, alpha values outside [0,1] will be clamped to range
+  bool         bmm_bWritePGX;   // if set, write images in PGX format (separate planes) instead of PPM/PGM
+  bool         bmm_bUpsampling; // if set, data is already upsampled.
 };
 ///
 

@@ -6,8 +6,18 @@
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
-    Copyright (C) 2012-2017 Thomas Richter, University of Stuttgart and
+    Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
     Accusoft.
+
+    This program is available under two licenses, GPLv3 and the ITU
+    Software licence Annex A Option 2, RAND conditions.
+
+    For the full text of the GPU license option, see README.license.gpl.
+    For the full text of the ITU license option, see README.license.itu.
+    
+    You may freely select beween these two options.
+
+    For the GPL option, please note the following:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +36,7 @@
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: ycbcrtrafo.cpp,v 1.71 2016/01/06 14:43:23 thor Exp $
+** $Id: ycbcrtrafo.cpp,v 1.74 2017/11/28 13:08:07 thor Exp $
 **
 */
 
@@ -86,6 +96,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
     for(x = 0;x < 64;x++) {
       // LDR data is always preshifted by COLOR_BITS
       switch(count) {
+      case 4:
+        target[3][x] = m_lDCShift << COLOR_BITS;
       case 3:
         target[2][x] = m_lDCShift << COLOR_BITS;
         target[1][x] = m_lDCShift << COLOR_BITS;
@@ -96,8 +108,10 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
   }
 
   {
-    const external *rptr,*gptr,*bptr;
+    const external *rptr,*gptr,*bptr,*kptr;
     switch(count) {
+    case 4:
+      kptr = (const external *)(source[3]->ibm_pData);
     case 3:
       bptr = (const external *)(source[2]->ibm_pData);
       gptr = (const external *)(source[1]->ibm_pData);
@@ -105,9 +119,12 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
       rptr = (const external *)(source[0]->ibm_pData);
     }
     for(y = ymin;y <= ymax;y++) {
-      LONG *ydst,*cbdst,*crdst;
-      const external *r,*g,*b;
+      LONG *ydst,*cbdst,*crdst,*kdst;
+      const external *r,*g,*b,*k;
       switch(count) {
+      case 4:
+        kdst    = target[3] + xmin + (y << 3);
+        k       = kptr;
       case 3:
         crdst   = target[2] + xmin + (y << 3);
         b       = bptr;
@@ -120,10 +137,17 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
       //
       // Only the L-tables are used here.
       for(x = xmin;x <= xmax;x++) { 
-        LONG rv,gv,bv;
+        LONG rv,gv,bv,kv;
         LONG y,cb,cr;
         
         switch(count) {
+        case 4:
+          kv     = *k;
+          *kdst  = INT_TO_COLOR(kv);
+          assert(*kdst  <= ((m_lMax + 1) << COLOR_BITS) - 1);
+          kdst++;
+          k  = (const external *)((const UBYTE *)(k) + source[3]->ibm_cBytesPerPixel);
+          // Runs into the following.
         case 3:
           // Run the forwards C transformation.
           if (oc & Extended) {
@@ -178,6 +202,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
         }
       }
       switch(count) {
+      case 4:
+        kptr  = (const external *)((const UBYTE *)(kptr) + source[3]->ibm_lBytesPerRow);
       case 3:
         bptr  = (const external *)((const UBYTE *)(bptr) + source[2]->ibm_lBytesPerRow);
         gptr  = (const external *)((const UBYTE *)(gptr) + source[1]->ibm_lBytesPerRow);
@@ -208,6 +234,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
     for(x = 0;x < 64;x++) {
       // LDR Data is always preshifted by COLOR_BITS
       switch(count) {
+      case 4:
+        target[3][x] = m_lDCShift << COLOR_BITS;
       case 3:
         target[2][x] = m_lDCShift << COLOR_BITS;
         target[1][x] = m_lDCShift << COLOR_BITS;
@@ -218,8 +246,10 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
   }
   
   {
-    const UBYTE *rptr,*gptr,*bptr;
+    const UBYTE *rptr,*gptr,*bptr,*kptr;
     switch(count) {
+    case 4:
+      kptr = (const UBYTE *)(source[3]->ibm_pData);
     case 3:
       bptr = (const UBYTE *)(source[2]->ibm_pData);
       gptr = (const UBYTE *)(source[1]->ibm_pData);
@@ -227,9 +257,12 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
       rptr = (const UBYTE *)(source[0]->ibm_pData);
     }
     for(y = ymin;y <= ymax;y++) {
-      LONG *ydst,*cbdst,*crdst;
-      const UBYTE *r,*g,*b;
+      LONG *ydst,*cbdst,*crdst,*kdst;
+      const UBYTE *r,*g,*b,*k;
       switch(count) {
+      case 4:
+        kdst    = target[3] + xmin + (y << 3);
+        k       = kptr;
       case 3:
         crdst   = target[2] + xmin + (y << 3);
         b       = bptr;
@@ -242,9 +275,14 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
       //
       // No tables used at all, user already supplies a tone mapped image.
       for(x = xmin;x <= xmax;x++) { 
-        UBYTE rv,gv,bv;
+        UBYTE rv,gv,bv,kv;
         
         switch(count) {
+        case 4:
+          kv    = *k;
+          *kdst = INT_TO_COLOR(kv);
+          kdst++;
+          k    += source[3]->ibm_cBytesPerPixel;
         case 3:
           rv = *r;
           gv = *g;
@@ -292,6 +330,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
         }
       }
       switch(count) {
+      case 4:
+        kptr += source[3]->ibm_lBytesPerRow;
       case 3:
         bptr += source[2]->ibm_lBytesPerRow;
         gptr += source[1]->ibm_lBytesPerRow;
@@ -320,7 +360,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
   //
   // makes little sense to call that without a residual
   assert(oc & Residual);
-  
+  // There is no JPEG XT support for four component images.
+  assert(count < 4);
   assert(m_lOutMax <= TypeTrait<external>::Max);
   
   if (xmax < 7 || ymax < 7 || xmin > 0 || ymin > 0) {
@@ -568,17 +609,12 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
     JPG_THROW(OVERFLOW_PARAMETER,"YCbCrTrafo::YCbCr2RGB",
               "RGB maximum intensity for pixel type does not fit into the type");
   }
-  
-  for(x = 0;x < count;x++) {
-    if (dest[0]->ibm_ucPixelType != dest[x]->ibm_ucPixelType) {
-      JPG_THROW(INVALID_PARAMETER,"YCbCrTrafo::YCbCr2RGB",
-                "pixel types of all three components in a YCbCr to RGB conversion must be identical");
-    }
-  }
 
   {
-    external *rptr,*gptr,*bptr;
+    external *rptr,*gptr,*bptr,*kptr;
     switch(count) {
+    case 4:
+      kptr = (external *)(dest[3]->ibm_pData);
     case 3:
       bptr = (external *)(dest[2]->ibm_pData);
       gptr = (external *)(dest[1]->ibm_pData);
@@ -586,10 +622,14 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
       rptr = (external *)(dest[0]->ibm_pData);
     }
     for(y = ymin;y <= ymax;y++) {
-      LONG *ysrc,*cbsrc,*crsrc;
+      LONG *ysrc,*cbsrc,*crsrc,*ksrc;
       LONG *rysrc = NULL,*rcbsrc = NULL,*rcrsrc = NULL;
-      external *r,*g,*b;
+      external *r,*g,*b,*k;
       switch(count) {
+      case 4:
+        ksrc     = source[3]   + xmin + (y << 3);
+        k        = kptr;
+        assert(!residual); // No residual coding with four components.
       case 3:
         crsrc    = source[2]   + xmin + (y << 3);       
         cbsrc    = source[1]   + xmin + (y << 3);
@@ -608,7 +648,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
       }
 
       for(x = xmin;x <= xmax;x++) {
-        LONG cr,y,cb,rv,gv,bv;
+        LONG cr,y,cb,rv,gv,bv,kv;
         LONG rx,gx,bx;
         LONG rr = m_lOutDCShift;
         LONG rg = m_lOutDCShift;
@@ -618,6 +658,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
           // Compute the residual. Note that the LUT is here applied *first*, then
           // followed by the transformation.
           switch(count) {
+          case 4:
+            assert(!"residual coding is not supported with four components");
           case 3:
             switch(rtrafo) {
             case MergingSpecBox::RCT: // Perform the RCT.
@@ -693,6 +735,10 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
         // the L-transformation is applied first, then
         // comes the LUT.
         switch(count) {
+        case 4:
+          kv = COLOR_TO_INT(*ksrc++);
+          // No residual supported.
+          assert(!(oc & Extended));
         case 3:
           switch(trafo) {
           case MergingSpecBox::YCbCr:
@@ -753,6 +799,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             // Also, convert from complement representation to sign
             // magnitude representation.
             switch(count) {
+            case 4:
+              assert(!"floating point not supported for four components");
             case 3:
               gv = (gv > pinf)?(pinf):((gv < minf)?(minf):(gv));
               gv = INVERT_NEGS(gv);
@@ -765,6 +813,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
           } else {
             // For integers, clamp.
             switch(count) {
+            case 4:
+              kv = CLAMP(m_lOutMax,kv);
             case 3:
               gv = CLAMP(m_lOutMax,gv);
               bv = CLAMP(m_lOutMax,bv);
@@ -777,6 +827,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             // Always 16 bit. Convert from complement to sign-
             // magnitude representation.
             switch(count) {
+            case 4:
+              assert(!"floating point not supported for four components");
             case 3:
               gv = INVERT_NEGS(gv);
               bv = INVERT_NEGS(bv);
@@ -787,6 +839,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             // For integers, implement the wrap-around
             // logic.
             switch(count) {
+            case 4:
+              kv = WRAP(m_lOutMax,kv);
             case 3:
               gv = WRAP(m_lOutMax,gv);
               bv = WRAP(m_lOutMax,bv);
@@ -798,17 +852,22 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
         //
         // Advance pointers and write results.
         switch(count) {
+        case 4:
+          if (k) *k = kv;
+          k  = (external *)((UBYTE *)(k) + dest[3]->ibm_cBytesPerPixel);
         case 3:
-          *g = gv;
+          if (g) *g = gv;
           g  = (external *)((UBYTE *)(g) + dest[1]->ibm_cBytesPerPixel);
-          *b = bv;
+          if (b) *b = bv;
           b  = (external *)((UBYTE *)(b) + dest[2]->ibm_cBytesPerPixel);
         case 1:
-          *r = rv;
+          if (r) *r = rv;
           r  = (external *)((UBYTE *)(r) + dest[0]->ibm_cBytesPerPixel);
         }
       } // Of loop over x
       switch(count) {
+      case 4:
+        kptr  = (external *)((UBYTE *)(kptr) + dest[3]->ibm_lBytesPerRow);
       case 3:
         bptr  = (external *)((UBYTE *)(bptr) + dest[2]->ibm_lBytesPerRow);
         gptr  = (external *)((UBYTE *)(gptr) + dest[1]->ibm_lBytesPerRow);
@@ -893,4 +952,10 @@ template class YCbCrTrafo<UWORD,3,ColorTrafo::Residual | ColorTrafo::Extended,Me
 
 template class YCbCrTrafo<UWORD,3,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::RCT>;
 template class YCbCrTrafo<UWORD,3,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::Float,MergingSpecBox::YCbCr,MergingSpecBox::RCT>;
+
+// Four components
+template class YCbCrTrafo<UBYTE,4,ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+template class YCbCrTrafo<UWORD,4,ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+
+
 
