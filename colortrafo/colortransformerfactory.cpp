@@ -1,13 +1,18 @@
 /*************************************************************************
 
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
+    This project implements a complete(!) JPEG (Recommendation ITU-T
+    T.81 | ISO/IEC 10918-1) codec, plus a library that can be used to
+    encode and decode JPEG streams. 
     It also implements ISO/IEC 18477 aka JPEG XT which is an extension
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
+    Note that only Profiles C and D of ISO/IEC 18477-7 are supported
+    here. Check the JPEG XT reference software for a full implementation
+    of ISO/IEC 18477-7.
+
     Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
-    Accusoft.
+    Accusoft. (C) 2019 Thomas Richter, Fraunhofer IIS.
 
     This program is available under two licenses, GPLv3 and the ITU
     Software licence Annex A Option 2, RAND conditions.
@@ -37,7 +42,7 @@
 ** This class builds the proper color transformer from the information
 ** in the MergingSpecBox
 **
-** $Id: colortransformerfactory.cpp,v 1.76 2017/11/28 13:08:07 thor Exp $
+** $Id: colortransformerfactory.cpp,v 1.77 2019/08/21 10:09:57 thor Exp $
 **
 */
 
@@ -659,9 +664,9 @@ class ColorTrafo *ColorTransformerFactory::BuildLSTransformation(UBYTE type,
 // Build the color transformer for the case that the ltrafo is the identity and the rtrafo is the identity or zero.
 template<int count,typename type>
 IntegerTrafo *ColorTransformerFactory::BuildIntegerTransformationSimple(class Frame *frame,
-                                                                              class Frame *residualframe,
-                                                                              class MergingSpecBox *,
-                                                                              UBYTE oc,int ltrafo,int rtrafo)
+                                                                        class Frame *residualframe,
+                                                                        class MergingSpecBox *,
+                                                                        UBYTE oc,int ltrafo,int rtrafo)
 {
   ULONG maxval   = (1UL << frame->HiddenPrecisionOf()) - 1;
   ULONG outmax   = (1UL << (frame->PrecisionOf() + frame->PointPreShiftOf())) - 1;
@@ -1000,6 +1005,20 @@ class IntegerTrafo *ColorTransformerFactory::BuildIntegerTransformation(UBYTE ty
       return BuildIntegerTransformationSimple<1,UWORD>(frame,residualframe,specs,ocflags,ltrafo,rtrafo);
     }
     break;
+   case 2:
+     switch(type) {
+     case CTYP_UBYTE:
+       if (outmax > MAX_UBYTE)
+         JPG_THROW(OVERFLOW_PARAMETER,"ColorTransformerFactory::BuildRTransformation",
+                   "invalid data type selected for the image, image precision is deeper than 8 bits");
+       return BuildIntegerTransformationSimple<2,UBYTE>(frame,residualframe,specs,ocflags,ltrafo,rtrafo);
+     case CTYP_UWORD:
+       if (outmax > MAX_UWORD)
+         JPG_THROW(OVERFLOW_PARAMETER,"ColorTransformerFactory::BuildRTransformation",
+                   "invalid data type selected for the image, image precision is deeper than 16 bits");
+       return BuildIntegerTransformationSimple<2,UWORD>(frame,residualframe,specs,ocflags,ltrafo,rtrafo);
+     }
+     break;
   case 3:
     switch(type) {
     case CTYP_UBYTE:

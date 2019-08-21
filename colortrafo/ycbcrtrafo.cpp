@@ -1,13 +1,18 @@
 /*************************************************************************
 
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
+    This project implements a complete(!) JPEG (Recommendation ITU-T
+    T.81 | ISO/IEC 10918-1) codec, plus a library that can be used to
+    encode and decode JPEG streams. 
     It also implements ISO/IEC 18477 aka JPEG XT which is an extension
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
+    Note that only Profiles C and D of ISO/IEC 18477-7 are supported
+    here. Check the JPEG XT reference software for a full implementation
+    of ISO/IEC 18477-7.
+
     Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
-    Accusoft.
+    Accusoft. (C) 2019 Thomas Richter, Fraunhofer IIS.
 
     This program is available under two licenses, GPLv3 and the ITU
     Software licence Annex A Option 2, RAND conditions.
@@ -36,7 +41,7 @@
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: ycbcrtrafo.cpp,v 1.74 2017/11/28 13:08:07 thor Exp $
+** $Id: ycbcrtrafo.cpp,v 1.75 2019/08/21 10:09:57 thor Exp $
 **
 */
 
@@ -100,6 +105,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
         target[3][x] = m_lDCShift << COLOR_BITS;
       case 3:
         target[2][x] = m_lDCShift << COLOR_BITS;
+      case 2:
         target[1][x] = m_lDCShift << COLOR_BITS;
       case 1:
         target[0][x] = m_lDCShift << COLOR_BITS;
@@ -114,6 +120,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
       kptr = (const external *)(source[3]->ibm_pData);
     case 3:
       bptr = (const external *)(source[2]->ibm_pData);
+    case 2:
       gptr = (const external *)(source[1]->ibm_pData);
     case 1:
       rptr = (const external *)(source[0]->ibm_pData);
@@ -128,6 +135,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
       case 3:
         crdst   = target[2] + xmin + (y << 3);
         b       = bptr;
+      case 2:
         cbdst   = target[1] + xmin + (y << 3);
         g       = gptr;
       case 1:
@@ -194,6 +202,10 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
           g  = (const external *)((const UBYTE *)(g) + source[1]->ibm_cBytesPerPixel);
           b  = (const external *)((const UBYTE *)(b) + source[2]->ibm_cBytesPerPixel);
           break;
+        case 2:
+          *cbdst = INT_TO_COLOR(m_plEncodingLUT[1][*g]);
+          cbdst++;
+          g  = (const external *)((const UBYTE *)(g) + source[1]->ibm_cBytesPerPixel);
         case 1: 
           *ydst = INT_TO_COLOR(m_plEncodingLUT[0][*r]);
           ydst++;
@@ -206,6 +218,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2YCbCr(const RectAngle<LONG>
         kptr  = (const external *)((const UBYTE *)(kptr) + source[3]->ibm_lBytesPerRow);
       case 3:
         bptr  = (const external *)((const UBYTE *)(bptr) + source[2]->ibm_lBytesPerRow);
+      case 2:
         gptr  = (const external *)((const UBYTE *)(gptr) + source[1]->ibm_lBytesPerRow);
       case 1:
         rptr  = (const external *)((const UBYTE *)(rptr) + source[0]->ibm_lBytesPerRow);
@@ -238,6 +251,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
         target[3][x] = m_lDCShift << COLOR_BITS;
       case 3:
         target[2][x] = m_lDCShift << COLOR_BITS;
+      case 2:
         target[1][x] = m_lDCShift << COLOR_BITS;
       case 1:
         target[0][x] = m_lDCShift << COLOR_BITS;
@@ -252,6 +266,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
       kptr = (const UBYTE *)(source[3]->ibm_pData);
     case 3:
       bptr = (const UBYTE *)(source[2]->ibm_pData);
+    case 2:
       gptr = (const UBYTE *)(source[1]->ibm_pData);
     case 1:
       rptr = (const UBYTE *)(source[0]->ibm_pData);
@@ -266,6 +281,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
       case 3:
         crdst   = target[2] + xmin + (y << 3);
         b       = bptr;
+      case 2:
         cbdst   = target[1] + xmin + (y << 3);
         g       = gptr;
       case 1:
@@ -322,6 +338,10 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
           g += source[1]->ibm_cBytesPerPixel;
           b += source[2]->ibm_cBytesPerPixel;
           break;
+        case 2:
+          *cbdst = INT_TO_COLOR(*g);
+          cbdst++;
+          g  += source[1]->ibm_cBytesPerPixel;
         case 1: 
           *ydst = INT_TO_COLOR(*r);
           ydst++;
@@ -334,6 +354,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::LDRRGB2YCbCr(const RectAngle<LO
         kptr += source[3]->ibm_lBytesPerRow;
       case 3:
         bptr += source[2]->ibm_lBytesPerRow;
+      case 2:
         gptr += source[1]->ibm_lBytesPerRow;
       case 1:
         rptr += source[0]->ibm_lBytesPerRow;
@@ -371,6 +392,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
         switch(count) {
         case 3:
           residual[2][x] = m_lRDCShift;
+        case 2:
           residual[1][x] = m_lRDCShift;
         case 1:
           residual[0][x] = m_lRDCShift;
@@ -408,8 +430,9 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
     const external *rptr,*gptr,*bptr;
     switch(count) {
     case 3:
-      gptr = (const external *)(source[1]->ibm_pData);
       bptr = (const external *)(source[2]->ibm_pData);
+    case 2:
+      gptr = (const external *)(source[1]->ibm_pData);
     case 1:
       rptr = (const external *)(source[0]->ibm_pData);
     }
@@ -424,6 +447,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
         crdst   = residual[2]      + xmin + (y << 3);
         crrec   = reconstructed[2] + xmin + (y << 3);
         b       = bptr;
+      case 2:
         cbdst   = residual[1]      + xmin + (y << 3);
         cbrec   = reconstructed[1] + xmin + (y << 3);
         g       = gptr;
@@ -483,6 +507,16 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
           g  = (const external *)((const UBYTE *)(g) + source[1]->ibm_cBytesPerPixel);
           b  = (const external *)((const UBYTE *)(b) + source[2]->ibm_cBytesPerPixel);
           break;
+        case 2:
+          gv = COLOR_TO_INT(*cbrec);
+          rg = APPLY_LUT(m_plDecodingLUT[1],m_lMax,gv);
+          if (oc & Float) {
+            rg = INVERT_NEGS(*g) - rg;
+          } else {
+            rg = *g - rg;
+          }
+          cbrec++;
+          g  = (const external *)((const UBYTE *)(g) + source[1]->ibm_cBytesPerPixel);
         case 1:
           rv = COLOR_TO_INT(*yrec);
           rr = APPLY_LUT(m_plDecodingLUT[0],m_lMax,rv);
@@ -566,6 +600,15 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
           *cbdst++ = cb;
           *ydst++  = y;
           break;
+        case 2:
+          rg += m_lCreating2Shift;
+          if (oc & ClampFlag) {
+            rg  = APPLY_LUT(m_plCreating2LUT[1],((m_lOutMax + 1) << 1) - 1,rg);
+            rg  = APPLY_LUT(m_plCreatingLUT[1] ,((m_lOutMax + 1) << COLOR_BITS) - 1,rg);
+          } else {
+            rg  = APPLY_LUT(m_plCreatingLUT[1] ,m_lOutMax,rg & m_lOutMax);
+          }
+          *cbdst++ = rg;
         case 1:
           rr += m_lCreating2Shift;
           if (oc & ClampFlag) {
@@ -580,6 +623,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
       switch(count) {
       case 3:
         bptr  = (const external *)((const UBYTE *)(bptr) + source[2]->ibm_lBytesPerRow);
+      case 2:
         gptr  = (const external *)((const UBYTE *)(gptr) + source[1]->ibm_lBytesPerRow);
       case 1:
         rptr  = (const external *)((const UBYTE *)(rptr) + source[0]->ibm_lBytesPerRow);
@@ -617,6 +661,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
       kptr = (external *)(dest[3]->ibm_pData);
     case 3:
       bptr = (external *)(dest[2]->ibm_pData);
+    case 2:
       gptr = (external *)(dest[1]->ibm_pData);
     case 1:
       rptr = (external *)(dest[0]->ibm_pData);
@@ -632,11 +677,14 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
         assert(!residual); // No residual coding with four components.
       case 3:
         crsrc    = source[2]   + xmin + (y << 3);       
-        cbsrc    = source[1]   + xmin + (y << 3);
         b        = bptr;
-        g        = gptr;
         if (residual) {
           rcrsrc = residual[2] + xmin + (y << 3);
+        }
+      case 2:
+        cbsrc    = source[1]   + xmin + (y << 3);
+        g        = gptr;
+        if (residual) {
           rcbsrc = residual[1] + xmin + (y << 3);
         }
       case 1:
@@ -718,6 +766,8 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             }
             // R-transformation done.
             break;
+          case 2:
+            assert(!"residual coding is not supported with two components");
           case 1: 
             y  = *rysrc++;
             if (oc & ClampFlag) {
@@ -779,6 +829,11 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             bv = bx + rb - m_lOutDCShift;
           }
           break;
+        case 2:
+          gv = COLOR_TO_INT(*cbsrc++);
+          if (oc & Extended) {
+            gv = APPLY_LUT(m_plDecodingLUT[1],m_lMax,gv) + rg - m_lOutDCShift;
+          }
         case 1: 
           // Simple for one component.
           rv = COLOR_TO_INT(*ysrc++);
@@ -802,10 +857,11 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             case 4:
               assert(!"floating point not supported for four components");
             case 3:
-              gv = (gv > pinf)?(pinf):((gv < minf)?(minf):(gv));
-              gv = INVERT_NEGS(gv);
               bv = (bv > pinf)?(pinf):((bv < minf)?(minf):(bv));
               bv = INVERT_NEGS(bv);
+            case 2:
+              gv = (gv > pinf)?(pinf):((gv < minf)?(minf):(gv));
+              gv = INVERT_NEGS(gv);
             case 1:
               rv = (rv > pinf)?(pinf):((rv < minf)?(minf):(rv));
               rv = INVERT_NEGS(rv);
@@ -816,8 +872,9 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             case 4:
               kv = CLAMP(m_lOutMax,kv);
             case 3:
-              gv = CLAMP(m_lOutMax,gv);
               bv = CLAMP(m_lOutMax,bv);
+            case 2:
+              gv = CLAMP(m_lOutMax,gv);
             case 1:
               rv = CLAMP(m_lOutMax,rv);
             }
@@ -830,8 +887,9 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             case 4:
               assert(!"floating point not supported for four components");
             case 3:
-              gv = INVERT_NEGS(gv);
               bv = INVERT_NEGS(bv);
+            case 2:
+              gv = INVERT_NEGS(gv);
             case 1:
               rv = INVERT_NEGS(rv);
             }
@@ -842,8 +900,9 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
             case 4:
               kv = WRAP(m_lOutMax,kv);
             case 3:
-              gv = WRAP(m_lOutMax,gv);
               bv = WRAP(m_lOutMax,bv);
+            case 2:
+              gv = WRAP(m_lOutMax,gv);
             case 1:
               rv = WRAP(m_lOutMax,rv);
             }
@@ -856,10 +915,11 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
           if (k) *k = kv;
           k  = (external *)((UBYTE *)(k) + dest[3]->ibm_cBytesPerPixel);
         case 3:
-          if (g) *g = gv;
-          g  = (external *)((UBYTE *)(g) + dest[1]->ibm_cBytesPerPixel);
           if (b) *b = bv;
           b  = (external *)((UBYTE *)(b) + dest[2]->ibm_cBytesPerPixel);
+        case 2:
+          if (g) *g = gv;
+          g  = (external *)((UBYTE *)(g) + dest[1]->ibm_cBytesPerPixel);
         case 1:
           if (r) *r = rv;
           r  = (external *)((UBYTE *)(r) + dest[0]->ibm_cBytesPerPixel);
@@ -870,6 +930,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
         kptr  = (external *)((UBYTE *)(kptr) + dest[3]->ibm_lBytesPerRow);
       case 3:
         bptr  = (external *)((UBYTE *)(bptr) + dest[2]->ibm_lBytesPerRow);
+      case 2:
         gptr  = (external *)((UBYTE *)(gptr) + dest[1]->ibm_lBytesPerRow);
       case 1:
         rptr  = (external *)((UBYTE *)(rptr) + dest[0]->ibm_lBytesPerRow);
@@ -901,6 +962,28 @@ template class YCbCrTrafo<UWORD,1,ColorTrafo::Residual | ColorTrafo::Extended | 
 
 template class YCbCrTrafo<UWORD,1,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::ClampFlag | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Identity>;
 template class YCbCrTrafo<UWORD,1,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Identity>;
+
+// Two components
+template class YCbCrTrafo<UBYTE,2,ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+template class YCbCrTrafo<UWORD,2,ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+
+template class YCbCrTrafo<UBYTE,2,ColorTrafo::Extended | ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+template class YCbCrTrafo<UWORD,2,ColorTrafo::Extended | ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+
+template class YCbCrTrafo<UWORD,2,ColorTrafo::ClampFlag | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+
+template class YCbCrTrafo<UBYTE,2,ColorTrafo::Extended | ColorTrafo::ClampFlag | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+template class YCbCrTrafo<UWORD,2,ColorTrafo::Extended | ColorTrafo::ClampFlag | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+template class YCbCrTrafo<UWORD,2,ColorTrafo::Extended | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Zero>;
+
+template class YCbCrTrafo<UBYTE,2,ColorTrafo::Residual | ColorTrafo::Extended,MergingSpecBox::Identity,MergingSpecBox::Identity>;
+template class YCbCrTrafo<UWORD,2,ColorTrafo::Residual | ColorTrafo::Extended,MergingSpecBox::Identity,MergingSpecBox::Identity>;
+
+template class YCbCrTrafo<UBYTE,2,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Identity>;
+template class YCbCrTrafo<UWORD,2,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Identity>;
+
+template class YCbCrTrafo<UWORD,2,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::ClampFlag | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Identity>;
+template class YCbCrTrafo<UWORD,2,ColorTrafo::Residual | ColorTrafo::Extended | ColorTrafo::Float,MergingSpecBox::Identity,MergingSpecBox::Identity>;
 
 // Three components
 template class YCbCrTrafo<UBYTE,3,ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;

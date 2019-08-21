@@ -1,13 +1,18 @@
 /*************************************************************************
 
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
+    This project implements a complete(!) JPEG (Recommendation ITU-T
+    T.81 | ISO/IEC 10918-1) codec, plus a library that can be used to
+    encode and decode JPEG streams. 
     It also implements ISO/IEC 18477 aka JPEG XT which is an extension
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
+    Note that only Profiles C and D of ISO/IEC 18477-7 are supported
+    here. Check the JPEG XT reference software for a full implementation
+    of ISO/IEC 18477-7.
+
     Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
-    Accusoft.
+    Accusoft. (C) 2019 Thomas Richter, Fraunhofer IIS.
 
     This program is available under two licenses, GPLv3 and the ITU
     Software licence Annex A Option 2, RAND conditions.
@@ -38,7 +43,7 @@
 ** is defined by parameters, not by actual providing the table explicitly
 ** as a LUT.
 **
-** $Id: parametrictonemappingbox.cpp,v 1.46 2016/06/22 07:03:05 thor Exp $
+** $Id: parametrictonemappingbox.cpp,v 1.47 2018/07/27 06:56:42 thor Exp $
 **
 */
 
@@ -510,7 +515,7 @@ const LONG *ParametricToneMappingBox::ExtendedInverseScaledTableOf(UBYTE dctbits
 
 /// ParametricToneMappingBox::ApplyCurve
 // Apply the curve directly to a value, perform input and output scaling as described in 
-// Annex C of 18477-3. The input parameters are the value to apply the curve to,
+// Annex C of ISO/IEC 18477-3:2015. The input parameters are the value to apply the curve to,
 // the input scale (2^Rw-1 in terms of the standard, *not* Rw itself), the number of
 // fractional input bits (Re in standard speech)
 // the output scale (2^Rt-1 as denoted by the symbols of the standard, not Rt itself)
@@ -521,7 +526,7 @@ DOUBLE ParametricToneMappingBox::ApplyCurve(DOUBLE x,LONG inrange,UBYTE infract,
 {
   DOUBLE y;
   //
-  // This follows Annex C of 18477-3. First, apply input clamping if the input
+  // This follows Annex C of ISO/IEC 18477-3:2015. First, apply input clamping if the input
   // has a limited range. This is indicated by inrange > 1.
   if (inrange > 1) {
     LONG max = ((inrange + 1) << infract) - 1;

@@ -378,7 +378,7 @@ DCT bypass mode, use the new option "-ro" now.
 
 Profile B encoding could potentially create codestreams that run into
 clipping of the extension channel; this always happens if the denominator is
-larger than 1, and has to happen according to Annex C of ISO/IEC 18477-3.
+larger than 1, and has to happen according to Annex C of ISO/IEC 18477-3:2015.
 This release avoids this issue by adjusting the exposure value such that
 the denominator always remains smaller than 1.
 
@@ -460,3 +460,13 @@ This release only addresses some minor formulation issues of the
 command line such that references are formatted properly to make this
 software package acceptable as a JPEG reference software.
 No functional changes.
+
+--------------------------------------------------------------------------
+
+Release 1.56:
+
+Encoding and reconstruction of 2-component images was actually never
+supported, as it was considered a rather exotic use-case. Now that a
+request was made, support for 2-components was added and should
+hopefully work ok.
+

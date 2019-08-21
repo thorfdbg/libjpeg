@@ -1,13 +1,18 @@
 /*************************************************************************
 
-    This project implements a complete(!) JPEG (10918-1 ITU.T-81) codec,
-    plus a library that can be used to encode and decode JPEG streams. 
+    This project implements a complete(!) JPEG (Recommendation ITU-T
+    T.81 | ISO/IEC 10918-1) codec, plus a library that can be used to
+    encode and decode JPEG streams. 
     It also implements ISO/IEC 18477 aka JPEG XT which is an extension
     towards intermediate, high-dynamic-range lossy and lossless coding
     of JPEG. In specific, it supports ISO/IEC 18477-3/-6/-7/-8 encoding.
 
+    Note that only Profiles C and D of ISO/IEC 18477-7 are supported
+    here. Check the JPEG XT reference software for a full implementation
+    of ISO/IEC 18477-7.
+
     Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
-    Accusoft.
+    Accusoft. (C) 2019 Thomas Richter, Fraunhofer IIS.
 
     This program is available under two licenses, GPLv3 and the ITU
     Software licence Annex A Option 2, RAND conditions.
@@ -37,7 +42,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.202 2017/11/28 13:08:07 thor Exp $
+** $Id: tables.cpp,v 1.203 2019/08/21 10:09:56 thor Exp $
 **
 */
 
@@ -1977,7 +1982,7 @@ MergingSpecBox::DecorrelationType Tables::LTrafoTypeOf(UBYTE components) const
   }
   //
   // No specs, use the default mechanism of JPEG.
-  if (components == 1 || components > 3 ||
+  if (components < 3 || components > 3 ||
       (m_pColorInfo && m_pColorInfo->EnumeratedColorSpaceOf() == AdobeMarker::None)) {
     return MergingSpecBox::Identity; // Do not transform.
   } else if (m_pLSColorTrafo) {
