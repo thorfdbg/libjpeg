@@ -2,14 +2,14 @@
 ##
 ## Specific GCC project settings.
 ##
-## $Id: Makefile_Settings.gcc,v 1.4 2017/08/17 13:23:54 thor Exp $
+## $Id: Makefile_Settings.gcc,v 1.5 2020/04/08 10:05:29 thor Exp $
 ##
 
 CXX		= $(COMPILER_CMD)
 DEFINES		= 
 CC		= $(CXX)
 MAKEOBJS	= -x c++ -c
-CFLAGS		= $(BITSIZE) -Wall -W -Wunused -Wpointer-arith -pedantic -Wcast-qual -Wwrite-strings -Wno-long-long -Wredundant-decls -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo -fno-exceptions -Wno-char-subscripts -Wno-shift-negative-value $(INCLUDEOPTS) $(DEFINES) $(ADDOPTS) $(CPU) $(TUNE)
+CFLAGS		= $(BITSIZE) -Wall -W -Wunused -Wpointer-arith -pedantic -Wcast-qual -Wwrite-strings -Wno-long-long -Wredundant-decls -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo -fno-exceptions -Wno-char-subscripts -Wno-shift-negative-value $(INCLUDEOPTS) $(DEFINES) $(ADDOPTS) $(WARNOPTS) $(CPU) $(TUNE)
 OPTIMIZER	= -O3 -DDEBUG_LEVEL=0 -DCHECK_LEVEL=0 -funroll-loops -fstrict-aliasing -Wno-redundant-decls -ffast-math #-mfpmath=387 #-maccumulate-outgoing-args -minline-all-stringops -fno-rtti 
 		  #-fschedule-insns # These give "register spill" errors.
 		  #-fschedule-insns2 #-fomit-frame-pointer breaks exception handling for 3.2

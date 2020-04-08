@@ -470,3 +470,12 @@ supported, as it was considered a rather exotic use-case. Now that a
 request was made, support for 2-components was added and should
 hopefully work ok.
 
+--------------------------------------------------------------------------
+
+Release 1.57:
+
+Newer g++ compiler versions warned about implicit fall-throughs in switch/
+case constructs that are actually harmless. This release adds an autoconf
+detection of such compiler versions, adds consistent comments throughout
+the code, and disables the compiler warning were necessary.
+

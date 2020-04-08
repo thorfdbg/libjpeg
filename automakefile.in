@@ -1,5 +1,5 @@
 ##
-## $Id: automakefile.in,v 1.2 2012/05/20 16:17:27 thor Exp $
+## $Id: automakefile.in,v 1.3 2020/04/08 10:05:29 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -25,6 +25,7 @@ BITSIZE		=	@BITSIZE@
 ADDOPTS		=	-DUSE_AUTOCONF @FPU_OPTS@ @HW_DEFINE@ @ASSEMBLY_FLAG@
 LIB_OPTS	=	@LIB_OPTS@ @LIB_PICOPTS@ -DBUILD_LIB
 EXTRA_LIBS	=	@LGCCS_OPTS@ @MALLOC_LIB@
+WARNOPTS	=	@WARN_OPTS@
 ##
 ## Miscellaneous compiler options
 CPU		=	@CPU@

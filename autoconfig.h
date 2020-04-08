@@ -27,7 +27,7 @@
 #define HAS_CONST_CAST 1
 
 /* Define to 1 if the variable HZ is available */
-#define HAS_HZ 1
+/* #undef HAS_HZ */
 
 /* Define to 1 if the C99 type int16_t is available */
 #define HAS_INT16_T 1
@@ -58,28 +58,28 @@
 #define HAS_PRIVATE_ACCESS 1
 
 /* Define to 1 if ptrdiff_t type is available */
-#define HAS_PTRDIFF_T 1
+/* #undef HAS_PTRDIFF_T */
 
 /* Define to 1 if reinterpret_cast<> works */
 #define HAS_REINTERPRET_CAST 1
 
 /* Define to 1 if _SC_CLK_TCK is available for sysconf */
-#define HAS_SC_CLK_TCK 1
+/* #undef HAS_SC_CLK_TCK */
 
 /* Define to 1 if the STDERR_FILENO define is available */
-#define HAS_STDERR_FILENO 1
+/* #undef HAS_STDERR_FILENO */
 
 /* Define to 1 if the STDIN_FILENO define is available */
-#define HAS_STDIN_FILENO 1
+/* #undef HAS_STDIN_FILENO */
 
 /* Define to 1 if the STDOUT_FILENO define is available */
-#define HAS_STDOUT_FILENO 1
+/* #undef HAS_STDOUT_FILENO */
 
 /* Define to 1 if struct timeval is available */
-#define HAS_STRUCT_TIMEVAL 1
+/* #undef HAS_STRUCT_TIMEVAL */
 
 /* Define to 1 if struct tms is available */
-#define HAS_STRUCT_TMS 1
+/* #undef HAS_STRUCT_TMS */
 
 /* Define to 1 if casting in template arguments work */
 #define HAS_TEMPLATE_CASTS 1
@@ -154,16 +154,16 @@
 /* #undef HAVE_DOPRNT */
 
 /* Define to 1 if you have the `dup' function. */
-#define HAVE_DUP 1
+/* #undef HAVE_DUP */
 
 /* Define to 1 if you have the `dup2' function. */
-#define HAVE_DUP2 1
+/* #undef HAVE_DUP2 */
 
 /* Define to 1 if you have the <errno.h> header file. */
 #define HAVE_ERRNO_H 1
 
 /* Define to 1 if you have the `execve' function. */
-#define HAVE_EXECVE 1
+/* #undef HAVE_EXECVE */
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
@@ -178,22 +178,22 @@
 #define HAVE_FOPEN64 1
 
 /* Define to 1 if you have the `fork' function. */
-#define HAVE_FORK 1
+/* #undef HAVE_FORK */
 
 /* Define to 1 if you have the `free' function. */
 #define HAVE_FREE 1
 
 /* Define to 1 if you have the `fstat' function. */
-#define HAVE_FSTAT 1
+/* #undef HAVE_FSTAT */
 
 /* Define to 1 if you have the `gettimeofday' function. */
 #define HAVE_GETTIMEOFDAY 1
 
 /* Define to 1 if you have the `htonl' function. */
-#define HAVE_HTONL 1
+/* #undef HAVE_HTONL */
 
 /* Define to 1 if you have the `htons' function. */
-#define HAVE_HTONS 1
+/* #undef HAVE_HTONS */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -202,7 +202,7 @@
 #define HAVE_ISSPACE 1
 
 /* Define to 1 if you have the `kill' function. */
-#define HAVE_KILL 1
+/* #undef HAVE_KILL */
 
 /* Define to 1 if llseek is available */
 /* #undef HAVE_LLSEEK */
@@ -244,16 +244,16 @@
 #define HAVE_NORETURN 1
 
 /* Define to 1 if you have the `ntohl' function. */
-#define HAVE_NTOHL 1
+/* #undef HAVE_NTOHL */
 
 /* Define to 1 if you have the `ntohs' function. */
-#define HAVE_NTOHS 1
+/* #undef HAVE_NTOHS */
 
 /* Define to 1 if you have the `open' function. */
 #define HAVE_OPEN 1
 
 /* Define to 1 if you have the `pipe' function. */
-#define HAVE_PIPE 1
+/* #undef HAVE_PIPE */
 
 /* Define if you have POSIX threads libraries and header files. */
 /* #undef HAVE_PTHREAD */
@@ -301,10 +301,10 @@
 #define HAVE_SETJMP_H 1
 
 /* Define to 1 if you have the `sigaction' function. */
-#define HAVE_SIGACTION 1
+/* #undef HAVE_SIGACTION */
 
 /* Define to 1 if you have the `sigemptyset' function. */
-#define HAVE_SIGEMPTYSET 1
+/* #undef HAVE_SIGEMPTYSET */
 
 /* Define to 1 if you have the `signal' function. */
 #define HAVE_SIGNAL 1
@@ -358,10 +358,10 @@
 #define HAVE_STRTOL 1
 
 /* Define to 1 if you have the `sysconf' function. */
-#define HAVE_SYSCONF 1
+/* #undef HAVE_SYSCONF */
 
 /* Define to 1 if you have the `system' function. */
-#define HAVE_SYSTEM 1
+/* #undef HAVE_SYSTEM */
 
 /* Define to 1 if you have the <sys/param.h> header file. */
 #define HAVE_SYS_PARAM_H 1
@@ -382,7 +382,7 @@
 #define HAVE_TIME 1
 
 /* Define to 1 if you have the `times' function. */
-#define HAVE_TIMES 1
+/* #undef HAVE_TIMES */
 
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
@@ -422,7 +422,7 @@
 #define PACKAGE_NAME "jpeg"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "jpeg thor@math.tu-berlin.de"
+#define PACKAGE_STRING "jpeg thomas.richter@iis.fraunhofer.de"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "jpeg"
@@ -431,7 +431,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "thor@math.tu-berlin.de"
+#define PACKAGE_VERSION "thomas.richter@iis.fraunhofer.de"
 
 /* Define to the necessary symbol if this constant uses a non-standard name on
    your system. */

@@ -42,7 +42,7 @@
 ** This module implements the IO-Hook function that reads and writes
 ** the encoded data.
 **
-** $Id: filehook.cpp,v 1.2 2014/09/30 08:33:15 thor Exp $
+** $Id: filehook.cpp,v 1.3 2020/04/08 10:05:38 thor Exp $
 **
 */
 
@@ -68,6 +68,7 @@ JPG_LONG FileHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
       
       return fread(buffer,1,size,in);
     }
+    break;
   case JPGFLAG_ACTION_WRITE:
     {
       UBYTE *buffer = (UBYTE *)tags->GetTagPtr(JPGTAG_FIO_BUFFER);
@@ -75,6 +76,7 @@ JPG_LONG FileHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
       
       return fwrite(buffer,1,size,in);
     }
+    break;
   case JPGFLAG_ACTION_SEEK:
     {
       LONG mode   = tags->GetTagData(JPGTAG_FIO_SEEKMODE);
@@ -89,6 +91,7 @@ JPG_LONG FileHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
         return fseek(in,offset,SEEK_END);
       }
     }
+    break;
   case JPGFLAG_ACTION_QUERY:
     return 0;
   }

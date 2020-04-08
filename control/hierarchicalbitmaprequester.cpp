@@ -45,7 +45,7 @@
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.41 2017/11/28 16:13:54 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.42 2020/04/08 10:05:41 thor Exp $
 **
 */
 
@@ -836,7 +836,7 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgre
     }
   }
 #else
-  NOREF(region);
+  NOREF(orgregion);
   NOREF(rr);
 #endif
 }

@@ -41,7 +41,7 @@
 /*
 ** This class parses the markers and holds the decoder together.
 **
-** $Id: encoder.cpp,v 1.53 2015/03/24 09:45:31 thor Exp $
+** $Id: encoder.cpp,v 1.54 2020/04/08 10:05:41 thor Exp $
 **
 */
 
@@ -288,7 +288,7 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
       if (hdrprecision != 8 && (hdrprecision != 12 || restype == Baseline))
         JPG_THROW(INVALID_PARAMETER,"Encoder::FindScanTypes",
                   "The residual image precision must be either 8 or 12 bits per component");
-      // Runs into the following...
+      // fall through
     default:
       if (riddenbits > 4)
         JPG_THROW(OVERFLOW_PARAMETER,"Encoder::FindScanTypes",

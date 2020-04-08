@@ -42,7 +42,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.203 2019/08/21 10:09:56 thor Exp $
+** $Id: tables.cpp,v 1.204 2020/04/08 10:05:41 thor Exp $
 **
 */
 
@@ -523,7 +523,7 @@ void Tables::CreateProfileCSettings(const struct JPG_TagItem *tags,class FileTyp
   case JPGFLAG_RESIDUAL:
   case JPGFLAG_RESIDUALPROGRESSIVE:
     dodct    = false;
-    // run into the following.
+    // fall through
   case JPGFLAG_RESIDUALDCT:
     dopart8  = true;
     clipping = false;

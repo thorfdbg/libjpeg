@@ -41,7 +41,7 @@
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: lslosslesstrafo.cpp,v 1.21 2014/09/30 08:33:16 thor Exp $
+** $Id: lslosslesstrafo.cpp,v 1.23 2020/04/08 10:05:41 thor Exp $
 **
 */
 
@@ -125,6 +125,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
     switch(count) {
     case 4:
       memset(target[3],0,sizeof(Block));
+      /* fall through */
     case 3:
       memset(target[2],0,sizeof(Block));
       memset(target[1],0,sizeof(Block));
@@ -144,6 +145,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
     switch(count) {
     case 4:
       aptr = (const external *)(source[3]->ibm_pData);
+      /* fall through */
     case 3:
       rptr = (const external *)(source[0]->ibm_pData);
       gptr = (const external *)(source[1]->ibm_pData);
@@ -156,6 +158,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
       case 4:
         inp[3]  = target[3] + xmin + (y << 3);
         a       = aptr;
+        /* fall through */
       case 3:
         inp[0]  = target[0] + xmin + (y << 3);
         inp[1]  = target[1] + xmin + (y << 3);
@@ -171,6 +174,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
           dst[m_ucInternal[3]] = *a;
           assert(dst[m_ucInternal[3]] <= m_lMax);
           a  = (const external *)((const UBYTE *)(a) + source[3]->ibm_cBytesPerPixel);
+          /* fall through */
         case 3:
           dst[m_ucInternal[0]] = *r;
           assert(dst[m_ucInternal[0]] <= m_lMax);
@@ -196,6 +200,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
           case 4:
             if (dst[3] < m_lNear)               dst[3] = m_lNear;
             if (dst[3] > m_lMaxTrans - m_lNear) dst[3] = m_lMaxTrans - m_lNear;
+            /* fall through */
           case 3:
             if (dst[2] < m_lNear)               dst[2] = m_lNear;
             if (dst[2] > m_lMaxTrans - m_lNear) dst[2] = m_lMaxTrans - m_lNear;
@@ -302,6 +307,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
           if (!m_bCentered[3]) in[3] += m_lOffset;
           if (in[3] < 0)       in[3]  = 0;
           if (in[3] > m_lMax)  in[3]  = m_lMax;
+          /* fall through */
         case 3:
           if (!m_bCentered[2]) in[2] += m_lOffset;
           if (in[2] < 0)       in[2]  = 0;
@@ -318,6 +324,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
         switch(count) {
         case 4:
           *inp[m_ucInverse[3]]++ = in[3];
+          /* fall through */
         case 3:
           *inp[m_ucInverse[0]]++ = in[0];
           *inp[m_ucInverse[1]]++ = in[1];
@@ -327,6 +334,7 @@ void LSLosslessTrafo<external,count>::RGB2YCbCr(const RectAngle<LONG> &r,const s
       switch(count) {
       case 4:
         aptr  = (const external *)((const UBYTE *)(aptr) + source[3]->ibm_lBytesPerRow);
+        /* fall through */
       case 3:
         rptr  = (const external *)((const UBYTE *)(rptr) + source[0]->ibm_lBytesPerRow);
         gptr  = (const external *)((const UBYTE *)(gptr) + source[1]->ibm_lBytesPerRow);
@@ -391,6 +399,7 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
     switch(count) {
     case 4:
       aptr = (external *)(dest[3]->ibm_pData);
+      // fall through
     case 3:
       rptr = (external *)(dest[0]->ibm_pData);
       gptr = (external *)(dest[1]->ibm_pData);
@@ -403,6 +412,7 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
       case 4:
         srcp[3] = source[3] + xmin + (y << 3);
         a       = aptr;
+        // fall through
       case 3:
         srcp[0] = source[0] + xmin + (y << 3);  
         srcp[1] = source[1] + xmin + (y << 3);
@@ -419,6 +429,7 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
         case 4:
           src[3] = *srcp[m_ucInternal[3]];
           if (!m_bCentered[3]) src[3] -= m_lOffset;
+          // fall through
         case 3:
           src[2] = *srcp[m_ucInternal[2]];
           if (!m_bCentered[2]) src[2] -= m_lOffset;
@@ -482,6 +493,7 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
         case 4:
           if (out[3] < 0)      out[3]  = 0;
           if (out[3] > m_lMax) out[3]  = m_lMax;
+          // fall through
         case 3:
           if (out[2] < 0)      out[2]  = 0;
           if (out[2] > m_lMax) out[2]  = m_lMax;
@@ -497,6 +509,7 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
           *a = out[m_ucInverse[3]];
           a  = (external *)((UBYTE *)(a) + dest[3]->ibm_cBytesPerPixel);
           srcp[3]++;
+          // fall through
         case 3:
           *r = out[m_ucInverse[0]];
           r  = (external *)((UBYTE *)(r) + dest[0]->ibm_cBytesPerPixel);
@@ -512,6 +525,7 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
       switch(count) {
       case 4:
         aptr  = (external *)((UBYTE *)(aptr) + dest[3]->ibm_lBytesPerRow);
+        // fall through
       case 3:
         rptr  = (external *)((UBYTE *)(rptr) + dest[0]->ibm_lBytesPerRow);
         gptr  = (external *)((UBYTE *)(gptr) + dest[1]->ibm_lBytesPerRow);

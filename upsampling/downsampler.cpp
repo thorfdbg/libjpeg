@@ -41,7 +41,7 @@
 /*
 ** The actual downsampling implementation. This is a simple box filter.
 **
-** $Id: downsampler.cpp,v 1.14 2018/07/27 06:56:43 thor Exp $
+** $Id: downsampler.cpp,v 1.15 2020/04/08 10:05:42 thor Exp $
 **
 */
 
@@ -109,10 +109,13 @@ void Downsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) const
         switch(sx) { // actually this will be unrolled because it is a template
         case 4:
           *bp += src[3];
+          // fall through
         case 3:
           *bp += src[2];
+          // fall through
         case 2:
           *bp += src[1];
+          // fall through
         case 1:
           *bp += src[0];
         }

@@ -44,7 +44,7 @@
 ** additional 1-line delay. This works if there
 ** is no residual image.
 **
-** $Id: interdownsampler.cpp,v 1.1 2017/06/20 14:40:08 thor Exp $
+** $Id: interdownsampler.cpp,v 1.2 2020/04/08 10:05:42 thor Exp $
 **
 */
 
@@ -136,6 +136,7 @@ void InterDownsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) con
           *bpt += srct[3];
           *bp  += src[3];
           *bpb += srcb[3];
+          // fall through
         case 3:
           *bpt += srct[2];
           *bp  += src[2];
@@ -143,6 +144,7 @@ void InterDownsampler<sx,sy>::DownsampleRegion(LONG bx,LONG by,LONG *buffer) con
           *bpt += srct[1];
           *bp  += src[1];
           *bpb += srcb[1];
+          // fall through
         case 1:
           *bpt += srct[0];
           *bp  += src[0];

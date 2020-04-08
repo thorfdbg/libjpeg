@@ -42,7 +42,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.114 2017/06/06 10:51:41 thor Exp $
+** $Id: scan.cpp,v 1.115 2020/04/08 10:05:41 thor Exp $
 **
 */
 
@@ -274,7 +274,7 @@ void Scan::ParseMarker(class ByteStream *io,ScanType type)
     if (m_ucScanStop != 63 || m_ucScanStart != 0)
       JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker",
                 "scan start must be zero and scan stop must be 63 for the sequential operating modes");
-    // runs into here.
+    // fall through
   case JPEG_LS: 
     // Specs don't say anything what to do about them. Just assume they must be zero.
     if (m_ucHighBit != 0) // Low bit is the point transformation
@@ -859,7 +859,7 @@ void Scan::MakeHiddenRefinementScan(UBYTE bitposition,class Component *comp,UBYT
   case ACResidual:
   case ACResidualProgressive:
     residual = true;
-    // runs into the following.
+    // fall through
   case ACResidualDCT:
 #if ACCUSOFT_CODE
     m_ucACTable[0] = 0;
@@ -919,7 +919,7 @@ void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl 
     case Residual:
     case ResidualProgressive:
       residual = true;
-      // Runs into the following
+      // fall through
     case ResidualDCT:
       ParseMarker(io,ResidualProgressive);
       m_pParser  = new(m_pEnviron) RefinementScan(m_pFrame,this,
@@ -930,7 +930,7 @@ void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl 
     case ACResidual:
     case ACResidualProgressive:
       residual = true;
-      // Runs into the following
+      // fall through
     case ACResidualDCT:
 #if ACCUSOFT_CODE
       ParseMarker(io,ACResidualProgressive);

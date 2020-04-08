@@ -41,13 +41,13 @@
 #** Configuration script for the jpeg project,
 #** THOR Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.11 2016/05/28 16:25:41 thor Exp $
+#** $Id: configure.in,v 1.13 2020/04/08 10:14:07 thor Exp $
 #**
 #** In this module: autoconf script for libjpeg
 #**********************************************************************************/
 #
 # Process this file with autoconf to produce a configure script.
-AC_INIT(jpeg,thor@math.tu-berlin.de)
+AC_INIT(jpeg,thomas.richter@iis.fraunhofer.de)
 AC_CONFIG_SRCDIR([config.h])
 AC_CONFIG_HEADER([autoconfig.h])
 AC_PREFIX_DEFAULT([$HOME/bin/wavelet])
@@ -261,6 +261,14 @@ if (__builtin_expect(s != t,1))
 AC_MSG_RESULT($ac_have_builtin_expect)
 #
 CFLAGS="${CFLAGS_KEEP}"
+#
+# Check whether the compiler supports -Wimplicit-fallthrough=1 as option. This helps to avoid some
+# pointless warnings on the later gcc versions.
+#
+AC_MSG_CHECKING([for the -Wimplicit-fallthrough compiler switch])
+CFLAGS="-Wimplicit-fallthrough=1 $save_CFLAGS"
+AC_TRY_COMPILE([],[],[ac_have_implicit_fallthrough='yes';AC_SUBST(WARN_OPTS,"-Wimplicit-fallthrough=1")],[ac_have_implicit_fallthrough='no';AC_SUBST(WARN_OPTS,"")])
+AC_MSG_RESULT($ac_have_implicit_fallthrough)
 #
 # The test for llseek and lseek64 does not seem to work properly unless we try to compile...
 # yuck!

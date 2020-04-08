@@ -41,7 +41,7 @@
 /*
  * Tag item definitions
  * 
- * $Id: tagitem.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
+ * $Id: tagitem.cpp,v 1.9 2020/04/08 10:05:41 thor Exp $
  *
  * Tag items provide a convenient mechanism to build functions with are
  * easely extendable. A tag item consists of:
@@ -88,7 +88,7 @@ struct JPG_TagItem *JPG_TagItem::NextTagItem(void)
     default: 
       if (current->ti_Tag & JPGTAG_TAG_USER)
         return current;
-      // Runs into the following
+      // fall through
     case JPGTAG_TAG_IGNORE:    
       current++;
       continue;

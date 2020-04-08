@@ -42,7 +42,7 @@
 /*
 ** Definition of the Environment.
 ** 
-** $Id: environment.cpp,v 1.9 2014/09/30 08:33:18 thor Exp $
+** $Id: environment.cpp,v 1.10 2020/04/08 10:05:41 thor Exp $
 **
 ** The environment holds structures for exception management without
 ** exceptions, and for memory management without a global new.
@@ -692,8 +692,10 @@ inline void *Environ::CoreAllocMem(ULONG bytesize,ULONG reqments)
       switch(s) {
       case 3:
         *q++ = 0xde;
+        /* fall through */
       case 2:
         *q++ = 0xad;
+        /* fall through */
       case 1:
         *q++ = 0xf0;
       }
@@ -739,8 +741,10 @@ inline void Environ::CoreFreeMem(void *mem,ULONG bytesize)
       switch(s) {
       case 3:
         *q++ = 0xde;
+        /* fall through */
       case 2:
         *q++ = 0xad;
+        /* fall through */
       case 1:
         *q++ = 0xbe;
       }
