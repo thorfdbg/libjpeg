@@ -1,7 +1,7 @@
 #! make
 #######################################################################
 ##
-## $Id: Makefile,v 1.14 2018/04/14 21:59:35 thor Exp $
+## $Id: Makefile,v 1.15 2020/07/21 06:43:10 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -302,7 +302,8 @@ Distrib.zip	:	doc dox configure autoconfig.h.in
 	@ $(ZIP) -r Distrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r Distrib.zip dox/html
 	@ $(ZIP) -r Distrib.zip vs10.0 --exclude '*CVS*' 
-	@ $(ZIP) -r Distrib.zip vs12.0 --exclude '*CVS*' 
+	@ $(ZIP) -r Distrib.zip vs12.0 --exclude '*CVS*'
+	@ $(ZIP) -r Distrib.zip vs15.0 --exclude '*CVS*' 
 
 isodistrib:	ISODistrib.zip
 
@@ -323,6 +324,7 @@ ISODistrib.zip	:	doc configure autoconfig.h.in
 	@ $(ZIP) -r ISODistrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r ISODistrib.zip vs10.0 --exclude '*CVS*'
 	@ $(ZIP) -r ISODistrib.zip vs12.0 --exclude '*CVS*'
+	@ $(ZIP) -r ISODistrib.zip vs15.0 --exclude '*CVS*'
 
 gpldistrib:	GPLDistrib.zip
 
@@ -344,6 +346,7 @@ GPLDistrib.zip	:	doc configure autoconfig.h.in
 	@ $(ZIP) -r GPLDistrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r GPLDistrib.zip vs10.0 --exclude '*CVS*'
 	@ $(ZIP) -r GPLDistrib.zip vs12.0 --exclude '*CVS*'
+	@ $(ZIP) -r GPLDistrib.zip vs15.0 --exclude '*CVS*'
 
 ##
 ## The public distribution, no patented code, with the stripped headers.
@@ -361,6 +364,7 @@ ITUDistrib.zip	:	doc configure autoconfig.h.in
 	@ $(ZIP) -r ITUDistrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r ITUDistrib.zip vs10.0 --exclude '*CVS*'
 	@ $(ZIP) -r ITUDistrib.zip vs12.0 --exclude '*CVS*'
+	@ $(ZIP) -r ITUDistrib.zip vs15.0 --exclude '*CVS*'
 
 tar		:	distrib.tgz
 

@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpeg", "jpeg\jpeg.vcxproj", "{AC527D40-8A13-403B-8D79-9DD1A2F66A0E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpeglib", "jpeglib\jpeglib.vcxproj", "{AD8E036E-0C26-4559-A0C9-8EB924030BEF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpegdll", "jpegdll\jpegdll.vcxproj", "{2F8EB3B3-9BA3-44E8-9199-5E35D4C5B883}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AC527D40-8A13-403B-8D79-9DD1A2F66A0E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AC527D40-8A13-403B-8D79-9DD1A2F66A0E}.Debug|Win32.Build.0 = Debug|Win32
+		{AC527D40-8A13-403B-8D79-9DD1A2F66A0E}.Release|Win32.ActiveCfg = Release|Win32
+		{AC527D40-8A13-403B-8D79-9DD1A2F66A0E}.Release|Win32.Build.0 = Release|Win32
+		{AD8E036E-0C26-4559-A0C9-8EB924030BEF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AD8E036E-0C26-4559-A0C9-8EB924030BEF}.Debug|Win32.Build.0 = Debug|Win32
+		{AD8E036E-0C26-4559-A0C9-8EB924030BEF}.Release|Win32.ActiveCfg = Release|Win32
+		{AD8E036E-0C26-4559-A0C9-8EB924030BEF}.Release|Win32.Build.0 = Release|Win32
+		{2F8EB3B3-9BA3-44E8-9199-5E35D4C5B883}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2F8EB3B3-9BA3-44E8-9199-5E35D4C5B883}.Debug|Win32.Build.0 = Debug|Win32
+		{2F8EB3B3-9BA3-44E8-9199-5E35D4C5B883}.Release|Win32.ActiveCfg = Release|Win32
+		{2F8EB3B3-9BA3-44E8-9199-5E35D4C5B883}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

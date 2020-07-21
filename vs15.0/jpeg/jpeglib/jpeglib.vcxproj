@@ -1,0 +1,371 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\boxes\alphabox.cpp" />
+    <ClCompile Include="..\..\..\boxes\box.cpp" />
+    <ClCompile Include="..\..\..\boxes\checksumbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\colortrafobox.cpp" />
+    <ClCompile Include="..\..\..\boxes\databox.cpp" />
+    <ClCompile Include="..\..\..\boxes\dctbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\filetypebox.cpp" />
+    <ClCompile Include="..\..\..\boxes\floattonemappingbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\floattransformationbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\inversetonemappingbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\lineartransformationbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\matrixbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\mergingspecbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\namespace.cpp" />
+    <ClCompile Include="..\..\..\boxes\nonlineartrafobox.cpp" />
+    <ClCompile Include="..\..\..\boxes\outputconversionbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\parametrictonemappingbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\refinementspecbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\superbox.cpp" />
+    <ClCompile Include="..\..\..\boxes\tonemapperbox.cpp" />
+    <ClCompile Include="..\..\..\codestream\aclosslessscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\acrefinementscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\acsequentialscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\decoder.cpp" />
+    <ClCompile Include="..\..\..\codestream\encoder.cpp" />
+    <ClCompile Include="..\..\..\codestream\entropyparser.cpp" />
+    <ClCompile Include="..\..\..\codestream\image.cpp" />
+    <ClCompile Include="..\..\..\codestream\jpeglsscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\lineinterleavedlsscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\losslessscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\predictivescan.cpp" />
+    <ClCompile Include="..\..\..\codestream\predictor.cpp" />
+    <ClCompile Include="..\..\..\codestream\predictorbase.cpp" />
+    <ClCompile Include="..\..\..\codestream\rectanglerequest.cpp" />
+    <ClCompile Include="..\..\..\codestream\refinementscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\sampleinterleavedlsscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\sequentialscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\singlecomponentlsscan.cpp" />
+    <ClCompile Include="..\..\..\codestream\tables.cpp" />
+    <ClCompile Include="..\..\..\coding\actemplate.cpp" />
+    <ClCompile Include="..\..\..\coding\arithmetictemplate.cpp" />
+    <ClCompile Include="..\..\..\coding\arthdeco.cpp" />
+    <ClCompile Include="..\..\..\coding\blockrow.cpp" />
+    <ClCompile Include="..\..\..\coding\decodertemplate.cpp" />
+    <ClCompile Include="..\..\..\coding\huffmancoder.cpp" />
+    <ClCompile Include="..\..\..\coding\huffmandecoder.cpp" />
+    <ClCompile Include="..\..\..\coding\huffmanstatistics.cpp" />
+    <ClCompile Include="..\..\..\coding\huffmantemplate.cpp" />
+    <ClCompile Include="..\..\..\coding\qmcoder.cpp" />
+    <ClCompile Include="..\..\..\coding\quantizedrow.cpp" />
+    <ClCompile Include="..\..\..\colortrafo\colortrafo.cpp" />
+    <ClCompile Include="..\..\..\colortrafo\colortransformerfactory.cpp" />
+    <ClCompile Include="..\..\..\colortrafo\floattrafo.cpp" />
+    <ClCompile Include="..\..\..\colortrafo\lslosslesstrafo.cpp" />
+    <ClCompile Include="..\..\..\colortrafo\multiplicationtrafo.cpp" />
+    <ClCompile Include="..\..\..\colortrafo\trivialtrafo.cpp" />
+    <ClCompile Include="..\..\..\colortrafo\ycbcrtrafo.cpp" />
+    <ClCompile Include="..\..\..\control\bitmapctrl.cpp" />
+    <ClCompile Include="..\..\..\control\blockbitmaprequester.cpp" />
+    <ClCompile Include="..\..\..\control\blockbuffer.cpp" />
+    <ClCompile Include="..\..\..\control\blocklineadapter.cpp" />
+    <ClCompile Include="..\..\..\control\bufferctrl.cpp" />
+    <ClCompile Include="..\..\..\control\hierarchicalbitmaprequester.cpp" />
+    <ClCompile Include="..\..\..\control\lineadapter.cpp" />
+    <ClCompile Include="..\..\..\control\linebitmaprequester.cpp" />
+    <ClCompile Include="..\..\..\control\linebuffer.cpp" />
+    <ClCompile Include="..\..\..\control\linelineadapter.cpp" />
+    <ClCompile Include="..\..\..\control\linemerger.cpp" />
+    <ClCompile Include="..\..\..\control\residualblockhelper.cpp" />
+    <ClCompile Include="..\..\..\dct\dct.cpp" />
+    <ClCompile Include="..\..\..\dct\deringing.cpp" />
+    <ClCompile Include="..\..\..\dct\idct.cpp" />
+    <ClCompile Include="..\..\..\dct\liftingdct.cpp" />
+    <ClCompile Include="..\..\..\interface\bitmaphook.cpp" />
+    <ClCompile Include="..\..\..\interface\hooks.cpp" />
+    <ClCompile Include="..\..\..\interface\imagebitmap.cpp" />
+    <ClCompile Include="..\..\..\interface\jpeg.cpp" />
+    <ClCompile Include="..\..\..\interface\jpgtypes.cpp" />
+    <ClCompile Include="..\..\..\interface\parameters.cpp" />
+    <ClCompile Include="..\..\..\interface\tagitem.cpp" />
+    <ClCompile Include="..\..\..\interface\types.cpp" />
+    <ClCompile Include="..\..\..\io\bitstream.cpp" />
+    <ClCompile Include="..\..\..\io\bytestream.cpp" />
+    <ClCompile Include="..\..\..\io\checksumadapter.cpp" />
+    <ClCompile Include="..\..\..\io\decoderstream.cpp" />
+    <ClCompile Include="..\..\..\io\iostream.cpp" />
+    <ClCompile Include="..\..\..\io\memorystream.cpp" />
+    <ClCompile Include="..\..\..\io\randomaccessstream.cpp" />
+    <ClCompile Include="..\..\..\io\staticstream.cpp" />
+    <ClCompile Include="..\..\..\marker\actable.cpp" />
+    <ClCompile Include="..\..\..\marker\adobemarker.cpp" />
+    <ClCompile Include="..\..\..\marker\component.cpp" />
+    <ClCompile Include="..\..\..\marker\exifmarker.cpp" />
+    <ClCompile Include="..\..\..\marker\frame.cpp" />
+    <ClCompile Include="..\..\..\marker\huffmantable.cpp" />
+    <ClCompile Include="..\..\..\marker\jfifmarker.cpp" />
+    <ClCompile Include="..\..\..\marker\lscolortrafo.cpp" />
+    <ClCompile Include="..\..\..\marker\quantization.cpp" />
+    <ClCompile Include="..\..\..\marker\quantizationtable.cpp" />
+    <ClCompile Include="..\..\..\marker\restartintervalmarker.cpp" />
+    <ClCompile Include="..\..\..\marker\scan.cpp" />
+    <ClCompile Include="..\..\..\marker\scantypes.cpp" />
+    <ClCompile Include="..\..\..\marker\thresholds.cpp" />
+    <ClCompile Include="..\..\..\std\assert.cpp" />
+    <ClCompile Include="..\..\..\std\ctype.cpp" />
+    <ClCompile Include="..\..\..\std\errno.cpp" />
+    <ClCompile Include="..\..\..\std\math.cpp" />
+    <ClCompile Include="..\..\..\std\setjmp.cpp" />
+    <ClCompile Include="..\..\..\std\stdarg.cpp" />
+    <ClCompile Include="..\..\..\std\stddef.cpp" />
+    <ClCompile Include="..\..\..\std\stdio.cpp" />
+    <ClCompile Include="..\..\..\std\stdlib.cpp" />
+    <ClCompile Include="..\..\..\std\string.cpp" />
+    <ClCompile Include="..\..\..\std\unistd.cpp" />
+    <ClCompile Include="..\..\..\tools\checksum.cpp" />
+    <ClCompile Include="..\..\..\tools\debug.cpp" />
+    <ClCompile Include="..\..\..\tools\environment.cpp" />
+    <ClCompile Include="..\..\..\tools\line.cpp" />
+    <ClCompile Include="..\..\..\tools\numerics.cpp" />
+    <ClCompile Include="..\..\..\tools\priorityqueue.cpp" />
+    <ClCompile Include="..\..\..\tools\rectangle.cpp" />
+    <ClCompile Include="..\..\..\tools\traits.cpp" />
+    <ClCompile Include="..\..\..\upsampling\downsampler.cpp" />
+    <ClCompile Include="..\..\..\upsampling\interdownsampler.cpp" />
+    <ClCompile Include="..\..\..\upsampling\downsamplerbase.cpp" />
+    <ClCompile Include="..\..\..\upsampling\upsampler.cpp" />
+    <ClCompile Include="..\..\..\upsampling\cositedupsampler.cpp" />
+    <ClCompile Include="..\..\..\upsampling\upsamplerbase.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\boxes\alphabox.hpp" />
+    <ClInclude Include="..\..\..\boxes\box.hpp" />
+    <ClInclude Include="..\..\..\boxes\checksumbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\databox.hpp" />
+    <ClInclude Include="..\..\..\boxes\dctbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\filetypebox.hpp" />
+    <ClInclude Include="..\..\..\boxes\floattonemappingbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\floattransformationbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\inversetonemappingbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\lineartransformationbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\matrixbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\mergingspecbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\namespace.hpp" />
+    <ClInclude Include="..\..\..\boxes\nonlineartrafobox.hpp" />
+    <ClInclude Include="..\..\..\boxes\outputconversionbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\parametrictonemappingbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\refinementspecbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\superbox.hpp" />
+    <ClInclude Include="..\..\..\boxes\tonemapperbox.hpp" />
+    <ClInclude Include="..\..\..\codestream\aclosslessscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\acrefinementscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\acsequentialscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\decoder.hpp" />
+    <ClInclude Include="..\..\..\codestream\encoder.hpp" />
+    <ClInclude Include="..\..\..\codestream\entropyparser.hpp" />
+    <ClInclude Include="..\..\..\codestream\image.hpp" />
+    <ClInclude Include="..\..\..\codestream\jpeglsscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\lineinterleavedlsscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\losslessscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\predictivescan.hpp" />
+    <ClInclude Include="..\..\..\codestream\predictor.hpp" />
+    <ClInclude Include="..\..\..\codestream\predictorbase.hpp" />
+    <ClInclude Include="..\..\..\codestream\rectanglerequest.hpp" />
+    <ClInclude Include="..\..\..\codestream\refinementscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\sampleinterleavedlsscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\sequentialscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\singlecomponentlsscan.hpp" />
+    <ClInclude Include="..\..\..\codestream\tables.hpp" />
+    <ClInclude Include="..\..\..\coding\actemplate.hpp" />
+    <ClInclude Include="..\..\..\coding\arithmetictemplate.hpp" />
+    <ClInclude Include="..\..\..\coding\arthdeco.hpp" />
+    <ClInclude Include="..\..\..\coding\blockrow.hpp" />
+    <ClInclude Include="..\..\..\coding\decodertemplate.hpp" />
+    <ClInclude Include="..\..\..\coding\huffmancoder.hpp" />
+    <ClInclude Include="..\..\..\coding\huffmandecoder.hpp" />
+    <ClInclude Include="..\..\..\coding\huffmanstatistics.hpp" />
+    <ClInclude Include="..\..\..\coding\huffmantemplate.hpp" />
+    <ClInclude Include="..\..\..\coding\qmcoder.hpp" />
+    <ClInclude Include="..\..\..\coding\quantizedrow.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\colortrafo.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\colortransformerfactory.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\floattrafo.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\integertrafo.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\lslosslesstrafo.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\multiplicationtrafo.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\trivialtrafo.hpp" />
+    <ClInclude Include="..\..\..\colortrafo\ycbcrtrafo.hpp" />
+    <ClInclude Include="..\..\..\config.h" />
+    <ClInclude Include="..\..\..\control\bitmapctrl.hpp" />
+    <ClInclude Include="..\..\..\control\blockbitmaprequester.hpp" />
+    <ClInclude Include="..\..\..\control\blockbuffer.hpp" />
+    <ClInclude Include="..\..\..\control\blocklineadapter.hpp" />
+    <ClInclude Include="..\..\..\control\bufferctrl.hpp" />
+    <ClInclude Include="..\..\..\control\hierarchicalbitmaprequester.hpp" />
+    <ClInclude Include="..\..\..\control\lineadapter.hpp" />
+    <ClInclude Include="..\..\..\control\linebitmaprequester.hpp" />
+    <ClInclude Include="..\..\..\control\linebuffer.hpp" />
+    <ClInclude Include="..\..\..\control\linelineadapter.hpp" />
+    <ClInclude Include="..\..\..\control\linemerger.hpp" />
+    <ClInclude Include="..\..\..\control\residualblockhelper.hpp" />
+    <ClInclude Include="..\..\..\control\residualbuffer.hpp" />
+    <ClInclude Include="..\..\..\dct\dct.hpp" />
+    <ClInclude Include="..\..\..\dct\deringing.hpp" />
+    <ClInclude Include="..\..\..\dct\idct.hpp" />
+    <ClInclude Include="..\..\..\dct\liftingdct.hpp" />
+    <ClInclude Include="..\..\..\interface\bitmaphook.hpp" />
+    <ClInclude Include="..\..\..\interface\hooks.hpp" />
+    <ClInclude Include="..\..\..\interface\imagebitmap.hpp" />
+    <ClInclude Include="..\..\..\interface\jpeg.hpp" />
+    <ClInclude Include="..\..\..\interface\jpgtypes.hpp" />
+    <ClInclude Include="..\..\..\interface\parameters.hpp" />
+    <ClInclude Include="..\..\..\interface\tagitem.hpp" />
+    <ClInclude Include="..\..\..\interface\types.hpp" />
+    <ClInclude Include="..\..\..\io\bitstream.hpp" />
+    <ClInclude Include="..\..\..\io\bytestream.hpp" />
+    <ClInclude Include="..\..\..\io\checksumadapter.hpp" />
+    <ClInclude Include="..\..\..\io\decoderstream.hpp" />
+    <ClInclude Include="..\..\..\io\iostream.hpp" />
+    <ClInclude Include="..\..\..\io\memorystream.hpp" />
+    <ClInclude Include="..\..\..\io\randomaccessstream.hpp" />
+    <ClInclude Include="..\..\..\io\staticstream.hpp" />
+    <ClInclude Include="..\..\..\marker\actable.hpp" />
+    <ClInclude Include="..\..\..\marker\adobemarker.hpp" />
+    <ClInclude Include="..\..\..\marker\component.hpp" />
+    <ClInclude Include="..\..\..\marker\exifmarker.hpp" />
+    <ClInclude Include="..\..\..\marker\frame.hpp" />
+    <ClInclude Include="..\..\..\marker\huffmantable.hpp" />
+    <ClInclude Include="..\..\..\marker\jfifmarker.hpp" />
+    <ClInclude Include="..\..\..\marker\lscolortrafo.hpp" />
+    <ClInclude Include="..\..\..\marker\quantization.hpp" />
+    <ClInclude Include="..\..\..\marker\quantizationtable.hpp" />
+    <ClInclude Include="..\..\..\marker\restartintervalmarker.hpp" />
+    <ClInclude Include="..\..\..\marker\scan.hpp" />
+    <ClInclude Include="..\..\..\marker\scantypes.hpp" />
+    <ClInclude Include="..\..\..\marker\thresholds.hpp" />
+    <ClInclude Include="..\..\..\std\assert.hpp" />
+    <ClInclude Include="..\..\..\std\ctype.hpp" />
+    <ClInclude Include="..\..\..\std\errno.hpp" />
+    <ClInclude Include="..\..\..\std\math.hpp" />
+    <ClInclude Include="..\..\..\std\setjmp.hpp" />
+    <ClInclude Include="..\..\..\std\stdarg.hpp" />
+    <ClInclude Include="..\..\..\std\stddef.hpp" />
+    <ClInclude Include="..\..\..\std\stdio.hpp" />
+    <ClInclude Include="..\..\..\std\stdlib.hpp" />
+    <ClInclude Include="..\..\..\std\string.hpp" />
+    <ClInclude Include="..\..\..\std\unistd.hpp" />
+    <ClInclude Include="..\..\..\tools\checksum.hpp" />
+    <ClInclude Include="..\..\..\tools\debug.hpp" />
+    <ClInclude Include="..\..\..\tools\environment.hpp" />
+    <ClInclude Include="..\..\..\tools\line.hpp" />
+    <ClInclude Include="..\..\..\tools\numerics.hpp" />
+    <ClInclude Include="..\..\..\tools\priorityqueue.hpp" />
+    <ClInclude Include="..\..\..\tools\rectangle.hpp" />
+    <ClInclude Include="..\..\..\tools\traits.hpp" />
+    <ClInclude Include="..\..\..\upsampling\downsampler.hpp" />
+    <ClInclude Include="..\..\..\upsampling\interdownsampler.hpp" />
+    <ClInclude Include="..\..\..\upsampling\downsamplerbase.hpp" />
+    <ClInclude Include="..\..\..\upsampling\upsampler.hpp" />
+    <ClInclude Include="..\..\..\upsampling\cositedupsampler.hpp" />
+    <ClInclude Include="..\..\..\upsampling\upsamplerbase.hpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{AD8E036E-0C26-4559-A0C9-8EB924030BEF}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>jpeglib</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;_VS10_;CHECK_LEVEL=3;DEBUG_LEVEL=2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\..</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAsManaged>false</CompileAsManaged>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <StringPooling>false</StringPooling>
+      <ExceptionHandling>false</ExceptionHandling>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>
+      </PrecompiledHeaderOutputFile>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DisableSpecificWarnings>4355</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_VS10_;CHECK_LEVEL=0;DEBUG_LEVEL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\..</AdditionalIncludeDirectories>
+      <CompileAsManaged>false</CompileAsManaged>
+      <UseUnicodeForAssemblerListing>true</UseUnicodeForAssemblerListing>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <StringPooling>true</StringPooling>
+      <ExceptionHandling>false</ExceptionHandling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>
+      </PrecompiledHeaderOutputFile>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DisableSpecificWarnings>4355</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
