@@ -271,7 +271,7 @@ void Image::InstallDefaultParameters(ULONG width,ULONG height,UBYTE depth,
           // This makes really little sense if the image becomes degenerated.
           if (w < 2 || h < 2) {
             JPG_THROW(OVERFLOW_PARAMETER,"Image::InstallDefaultParameters",
-                      "image dimensions become too small for resonable hierarchical coding "
+                      "image dimensions become too small for reasonable hierarchical coding "
                       "reduce the number of levels");
           }
           w = (w + 1) >> 1; // always scaled in both dimensions in this program.

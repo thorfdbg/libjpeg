@@ -233,7 +233,7 @@ void PrintUsage(const char *progname)
           "-ncl       : disable clamping of out-of-gamut colors.\n"
           "             this is automatically enabled for lossless.\n"
 #if ACCUSOFT_CODE
-          "-m maxerr  : defines a maximum pixel errror for JPEG LS coding\n"
+          "-m maxerr  : defines a maximum pixel error for JPEG LS coding\n"
 #endif
           "-h         : optimize the Huffman tables\n"
 #if ACCUSOFT_CODE
@@ -259,7 +259,7 @@ void PrintUsage(const char *progname)
           "             mapping HDR to LDR. A suggested value is 2.4 for mapping scRGB to sRBG.\n"
           "             This option controls the base-nonlinearity that generates the\n"
           "             HDR pre-cursor image from the LDR image. It is also used in the\n"
-          "             absense of -ldr (i.e. no LDR image) to tonemap the HDR input image.\n"
+          "             absence of -ldr (i.e. no LDR image) to tonemap the HDR input image.\n"
           "             Use -g 0 to use an approximate inverse TMO as base-nonlinearity, and\n"
           "             for tonemapping with the Reinhard operator if the LDR image is missing.\n"
           "-gf file   : define the inverse one-point L-nonlinearity on decoding from a file\n"

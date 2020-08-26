@@ -153,7 +153,7 @@ void BitmapCtrl::RequestUserData(class BitMapHook *bmh,const RectAngle<LONG> &r,
     m_ucPixelType = m_ppBitmap[comp]->ibm_ucPixelType;
   } else if (m_ppBitmap[comp]->ibm_ucPixelType) {
     if (m_ucPixelType != m_ppBitmap[comp]->ibm_ucPixelType) {
-      JPG_THROW(INVALID_PARAMETER,"BitmapCtrl::RequestUserData","pixel types must be consistent accross components");
+      JPG_THROW(INVALID_PARAMETER,"BitmapCtrl::RequestUserData","pixel types must be consistent across components");
     }
   }
 
