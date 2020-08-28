@@ -153,7 +153,7 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
       // This box will fit. Check whether the box size is consistent.
       if (box->m_uqBoxSize != lbox)
         JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
-                  "box size is not consistent accross APP11 markers");
+                  "box size is not consistent across APP11 markers");
       assert(box->m_pInputStream);
       break;
     }

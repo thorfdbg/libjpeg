@@ -117,7 +117,7 @@ void EXIFMarker::WriteMarker(class ByteStream *io)
 void EXIFMarker::ParseMarker(class ByteStream *io,UWORD len)
 {
   if (len < 2 + 4 + 2 + 2 + 2 + 4 + 2 + 4)
-    JPG_THROW(MALFORMED_STREAM,"EXIFMarker::ParseMarker","misformed EXIF marker");
+    JPG_THROW(MALFORMED_STREAM,"EXIFMarker::ParseMarker","malformed EXIF marker");
 
   //
   // The exif header has already been parsed off.

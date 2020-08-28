@@ -99,7 +99,7 @@ void AdobeMarker::ParseMarker(class ByteStream *io,UWORD len)
   LONG color;
 
   if (len != 2 + 5 + 2 + 2 + 2 + 1)
-    JPG_THROW(MALFORMED_STREAM,"AdobeMarker::ParseMarker","misformed Adobe marker");
+    JPG_THROW(MALFORMED_STREAM,"AdobeMarker::ParseMarker","malformed Adobe marker");
 
   version = io->GetWord();
   if (version != 100) // Includes EOF

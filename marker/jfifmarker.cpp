@@ -105,7 +105,7 @@ void JFIFMarker::ParseMarker(class ByteStream *io,UWORD len)
   UBYTE unit;
   
   if (len < 2 + 5 + 2 + 1 + 2 + 2 + 1 + 1)
-    JPG_THROW(MALFORMED_STREAM,"JFIFMarker::ParseMarker","misformed JFIF marker");
+    JPG_THROW(MALFORMED_STREAM,"JFIFMarker::ParseMarker","malformed JFIF marker");
 
   io->Get(); // version
   io->Get(); // revision
