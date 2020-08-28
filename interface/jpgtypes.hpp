@@ -20,7 +20,7 @@
     For the full text of the GPU license option, see README.license.gpl.
     For the full text of the ITU license option, see README.license.itu.
     
-    You may freely select beween these two options.
+    You may freely select between these two options.
 
     For the GPL option, please note the following:
 
