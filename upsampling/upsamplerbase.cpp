@@ -63,13 +63,15 @@ UpsamplerBase::UpsamplerBase(class Environ *env,int sx,int sy,ULONG pixelwidth,U
     m_pInputBuffer(NULL), m_pLastRow(NULL), m_pFree(NULL)
 {
   // Compute the width in input buffer (subsampled) pixels.
+  if (pixelheight == 0)
+    pixelheight   = ~0U >> 1;
+  
   m_ulWidth       = (pixelwidth  + sx - 1) / sx;
   m_lTotalLines   = (pixelheight + sy - 1) / sy; 
   //
   // Also store the dimension in pixels.
   m_ulPixelWidth  = pixelwidth;
   m_ulPixelHeight = pixelheight;
-
 }
 ///
 
@@ -467,6 +469,11 @@ class UpsamplerBase *UpsamplerBase::CreateUpsampler(class Environ *env,int sx,in
     }
   }
 
+  {
+    class Environ *m_pEnviron = env;
+    JPG_THROW(NOT_IMPLEMENTED,"UpsamplerBase::CreateUpsampler",
+	      "subsampling factors larger than 4x4 are not supported, sorry");
+  }
   return NULL;
 }
 ///

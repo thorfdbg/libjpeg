@@ -494,6 +494,9 @@ void Scan::CreateParser(void)
     // Depends on the interleaving
     switch(m_ucScanStop) {
     case 0:
+      if (m_ucCount != 1)
+	JPG_THROW(MALFORMED_STREAM,"Scan::CreateParser",
+		  "invalid codestream, found a single comonent scan containing more than one component");
       m_pParser = new(m_pEnviron) class SingleComponentLSScan(m_pFrame,this,
                                                               m_ucScanStart, // NEAR
                                                               m_ucMappingTable,

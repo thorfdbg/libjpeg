@@ -101,7 +101,7 @@ void RefinementScan::StartParseScan(class ByteStream *io,class Checksum *chk,cla
   //
   // A DC coder for the huffman part is not required.
   for(i = 0;i < m_ucCount;i++) {
-    if (m_ucScanStop) {
+    if (m_ucScanStop || m_bResidual) {
       m_pACDecoder[i]  = m_pScan->ACHuffmanDecoderOf(i);
     } else {
       m_pACDecoder[i]  = NULL; // not required, is DC only.

@@ -10,8 +10,8 @@
 ## The following variable defines the compiler we use
 ## for running the code.
 ##
-COMPILER_CMD	=	g++
-CC_ONLY         =       gcc
+COMPILER_CMD	=	g++-4.9
+CC_ONLY         =       gcc-4.9 -std=gnu99
 SETTINGS	=	gcc
 PREFIX		=	/home/thor/bin/wavelet
 PTHREADCFLAGS	=	

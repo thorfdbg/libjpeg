@@ -389,6 +389,11 @@ class DownsamplerBase *DownsamplerBase::CreateDownsampler(class Environ *env,int
     }
   }
 
+  {
+    class Environ *m_pEnviron = env;
+    JPG_THROW(NOT_IMPLEMENTED,"DownsamplerBase::CreateUpsampler",
+	      "subsampling factors larger than 4x4 are not supported, sorry");
+  }
   return NULL;
 }
 ///

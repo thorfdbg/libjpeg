@@ -92,7 +92,7 @@ ACLosslessScan::~ACLosslessScan(void)
     if (m_plDa[i])
       m_pEnviron->FreeMem(m_plDa[i],sizeof(LONG) * m_ucMCUHeight[i]);
     if (m_plDb[i])
-      m_pEnviron->FreeMem(m_plDb[i],sizeof(LONG) * m_ulWidth[i]);
+      m_pEnviron->FreeMem(m_plDb[i],sizeof(LONG) * m_ucMCUWidth[i] * m_ulWidth[i]);
   }
 #endif
 }
@@ -127,7 +127,7 @@ void ACLosslessScan::FindComponentDimensions(void)
     assert(m_plDa[i] == NULL && m_plDb[i] == NULL);
 
     m_plDa[i] = (LONG *)(m_pEnviron->AllocMem(sizeof(LONG) * m_ucMCUHeight[i]));
-    m_plDb[i] = (LONG *)(m_pEnviron->AllocMem(sizeof(LONG) * m_ulWidth[i]));
+    m_plDb[i] = (LONG *)(m_pEnviron->AllocMem(sizeof(LONG) * m_ucMCUWidth[i] * m_ulWidth[i]));
   }
 }
 #endif
@@ -152,7 +152,7 @@ void ACLosslessScan::StartParseScan(class ByteStream *io,class Checksum *chk,cla
       m_ucLarge[i]    = 1;
     }
     memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]); 
-    memset(m_plDb[i],0,sizeof(LONG) * m_ulWidth[i]);
+    memset(m_plDb[i],0,sizeof(LONG) * m_ucMCUWidth[i] * m_ulWidth[i]);
     m_ucContext[i]    = m_pScan->DCTableIndexOf(i); 
   }
   for(i = 0;i < 4;i++) {
@@ -193,7 +193,7 @@ void ACLosslessScan::StartWriteScan(class ByteStream *io,class Checksum *chk,cla
       m_ucLarge[i]    = 1;
     }  
     memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
-    memset(m_plDb[i],0,sizeof(LONG) * m_ulWidth[i]);
+    memset(m_plDb[i],0,sizeof(LONG) * m_ucMCUWidth[i] * m_ulWidth[i]);
     m_ucContext[i]    = m_pScan->DCTableIndexOf(i); 
   }
   for(i = 0;i < 4;i++) {
@@ -517,7 +517,7 @@ void ACLosslessScan::Flush(bool)
 
   for(i = 0;i < m_ucCount;i++) {
     memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
-    memset(m_plDb[i],0,sizeof(LONG) * m_ulWidth[i]); // Reset conditioning to the top
+    memset(m_plDb[i],0,sizeof(LONG) * m_ucMCUWidth[i] * m_ulWidth[i]); // Reset conditioning to the top
   }
   for(i = 0;i < 4;i++) {
     m_Context[i].Init();
@@ -539,7 +539,7 @@ void ACLosslessScan::Restart(void)
   
   for(i = 0;i < m_ucCount;i++) {
     memset(m_plDa[i],0,sizeof(LONG) * m_ucMCUHeight[i]);
-    memset(m_plDb[i],0,sizeof(LONG) * m_ulWidth[i]);
+    memset(m_plDb[i],0,sizeof(LONG) * m_ucMCUWidth[i] * m_ulWidth[i]);
   }
   for(i = 0;i < 4;i++) {
     m_Context[i].Init();
