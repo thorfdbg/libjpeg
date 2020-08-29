@@ -5856,72 +5856,57 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 # The first test checks whether a signal handler takes an "int" as argument.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether argument type for signal handlers is \"int\"" >&5
 $as_echo_n "checking whether argument type for signal handlers is \"int\"... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
-extern "C" {
+extern "C"{
 #include<signal.h>
 }
 RETSIGTYPE sh(int a) { } void si(void) { signal(SIGINT, sh);}
-int main(int argc,char **argv)
+int
+main ()
 {
-return 0;
-}
 
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_arg_type_int='yes';
 $as_echo "#define SIG_ARG_TYPE_INT 1" >>confdefs.h
 
 else
   ac_arg_type_int='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_arg_type_int" >&5
 $as_echo "$ac_arg_type_int" >&6; }
 #
 # Ditto for ... instead
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether argument type for signal handlers is \"...\"" >&5
 $as_echo_n "checking whether argument type for signal handlers is \"...\"... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 extern "C" {
 #include<signal.h>
 }
 RETSIGTYPE sh(...) { } void si(void) { signal(SIGINT, sh);}
-int main(int argc,char **argv)
+int
+main ()
 {
-return 0;
-}
 
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_arg_type_dots='yes';
 $as_echo "#define SIG_ARG_TYPE_DOTS 1" >>confdefs.h
 
 else
   ac_arg_type_dots='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_arg_type_dots" >&5
 $as_echo "$ac_arg_type_dots" >&6; }
 #
@@ -5981,13 +5966,7 @@ $as_echo "$ac_has_null" >&6; }
 # for several classes, but not all compilers accept it.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether integer constants are valid template arguments" >&5
 $as_echo_n "checking whether integer constants are valid template arguments... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 template<int a>
@@ -5995,118 +5974,60 @@ struct A {
  int b;
  A() : b(a) {}
 };
-int main(int,char **)
+
+int
+main ()
 {
 A<1> a;
-return 0;
+  ;
+  return 0;
 }
-
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_int_template_args='yes';
 $as_echo "#define HAS_INT_TEMPLATE_ARGS 1" >>confdefs.h
 
 else
   ac_int_template_args='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_int_template_args" >&5
 $as_echo "$ac_int_template_args" >&6; }
 if test "$ac_int_template_args" = "no"; then
  as_fn_error $? "your compiler must support constant integers as template arguments. jpeg cannot be build without it." "$LINENO" 5
 fi
 #
-# Check whether we can catch segfaults. Requires as condition for the next test.
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for SIGSEGV and SIGILL signals" >&5
-$as_echo_n "checking for SIGSEGV and SIGILL signals... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-extern "C" {
-#include <signal.h>
-}
-#include <stdlib.h>
-#if defined(SIG_ARG_TYPE_INT)
-RETSIGTYPE sig_handler(int)
-#elif defined(SIG_ARG_TYPE_DOTS)
-RETSIGTYPE sig_handler(...)
-#endif
-{
-  exit(0);
-}
-int main(int argc,char **argv)
-{
- char *f = 0;
- signal(SIGILL,&sig_handler);
- signal(SIGSEGV,&sig_handler);
- *f = 0;
- return 10;
-}
-
-_ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
-  ac_sigseg_works='yes';
-$as_echo "#define HAVE_SIGSEGV 1" >>confdefs.h
-
-else
-  ac_sigseg_works='no'
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_sigseg_works" >&5
-$as_echo "$ac_sigseg_works" >&6; }
-#
-#
 # Check for atomic increment and decrement instructions. These are not really
 # needed except for the debugging code. Everything else is done much less
 # compiler dependent with mutexes.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for atomic arithmetic functions __sync_add_and_fetch and __sync_fetch_and_sub" >&5
 $as_echo_n "checking for atomic arithmetic functions __sync_add_and_fetch and __sync_fetch_and_sub... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-int main(int argc,char **argv)
+int
+main ()
 {
+
  unsigned long v = 0;
 
  if (__sync_add_and_fetch(&v,1) != 1)
   return 10;
  if (__sync_fetch_and_sub(&v,1) != 1)
   return 10;
- if (v != 0)
-  return 10;
- return 0;
-}
 
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_atomic_addsub='yes';
 $as_echo "#define HAVE_ATOMIC_ADDSUB 1" >>confdefs.h
 
 else
   ac_atomic_addsub='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_atomic_addsub" >&5
 $as_echo "$ac_atomic_addsub" >&6; }
 #
@@ -6114,38 +6035,32 @@ $as_echo "$ac_atomic_addsub" >&6; }
 # implementations
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for atomic __sync_val_compare_and_swap" >&5
 $as_echo_n "checking for atomic __sync_val_compare_and_swap... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-int main(int argc,char **argv)
+int
+main ()
 {
+
  unsigned long v = 0;
  unsigned long w = 0;
  unsigned long r = 1;
 
  if (__sync_val_compare_and_swap(&v,w,r) != w)
     return 10;
- return 0;
-}
 
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_atomic_compare_and_swap='yes';
 $as_echo "#define HAVE_ATOMIC_COMPARE_AND_SWAP 1" >>confdefs.h
 
 else
   ac_atomic_compare_and_swap='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_atomic_compare_and_swap" >&5
 $as_echo "$ac_atomic_compare_and_swap" >&6; }
 #
@@ -6252,13 +6167,7 @@ $as_echo "$ac_private_access" >&6; }
 # of the parent class to work. This should not happen, but gcc 2.95 has a bug here.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether templates are in local namespace" >&5
 $as_echo_n "checking whether templates are in local namespace... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 class A {
@@ -6271,20 +6180,22 @@ class A {
  B<0> b;
  };
 };
-int main(int,char **){return 0;}
+int
+main ()
+{
 
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_local_templates='yes';
 $as_echo "#define HAS_LOCAL_TEMPLATES 1" >>confdefs.h
 
 else
   ac_local_templates='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_local_templates" >&5
 $as_echo "$ac_local_templates" >&6; }
 #
@@ -6293,32 +6204,29 @@ $as_echo "$ac_local_templates" >&6; }
 # Some compilers don't support them properly, but gcc does.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether initializers of static const integral members work" >&5
 $as_echo_n "checking whether initializers of static const integral members work... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 class A {
  static const int a=0;
 };
-int main(int,char**){return 0;}
 
+int
+main ()
+{
+
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_member_init='yes';
 $as_echo "#define HAS_MEMBER_INIT 1" >>confdefs.h
 
 else
   ac_member_init='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_member_init" >&5
 $as_echo "$ac_member_init" >&6; }
 #
@@ -6326,13 +6234,7 @@ $as_echo "$ac_member_init" >&6; }
 # all compiles, so be a bit careful.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether casting works in template arguments" >&5
 $as_echo_n "checking whether casting works in template arguments... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 typedef unsigned char UC;
@@ -6341,24 +6243,22 @@ struct A {
  int b;
  A() : b(a) {}
 };
-int main(int,char **)
+int
+main ()
 {
 A<UC(~1)> a;
-return 0;
+  ;
+  return 0;
 }
-
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_template_casts='yes';
 $as_echo "#define HAS_TEMPLATE_CASTS 1" >>confdefs.h
 
 else
   ac_template_casts='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_template_casts" >&5
 $as_echo "$ac_template_casts" >&6; }
 #
@@ -6368,13 +6268,7 @@ CXXFLAGS_KEEP="${CXXFLAGS}"
 CXXFLAGS="${CXXFLAGS} -Werror"
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether the noreturn attribute is available" >&5
 $as_echo_n "checking whether the noreturn attribute is available... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 #include <stdlib.h>
@@ -6383,37 +6277,29 @@ void leave(int code)
 {
  exit(code);
 }
-int main(int,char**)
+int
+main ()
 {
- leave(0);
- return 10;
+leave(0);
+  ;
+  return 0;
 }
-
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_have_noreturn='yes';
 $as_echo "#define HAVE_NORETURN 1" >>confdefs.h
 
 else
   ac_have_noreturn='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_have_noreturn" >&5
 $as_echo "$ac_have_noreturn" >&6; }
 #
 # Check whether the ALWAYS_INLINE attribute is available
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether the always_inline attribute is available" >&5
 $as_echo_n "checking whether the always_inline attribute is available... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int test(int code) __attribute__ ((always_inline));
@@ -6421,24 +6307,23 @@ int test(int code)
 {
  return code;
 }
-int main(int,char**)
-{
- return test(0);
- return 10;
-}
 
+int
+main ()
+{
+return test(0)
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_have_always_inline='yes';
 $as_echo "#define HAVE_ALWAYS_INLINE 1" >>confdefs.h
 
 else
   ac_have_always_inline='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_have_always_inline" >&5
 $as_echo "$ac_have_always_inline" >&6; }
 #
@@ -6701,13 +6586,7 @@ if test "$ac_arg_SIMD" = "yes"; then
 # least the vertical lifting steps on some machines.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for float SIMD instructions" >&5
 $as_echo_n "checking for float SIMD instructions... " >&6; }
-if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 typedef float vector4 __attribute__ ((vector_size (16)));
@@ -6725,23 +6604,23 @@ void vectorlift(vectorbase *top,vectorbase *center,vectorbase *bottom,int len)
     cv++,bv++,tv++;
   } while(--len);
 }
-int main(int argc,char **argv)
-{
-return 0;
-}
 
+int
+main ()
+{
+
+  ;
+  return 0;
+}
 _ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   ac_have_float_simd='yes';
 $as_echo "#define HAVE_FLOAT_SIMD 1" >>confdefs.h
 
 else
   ac_have_float_simd='no'
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_have_float_simd" >&5
 $as_echo "$ac_have_float_simd" >&6; }
 fi

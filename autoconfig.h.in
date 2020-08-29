@@ -311,9 +311,6 @@
 /* Define to 1 if you have the <signal.h> header file. */
 #undef HAVE_SIGNAL_H
 
-/* Define to 1 if SIGSEGV signal works */
-#undef HAVE_SIGSEGV
-
 /* Define to 1 if you have the `sleep' function. */
 #undef HAVE_SLEEP
 
