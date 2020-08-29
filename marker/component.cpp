@@ -100,6 +100,9 @@ void Component::ParseMarker(class ByteStream *io)
   m_ucMCUWidth  = data >> 4;
   m_ucMCUHeight = data & 0x0f;
 
+  if (m_ucMCUWidth == 0 || m_ucMCUHeight == 0)
+    JPG_THROW(MALFORMED_STREAM,"Component::ParseMarker","frame marker corrupt, MCU size cannot be 0");
+  
   data = io->Get();
   if (data < 0 || data > 3)
     JPG_THROW(MALFORMED_STREAM,"Component::ParseMarker","quantization table identifier corrupt, must be >= 0 and <= 3");

@@ -164,7 +164,7 @@ void Scan::ParseMarker(class ByteStream *io,ScanType type)
 {
   LONG len = io->GetWord();
   LONG data;
-  int i;
+  int i,j;
 
   if (len < 8)
     JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","marker length of the SOS marker invalid, must be at least 8 bytes long");
@@ -184,6 +184,11 @@ void Scan::ParseMarker(class ByteStream *io,ScanType type)
       JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","SOS marker run out of data");
 
     m_ucComponent[i] = data;
+    
+    for(j = 0;j < i;j++) {
+      if (m_ucComponent[j] == data)
+	JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","SOS includes the same component twice");
+    }
     
     data = io->Get(); // table selectors.
     if (data == ByteStream::EOF)

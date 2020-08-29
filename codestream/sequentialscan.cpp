@@ -679,6 +679,9 @@ void SequentialScan::DecodeBlock(LONG *block,
     UBYTE value = dc->Get(&m_Stream);
     if (value > 0) {
       LONG v = 1 << (value - 1);
+      if (value > 15)
+	JPG_THROW(MALFORMED_STREAM,"SequentialScan::DecodeBlock",
+		  "DC coefficient decoding out of sync");
       diff   = m_Stream.Get(value);
       if (diff < v) {
         diff += (-1L << value) + 1;

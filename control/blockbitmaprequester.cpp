@@ -1039,7 +1039,7 @@ void BlockBitmapRequester::ReconstructUnsampled(const struct RectangleRequest *r
       
       for(i = 0;i < m_ucCount;i++) {      
         LONG *dst = m_ppCTemp[i];
-        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent && m_ppDCT[i]) {
           class QuantizedRow *qrow = *m_pppQImage[i];
           const LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):(NULL);
           //
@@ -1097,7 +1097,11 @@ void BlockBitmapRequester::PullQData(const struct RectangleRequest *rr,const Rec
         for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
           LONG *src = (qrow)?(qrow->BlockAt(bx)->m_Data):NULL;
           LONG dst[64];
-          m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
+	  if (m_ppDCT[i]) {
+	    m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
+	  } else {
+	    memset(dst,0,sizeof(dst));
+	  }
           up->DefineRegion(bx,by,dst);
         }
         if (qrow) m_pppQImage[i] = &(qrow->NextOf());
@@ -1169,7 +1173,7 @@ void BlockBitmapRequester::PushReconstructedData(const struct RectangleRequest *
         r.ra_MaxX = region.ra_MaxX;
       
       for(i = 0;i < m_ucCount;i++) {
-        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
+        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent && m_ppDCT[i]) {
           ExtractBitmap(m_ppTempIBM[i],r,i);
           if (m_ppUpsampler[i]) {
             // Upsampled case, take from the upsampler, transform

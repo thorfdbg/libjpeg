@@ -65,7 +65,11 @@ EntropyParser::EntropyParser(class Frame *frame,class Scan *scan)
   // The residual scan uses all components here, not just for, but
   // it does not require the component count either.
   for(UBYTE i = 0;i < m_ucCount && i < 4;i++) {
-    m_pComponent[i] = scan->ComponentOf(i);
+    JPG_TRY {
+      m_pComponent[i] = scan->ComponentOf(i);
+    } JPG_CATCH {
+      m_pComponent[i] = NULL;
+    } JPG_ENDTRY;
   }
 
   m_usRestartInterval   = m_pFrame->TablesOf()->RestartIntervalOf();

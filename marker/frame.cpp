@@ -868,6 +868,8 @@ bool Frame::ScanForScanHeader(class ByteStream *stream)
   if (data != 0xffda) {
     JPG_WARN(MALFORMED_STREAM,"Frame::StartParseHiddenScan","Start of Scan SOS marker missing");
     // Advance to the next marker if there is something next.
+    if (data == ByteStream::EOF)
+      return false; // Nope, nothing next.
     //
     do {
       stream->LastUnDo();
