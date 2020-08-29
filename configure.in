@@ -326,32 +326,21 @@ AC_SUBST(MALLOC_LIB,"")
 AC_LANG(C++)
 # The first test checks whether a signal handler takes an "int" as argument.
 AC_MSG_CHECKING([whether argument type for signal handlers is "int"])
-AC_TRY_RUN([
-extern "C" {
+AC_TRY_COMPILE([extern "C"{
 #include<signal.h>
 }
-RETSIGTYPE sh(int a) { } void si(void) { signal(SIGINT, sh);}
-int main(int argc,char **argv)
-{
-return 0;
-}
-],
+RETSIGTYPE sh(int a) { } void si(void) { signal(SIGINT, sh);}],[],
 [ac_arg_type_int='yes';AC_DEFINE(SIG_ARG_TYPE_INT,[1],[Define to 1 if required argument to signal handlers is int])],
 [ac_arg_type_int='no'])
 AC_MSG_RESULT($ac_arg_type_int)
 #
 # Ditto for ... instead
 AC_MSG_CHECKING([whether argument type for signal handlers is "..."])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 extern "C" {
 #include<signal.h>
 }
-RETSIGTYPE sh(...) { } void si(void) { signal(SIGINT, sh);}
-int main(int argc,char **argv)
-{
-return 0;
-}
-],
+RETSIGTYPE sh(...) { } void si(void) { signal(SIGINT, sh);}],[],
 [ac_arg_type_dots='yes';AC_DEFINE(SIG_ARG_TYPE_DOTS,[1],[Define to 1 if required argument to signal handlers is "..."])],
 [ac_arg_type_dots='no'])
 AC_MSG_RESULT($ac_arg_type_dots)
@@ -373,70 +362,32 @@ AC_MSG_RESULT($ac_has_null)
 # Check whether integers work as template arguments. This is required
 # for several classes, but not all compilers accept it.
 AC_MSG_CHECKING([whether integer constants are valid template arguments])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 template<int a>
 struct A {
  int b;
  A() : b(a) {}
 };
-int main(int,char **)
-{
-A<1> a;
-return 0;
-}
-],[ac_int_template_args='yes';AC_DEFINE(HAS_INT_TEMPLATE_ARGS,[1],[Define to 1 if integer constants are valid template arguments])],
+],[A<1> a;],
+[ac_int_template_args='yes';AC_DEFINE(HAS_INT_TEMPLATE_ARGS,[1],[Define to 1 if integer constants are valid template arguments])],
 [ac_int_template_args='no'])
 AC_MSG_RESULT($ac_int_template_args)
 if test "$ac_int_template_args" = "no"; then
  AC_MSG_ERROR([your compiler must support constant integers as template arguments. jpeg cannot be build without it.])
 fi
 #
-# Check whether we can catch segfaults. Requires as condition for the next test.
-AC_MSG_CHECKING([for SIGSEGV and SIGILL signals])
-AC_TRY_RUN([
-extern "C" {
-#include <signal.h>
-}
-#include <stdlib.h>
-#if defined(SIG_ARG_TYPE_INT)
-RETSIGTYPE sig_handler(int)
-#elif defined(SIG_ARG_TYPE_DOTS)
-RETSIGTYPE sig_handler(...)
-#endif
-{
-  exit(0);
-}
-int main(int argc,char **argv)
-{
- char *f = 0;
- signal(SIGILL,&sig_handler);
- signal(SIGSEGV,&sig_handler);
- *f = 0;
- return 10;
-}
-],
-[ac_sigseg_works='yes';AC_DEFINE(HAVE_SIGSEGV,[1],[Define to 1 if SIGSEGV signal works])],
-[ac_sigseg_works='no'])
-AC_MSG_RESULT($ac_sigseg_works)
-#
-#
 # Check for atomic increment and decrement instructions. These are not really
 # needed except for the debugging code. Everything else is done much less
 # compiler dependent with mutexes.
 AC_MSG_CHECKING([for atomic arithmetic functions __sync_add_and_fetch and __sync_fetch_and_sub])
-AC_TRY_RUN([
-int main(int argc,char **argv)
-{
+AC_TRY_COMPILE([],
+[
  unsigned long v = 0;
 
  if (__sync_add_and_fetch(&v,1) != 1)
   return 10;
  if (__sync_fetch_and_sub(&v,1) != 1)
   return 10;
- if (v != 0)
-  return 10;
- return 0;
-}
 ],
 [ac_atomic_addsub='yes';AC_DEFINE(HAVE_ATOMIC_ADDSUB,[1],[Define to 1 if __sync arithmetic functions are available])],
 [ac_atomic_addsub='no'])
@@ -445,17 +396,13 @@ AC_MSG_RESULT($ac_atomic_addsub)
 # Check for locked conditional move, required for nonblocking stack
 # implementations
 AC_MSG_CHECKING([for atomic __sync_val_compare_and_swap])
-AC_TRY_RUN([
-int main(int argc,char **argv)
-{
+AC_TRY_COMPILE([],[
  unsigned long v = 0;
  unsigned long w = 0;
  unsigned long r = 1;
 
  if (__sync_val_compare_and_swap(&v,w,r) != w)
     return 10;
- return 0;
-}
 ],
 [ac_atomic_compare_and_swap='yes';AC_DEFINE(HAVE_ATOMIC_COMPARE_AND_SWAP,[1],[Define to 1 if __sync_val_compare_and_swap is available])],
 [ac_atomic_compare_and_swap='no'])
@@ -520,7 +467,7 @@ AC_MSG_RESULT($ac_private_access)
 # Check whether templated subclasses used in subclasses require explicitly the name space
 # of the parent class to work. This should not happen, but gcc 2.95 has a bug here.
 AC_MSG_CHECKING([whether templates are in local namespace])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 class A {
  template<int a>
  class B {
@@ -530,9 +477,8 @@ class A {
  class C {
  B<0> b;
  };
-};
-int main(int,char **){return 0;}
-],[ac_local_templates='yes';AC_DEFINE(HAS_LOCAL_TEMPLATES,[1],[Define to 1 if templated subclasses are correctly in the namespace of the parent class])],
+};],[],
+[ac_local_templates='yes';AC_DEFINE(HAS_LOCAL_TEMPLATES,[1],[Define to 1 if templated subclasses are correctly in the namespace of the parent class])],
 [ac_local_templates='no'])
 AC_MSG_RESULT($ac_local_templates)
 #
@@ -540,31 +486,26 @@ AC_MSG_RESULT($ac_local_templates)
 # Check whether static const integral initializers work
 # Some compilers don't support them properly, but gcc does.
 AC_MSG_CHECKING([whether initializers of static const integral members work])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 class A {
  static const int a=0;
 };
-int main(int,char**){return 0;}
-],[ac_member_init='yes';AC_DEFINE(HAS_MEMBER_INIT,[1],[Define to 1 if initializers of static const integral members work])],
+],[],
+[ac_member_init='yes';AC_DEFINE(HAS_MEMBER_INIT,[1],[Define to 1 if initializers of static const integral members work])],
 [ac_member_init='no'])
 AC_MSG_RESULT($ac_member_init)
 #
 # Check whether casting works in template arguments. This doesn't seem to apply for 
 # all compiles, so be a bit careful.
 AC_MSG_CHECKING([whether casting works in template arguments])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 typedef unsigned char UC;
 template<UC a>
 struct A {
  int b;
  A() : b(a) {}
-};
-int main(int,char **)
-{
-A<UC(~1)> a;
-return 0;
-}
-],[ac_template_casts='yes';AC_DEFINE(HAS_TEMPLATE_CASTS,[1],[Define to 1 if casting in template arguments work])],
+};],[A<UC(~1)> a;],
+[ac_template_casts='yes';AC_DEFINE(HAS_TEMPLATE_CASTS,[1],[Define to 1 if casting in template arguments work])],
 [ac_template_casts='no'])
 AC_MSG_RESULT($ac_template_casts)
 #
@@ -573,36 +514,27 @@ AC_MSG_RESULT($ac_template_casts)
 CXXFLAGS_KEEP="${CXXFLAGS}"
 CXXFLAGS="${CXXFLAGS} -Werror"
 AC_MSG_CHECKING([whether the noreturn attribute is available])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 #include <stdlib.h>
 void leave(int code) __attribute__ ((noreturn));
 void leave(int code)
 {
  exit(code);
-}
-int main(int,char**)
-{
- leave(0);
- return 10;
-}
-],[ac_have_noreturn='yes';AC_DEFINE(HAVE_NORETURN,[1],[Define to 1 if the noreturn attribute is available])],
+}],[leave(0);],
+[ac_have_noreturn='yes';AC_DEFINE(HAVE_NORETURN,[1],[Define to 1 if the noreturn attribute is available])],
 [ac_have_noreturn='no'])
 AC_MSG_RESULT($ac_have_noreturn)
 #
 # Check whether the ALWAYS_INLINE attribute is available
 AC_MSG_CHECKING([whether the always_inline attribute is available])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 int test(int code) __attribute__ ((always_inline));
 int test(int code)
 {
  return code;
 }
-int main(int,char**)
-{
- return test(0);
- return 10;
-}
-],[ac_have_always_inline='yes';AC_DEFINE(HAVE_ALWAYS_INLINE,[1],
+],[return test(0)],
+[ac_have_always_inline='yes';AC_DEFINE(HAVE_ALWAYS_INLINE,[1],
 [Define to 1 if the always_inline attribute is available])],[ac_have_always_inline='no'])
 AC_MSG_RESULT($ac_have_always_inline)
 #
@@ -685,7 +617,7 @@ if test "$ac_arg_SIMD" = "yes"; then
 # Check whether we have SIMD instructions for floating point. This can speed up at
 # least the vertical lifting steps on some machines.
 AC_MSG_CHECKING([for float SIMD instructions])
-AC_TRY_RUN([
+AC_TRY_COMPILE([
 typedef float vector4 __attribute__ ((vector_size (16)));
 typedef float vectorbase;
 void vectorlift(vectorbase *top,vectorbase *center,vectorbase *bottom,int len)
@@ -701,11 +633,8 @@ void vectorlift(vectorbase *top,vectorbase *center,vectorbase *bottom,int len)
     cv++,bv++,tv++;
   } while(--len);
 }
-int main(int argc,char **argv)
-{
-return 0;
-}
-],[ac_have_float_simd='yes';AC_DEFINE(HAVE_FLOAT_SIMD,[1],
+],[],
+[ac_have_float_simd='yes';AC_DEFINE(HAVE_FLOAT_SIMD,[1],
 [Define to 1 if float SIMD data types are available])],[ac_have_float_simd='no'])
 AC_MSG_RESULT($ac_have_float_simd)
 fi
