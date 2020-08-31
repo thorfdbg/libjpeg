@@ -43,7 +43,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.cpp,v 1.88 2016/10/28 13:58:53 thor Exp $
+** $Id: sequentialscan.cpp,v 1.89 2020/08/31 07:50:44 thor Exp $
 **
 */
 
@@ -680,8 +680,8 @@ void SequentialScan::DecodeBlock(LONG *block,
     if (value > 0) {
       LONG v = 1 << (value - 1);
       if (value > 15)
-	JPG_THROW(MALFORMED_STREAM,"SequentialScan::DecodeBlock",
-		  "DC coefficient decoding out of sync");
+        JPG_THROW(MALFORMED_STREAM,"SequentialScan::DecodeBlock",
+                  "DC coefficient decoding out of sync");
       diff   = m_Stream.Get(value);
       if (diff < v) {
         diff += (-1L << value) + 1;
@@ -1079,8 +1079,8 @@ void SequentialScan::OptimizeDC(void)
       int    bt_iPrev[3];       // backtrace: The ideal predicessor for the current DC value.
       DOUBLE bt_dFunctional[3]; // the various values for the J functional J = R + \lambda D
     } *btr                 = NULL;
-    UBYTE mcux             = (m_ucCount > 1)?(comp->MCUWidthOf() ):(1);
-    UBYTE mcuy             = (m_ucCount > 1)?(comp->MCUHeightOf()):(1);
+    volatile UBYTE mcux    = (m_ucCount > 1)?(comp->MCUWidthOf() ):(1);
+    volatile UBYTE mcuy    = (m_ucCount > 1)?(comp->MCUHeightOf()):(1);
     ULONG blockwidth       = m_ulBlockWidth[c];
     ULONG blockheight      = m_ulBlockHeight[c];
     ULONG xmcu,ymcu;

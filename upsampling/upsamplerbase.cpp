@@ -43,7 +43,7 @@
 ** Base class for all upsamplers, common for all upsampling processes
 ** and independent of the upsampling factors.
 **
-** $Id: upsamplerbase.cpp,v 1.21 2018/07/27 06:56:43 thor Exp $
+** $Id: upsamplerbase.cpp,v 1.22 2020/08/31 07:50:44 thor Exp $
 **
 */
 
@@ -62,16 +62,17 @@ UpsamplerBase::UpsamplerBase(class Environ *env,int sx,int sy,ULONG pixelwidth,U
   : JKeeper(env), m_lY(0), m_lHeight(0), m_ucSubX(sx), m_ucSubY(sy),
     m_pInputBuffer(NULL), m_pLastRow(NULL), m_pFree(NULL)
 {
-  // Compute the width in input buffer (subsampled) pixels.
+  // Check whether a DNL marker is present.
   if (pixelheight == 0)
     pixelheight   = ~0U >> 1;
-  
+  // Compute the width in input buffer (subsampled) pixels.
   m_ulWidth       = (pixelwidth  + sx - 1) / sx;
   m_lTotalLines   = (pixelheight + sy - 1) / sy; 
   //
   // Also store the dimension in pixels.
   m_ulPixelWidth  = pixelwidth;
   m_ulPixelHeight = pixelheight;
+
 }
 ///
 
@@ -471,9 +472,10 @@ class UpsamplerBase *UpsamplerBase::CreateUpsampler(class Environ *env,int sx,in
 
   {
     class Environ *m_pEnviron = env;
-    JPG_THROW(NOT_IMPLEMENTED,"UpsamplerBase::CreateUpsampler",
-	      "subsampling factors larger than 4x4 are not supported, sorry");
+    JPG_THROW(NOT_IMPLEMENTED,"DownsamplerBase::CreateUpsampler",
+              "subsampling factors larger than 4x4 are not supported, sorry");
   }
+  
   return NULL;
 }
 ///

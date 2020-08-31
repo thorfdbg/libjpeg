@@ -43,7 +43,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.cpp,v 1.73 2017/11/28 13:08:07 thor Exp $
+** $Id: blockbitmaprequester.cpp,v 1.74 2020/08/31 07:50:44 thor Exp $
 **
 */
 
@@ -1097,11 +1097,11 @@ void BlockBitmapRequester::PullQData(const struct RectangleRequest *rr,const Rec
         for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
           LONG *src = (qrow)?(qrow->BlockAt(bx)->m_Data):NULL;
           LONG dst[64];
-	  if (m_ppDCT[i]) {
-	    m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
-	  } else {
-	    memset(dst,0,sizeof(dst));
-	  }
+          if (m_ppDCT[i]) {
+            m_ppDCT[i]->InverseTransformBlock(dst,src,(maxval + 1) >> 1);
+          } else {
+            memset(dst,0,sizeof(dst));
+          }
           up->DefineRegion(bx,by,dst);
         }
         if (qrow) m_pppQImage[i] = &(qrow->NextOf());
@@ -1173,17 +1173,19 @@ void BlockBitmapRequester::PushReconstructedData(const struct RectangleRequest *
         r.ra_MaxX = region.ra_MaxX;
       
       for(i = 0;i < m_ucCount;i++) {
-        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent && m_ppDCT[i]) {
+        if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
           ExtractBitmap(m_ppTempIBM[i],r,i);
           if (m_ppUpsampler[i]) {
             // Upsampled case, take from the upsampler, transform
             // into the color buffer.
             m_ppUpsampler[i]->UpsampleRegion(r,m_ppCTemp[i]);
-          } else {
+          } else if (m_ppDCT[i]) {
             class QuantizedRow *qrow = *m_pppQImage[i];
             LONG *src = (qrow)?(qrow->BlockAt(x)->m_Data):NULL;
             // Plain case. Transform directly into the color buffer.
             m_ppDCT[i]->InverseTransformBlock(m_ppCTemp[i],src,(maxval + 1) >> 1);
+          } else {
+            memset(m_ppCTemp[i],0,sizeof(LONG) * 64);
           }
         } else {
           // Not requested, zero the buffer.

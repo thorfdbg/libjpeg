@@ -42,7 +42,7 @@
 **
 ** Represents the scan including the scan header.
 **
-** $Id: aclosslessscan.cpp,v 1.41 2015/03/25 08:45:42 thor Exp $
+** $Id: aclosslessscan.cpp,v 1.42 2020/08/31 07:50:43 thor Exp $
 **
 */
 

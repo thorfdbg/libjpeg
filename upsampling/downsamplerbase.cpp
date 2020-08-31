@@ -43,7 +43,7 @@
 ** Base class for all upsamplers, common for all upsampling processes
 ** and independent of the upsampling factors.
 **
-** $Id: downsamplerbase.cpp,v 1.15 2018/07/27 06:56:43 thor Exp $
+** $Id: downsamplerbase.cpp,v 1.16 2020/08/31 07:50:44 thor Exp $
 **
 */
 
@@ -392,8 +392,9 @@ class DownsamplerBase *DownsamplerBase::CreateDownsampler(class Environ *env,int
   {
     class Environ *m_pEnviron = env;
     JPG_THROW(NOT_IMPLEMENTED,"DownsamplerBase::CreateUpsampler",
-	      "subsampling factors larger than 4x4 are not supported, sorry");
+              "subsampling factors larger than 4x4 are not supported, sorry");
   }
+  
   return NULL;
 }
 ///

@@ -42,7 +42,7 @@
 ** This class represents the EXIF marker, placed in APP1. This
 ** marker is currently only a dummy and not actually used. 
 **
-** $Id: exifmarker.cpp,v 1.6 2014/09/30 08:33:17 thor Exp $
+** $Id: exifmarker.cpp,v 1.7 2020/08/31 07:50:44 thor Exp $
 **
 */
 

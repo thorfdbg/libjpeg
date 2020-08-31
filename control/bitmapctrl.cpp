@@ -42,7 +42,7 @@
 **
 ** Basic control helper for requesting and releasing bitmap data.
 **
-** $Id: bitmapctrl.cpp,v 1.18 2017/11/28 13:08:07 thor Exp $
+** $Id: bitmapctrl.cpp,v 1.19 2020/08/31 07:50:44 thor Exp $
 **
 */
 

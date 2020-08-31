@@ -43,7 +43,7 @@
 ** in APP14. Used here to indicate the color space and to avoid a color
 ** transformation.
 **
-** $Id: adobemarker.cpp,v 1.9 2014/09/30 08:33:17 thor Exp $
+** $Id: adobemarker.cpp,v 1.10 2020/08/31 07:50:44 thor Exp $
 **
 */
 

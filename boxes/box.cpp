@@ -43,7 +43,7 @@
 ** extension mechanism for 10918-1. Boxes are used consistently for all
 ** types of extended data.
 **
-** $Id: box.cpp,v 1.27 2016/10/28 13:58:52 thor Exp $
+** $Id: box.cpp,v 1.28 2020/08/31 07:50:43 thor Exp $
 **
 */
 

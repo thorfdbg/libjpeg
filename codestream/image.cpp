@@ -43,7 +43,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.71 2016/10/28 13:58:53 thor Exp $
+** $Id: image.cpp,v 1.72 2020/08/31 07:50:43 thor Exp $
 **
 */
 

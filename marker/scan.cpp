@@ -42,7 +42,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.115 2020/04/08 10:05:41 thor Exp $
+** $Id: scan.cpp,v 1.116 2020/08/31 07:50:44 thor Exp $
 **
 */
 
@@ -184,10 +184,9 @@ void Scan::ParseMarker(class ByteStream *io,ScanType type)
       JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","SOS marker run out of data");
 
     m_ucComponent[i] = data;
-    
     for(j = 0;j < i;j++) {
       if (m_ucComponent[j] == data)
-	JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","SOS includes the same component twice");
+        JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker","SOS includes the same component twice");
     }
     
     data = io->Get(); // table selectors.
@@ -500,13 +499,12 @@ void Scan::CreateParser(void)
     switch(m_ucScanStop) {
     case 0:
       if (m_ucCount != 1)
-	JPG_THROW(MALFORMED_STREAM,"Scan::CreateParser",
-		  "invalid codestream, found a single comonent scan containing more than one component");
+        JPG_THROW(MALFORMED_STREAM,"Scan::CreateParser",
+                  "invalid codestream, found a single comonent scan containing more than one component");
       m_pParser = new(m_pEnviron) class SingleComponentLSScan(m_pFrame,this,
                                                               m_ucScanStart, // NEAR
                                                               m_ucMappingTable,
                                                               m_ucLowBit + m_ucHiddenBits); 
-      // Point transformation
       break;
     case 1:
       m_pParser = new(m_pEnviron) class LineInterleavedLSScan(m_pFrame,this,

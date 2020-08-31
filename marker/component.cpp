@@ -42,7 +42,7 @@
 **
 ** This class represents a single component.
 **
-** $Id: component.cpp,v 1.14 2014/09/30 08:33:17 thor Exp $
+** $Id: component.cpp,v 1.15 2020/08/31 07:50:44 thor Exp $
 **
 */
 

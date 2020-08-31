@@ -42,7 +42,7 @@
 ** This class represents the JFIF, placed in APP0. 
 ** This is only used to indicate a JFIF file and is otherwise unused.
 **
-** $Id: jfifmarker.cpp,v 1.7 2014/09/30 08:33:17 thor Exp $
+** $Id: jfifmarker.cpp,v 1.8 2020/08/31 07:50:44 thor Exp $
 **
 */
 

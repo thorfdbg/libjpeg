@@ -42,7 +42,7 @@
 **
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.cpp,v 1.42 2016/10/28 13:58:53 thor Exp $
+** $Id: refinementscan.cpp,v 1.43 2020/08/31 07:50:43 thor Exp $
 **
 */
 
@@ -124,7 +124,7 @@ void RefinementScan::StartWriteScan(class ByteStream *io,class Checksum *chk,cla
   int i;
  
   for(i = 0;i < m_ucCount;i++) { 
-    if (m_ucScanStop) {
+    if (m_ucScanStop || m_bResidual) {
       m_pACCoder[i]    = m_pScan->ACHuffmanCoderOf(i);
     } else {
       m_pACCoder[i]    = NULL;
