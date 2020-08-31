@@ -12,7 +12,7 @@
     of ISO/IEC 18477-7.
 
     Copyright (C) 2012-2018 Thomas Richter, University of Stuttgart and
-    Accusoft. (C) 2019 Thomas Richter, Fraunhofer IIS.
+    Accusoft. (C) 2019-2020 Thomas Richter, Fraunhofer IIS.
 
     This program is available under two licenses, GPLv3 and the ITU
     Software licence Annex A Option 2, RAND conditions.
