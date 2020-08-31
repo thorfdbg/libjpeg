@@ -479,3 +479,30 @@ case constructs that are actually harmless. This release adds an autoconf
 detection of such compiler versions, adds consistent comments throughout
 the code, and disables the compiler warning were necessary.
 
+--------------------------------------------------------------------------
+
+Release 1.58:
+
+This release fixes multiple spelling errors in the file, thanks to
+Mathieu Mmalaterre for finding and fixing them. The release also
+addresses multiple race conditions and improves stability and robustness
+on invalid streams. Thanks to seviezhou for providing codestreams that
+triggered these defects. In particular, the following defects have
+been found:
+
+- when a codestream with unsupported upsampling specification (beyond
+  18477-1) was found, the code crashed.
+- JPEG LS single component scans did not check whether there is actually
+  only a single component referenced in the scan.
+- An invalid DC category in the sequential scan could have caused a
+  crash in the follow-up decoding.
+- AC-coded lossless JPEG scans with horizontal subsampling factors
+  trashed memory.
+- MCU sizes of 0 remained undetected and caused crashes due to a
+  division-by-zero exception.
+- The code did not check whether a scan references the same component
+  more than once and could have failed with strange effects then.
+- The code did not handle EOF conditions in the frame header
+  gracefully.
+
+
