@@ -134,8 +134,10 @@
     <ClCompile Include="..\..\..\tools\rectangle.cpp" />
     <ClCompile Include="..\..\..\tools\traits.cpp" />
     <ClCompile Include="..\..\..\upsampling\downsampler.cpp" />
+    <ClCompile Include="..\..\..\upsampling\interdownsampler.cpp" />
     <ClCompile Include="..\..\..\upsampling\downsamplerbase.cpp" />
     <ClCompile Include="..\..\..\upsampling\upsampler.cpp" />
+    <ClCompile Include="..\..\..\upsampling\cositedupsampler.cpp" />
     <ClCompile Include="..\..\..\upsampling\upsamplerbase.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -264,8 +266,10 @@
     <ClInclude Include="..\..\..\tools\rectangle.hpp" />
     <ClInclude Include="..\..\..\tools\traits.hpp" />
     <ClInclude Include="..\..\..\upsampling\downsampler.hpp" />
+    <ClInclude Include="..\..\..\upsampling\interdownsampler.hpp" />
     <ClInclude Include="..\..\..\upsampling\downsamplerbase.hpp" />
     <ClInclude Include="..\..\..\upsampling\upsampler.hpp" />
+    <ClInclude Include="..\..\..\upsampling\cositedupsampler.hpp" />
     <ClInclude Include="..\..\..\upsampling\upsamplerbase.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

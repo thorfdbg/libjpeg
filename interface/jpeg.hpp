@@ -46,7 +46,7 @@
 ** for the 10918 (JPEG) codec. Except for the tagitem and hook methods,
 ** no other headers should be publically accessible.
 ** 
-** $Id: jpeg.hpp,v 1.15 2017/02/21 15:48:21 thor Exp $
+** $Id: jpeg.hpp,v 1.16 2021/01/29 15:34:39 thor Exp $
 **
 */
 
@@ -67,10 +67,16 @@ class Frame;
 class Scan;
 ///
 
+/// Defines
+#ifndef JPG_EXPORT
+#define JPG_EXPORT
+#endif
+///
+
 /// Class JPEG
 // This is the main entry class for the JPEG encoder and decoder.
 // It is basically a pimpl for the actual codec.
-class JPEG {
+class JPG_EXPORT JPEG {
   friend struct JPEG_Helper;
   //
   // Constructors and destructors are not publically accessible, use

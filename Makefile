@@ -1,7 +1,7 @@
 #! make
 #######################################################################
 ##
-## $Id: Makefile,v 1.15 2020/07/21 06:43:10 thor Exp $
+## $Id: Makefile,v 1.16 2020/09/21 11:00:52 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -358,8 +358,12 @@ ITUDistrib.zip	:	doc configure autoconfig.h.in
 	@ touch autoconfig.h.in
 	@ sleep 2
 	@ touch configure
+	@ rm *~
 	@ $(MAKE) --no-print-directory $(DIRLIBS) TARGET="ituzip"
-	@ $(ZIPASCII) -r ITUDistrib.zip README README.license.itu README.history Compile.txt config.h
+	@ mv README.license README.license.back
+	@ cp README.license.itu README.license
+	@ $(ZIPASCII) -r ITUDistrib.zip README README.license README.history Compile.txt config.h
+	@ mv README.license.back README.license
 	@ $(ZIP) -r ITUDistrib.zip Makefile Makefile.template Makefile_Settings.*
 	@ $(ZIP) -r ITUDistrib.zip configure configure.in automakefile.in autoconfig.h.in
 	@ $(ZIP) -r ITUDistrib.zip vs10.0 --exclude '*CVS*'
