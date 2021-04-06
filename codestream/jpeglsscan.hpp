@@ -686,6 +686,9 @@ public:
   // even though from a JPEG perspective a MCU is a single pixel in the
   // lossless coding case.
   virtual bool StartMCURow(void);
+  // 
+  // Initialize MCU for the next restart interval
+  virtual void InitMCU(void);
   //
   // Parse a single MCU in this scan. Return true if there are more
   // MCUs in this row.
