@@ -403,12 +403,22 @@ been found:
 
 --------------------------------------------------------------------------
 
+Release 1.59:
+
+This release addresses a defect in the MCU handling for JPEG LS scans.
+The previous code forgot to reset the JPEG LS state variables on MCU
+scan boundaries, thus defeating the independent decodability of MCUs
+if restart markers are inserted into the stream. Thanks to Spyros for
+detecting this defect.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 
 Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart and Fraunhofer IIS for sponsoring this project.
 
-Thomas Richter, April 2020
+Thomas Richter, April 2021
 
 -------------------------------------------------------------------------------------
