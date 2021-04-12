@@ -44,7 +44,7 @@
 ** It is here to serve as an entry point for the command line image
 ** compressor.
 **
-** $Id: main.cpp,v 1.216 2020/08/31 07:50:43 thor Exp $
+** $Id: main.cpp,v 1.217 2021/04/12 10:01:22 thor Exp $
 **
 */
 
@@ -237,7 +237,7 @@ void PrintUsage(const char *progname)
 #endif
           "-h         : optimize the Huffman tables\n"
 #if ACCUSOFT_CODE
-          "-a         : use arithmetic coding instead of huffman coding\n"
+          "-a         : use arithmetic coding instead of Huffman coding\n"
           "             available for all coding schemes (-p,-v,-l and default)\n"
 #endif
           "-v         : use progressive instead of sequential encoding\n"

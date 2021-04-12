@@ -42,7 +42,7 @@
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.hpp,v 1.31 2016/10/28 13:58:53 thor Exp $
+** $Id: jpeglsscan.hpp,v 1.32 2021/04/12 10:01:22 thor Exp $
 **
 */
 
@@ -686,6 +686,9 @@ public:
   // even though from a JPEG perspective a MCU is a single pixel in the
   // lossless coding case.
   virtual bool StartMCURow(void);
+  //
+  // Initialize MCU for the next restart interval
+  virtual void InitMCU(void);
   //
   // Parse a single MCU in this scan. Return true if there are more
   // MCUs in this row.

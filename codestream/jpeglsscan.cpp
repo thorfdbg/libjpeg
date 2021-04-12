@@ -42,7 +42,7 @@
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.cpp,v 1.25 2016/10/28 13:58:53 thor Exp $
+** $Id: jpeglsscan.cpp,v 1.26 2021/04/12 10:01:22 thor Exp $
 **
 */
 
@@ -123,7 +123,6 @@ void JPEGLSScan::FindComponentDimensions(void)
 {
 #if ACCUSOFT_CODE
   class Thresholds *thres;
-  LONG a0;
   unsigned int i;
 
   m_ulPixelWidth  = m_pFrame->WidthOf();
@@ -180,31 +179,13 @@ void JPEGLSScan::FindComponentDimensions(void)
   m_lMinReconstruct = -m_lNear;
   m_lMaxReconstruct =  m_lMaxVal + m_lNear;
  
-  //
-  // Init the state variables N,A,B,C
-  for(i = 0;i < sizeof(m_lN) / sizeof(LONG);i++)
-    m_lN[i] = 1;
-  for(i = 0;i < sizeof(m_lB) / sizeof(LONG);i++)
-    m_lB[i] = m_lC[i] = 0;
-
-  a0 = (m_lRange + (1 << 5)) >> 6;
-  if (a0 < 2) a0 = 2;
-
-  for(i = 0;i < sizeof(m_lA) / sizeof(LONG);i++)
-    m_lA[i] = a0;
-
-  //
-  // Runlength data.
-  memset(m_lRunIndex,0,sizeof(m_lRunIndex));
-
   // Allocate the line buffers if not yet there.
   for(i = 0;i < m_ucCount;i++) {
     if (m_Top[i].m_pData == NULL)
       m_Top[i].m_pData      = (LONG *)m_pEnviron->AllocMem((2 + m_ulWidth[i]) * sizeof(LONG));
-    memset(m_Top[i].m_pData,0,(2 + m_ulWidth[i]) * sizeof(LONG));
+
     if (m_AboveTop[i].m_pData == NULL)
       m_AboveTop[i].m_pData = (LONG *)m_pEnviron->AllocMem((2 + m_ulWidth[i]) * sizeof(LONG));
-    memset(m_AboveTop[i].m_pData,0,(2 + m_ulWidth[i]) * sizeof(LONG));
   
     if (m_ucMapIdx[i]) {
       // FIXME: Find the mapping table.
@@ -212,6 +193,11 @@ void JPEGLSScan::FindComponentDimensions(void)
                 "mapping tables are not implemented by this code, sorry");
     }
   }
+
+  //
+  // Init the state variables N,A,B,C
+  InitMCU();
+
 #endif
 }
 ///
@@ -307,6 +293,7 @@ void JPEGLSScan::Flush(bool)
 {
 #if ACCUSOFT_CODE
   m_Stream.Flush();
+  InitMCU();
 #endif
 }
 ///
@@ -317,6 +304,42 @@ void JPEGLSScan::Restart(void)
 {
 #if ACCUSOFT_CODE
   m_Stream.OpenForRead(m_Stream.ByteStreamOf(),m_Stream.ChecksumOf());
+  InitMCU();
+#endif
+}
+///
+
+/// JPEGLSScan::InitMCU
+// Initialize MCU for the next restart interval.
+void JPEGLSScan::InitMCU(void)
+{
+#if ACCUSOFT_CODE
+  LONG a0;
+  unsigned int i;
+
+  // Init the state variables N,A,B,C
+  //
+  for (i = 0; i < sizeof(m_lN) / sizeof(LONG); i++)
+    m_lN[i] = 1;
+  for (i = 0; i < sizeof(m_lB) / sizeof(LONG); i++)
+    m_lB[i] = m_lC[i] = 0;
+  
+  a0 = (m_lRange + (1 << 5)) >> 6;
+  if (a0 < 2) a0 = 2;
+  
+  for (i = 0; i < sizeof(m_lA) / sizeof(LONG); i++)
+    m_lA[i] = a0;
+  
+  //
+  // Runlength data.
+  memset(m_lRunIndex, 0, sizeof(m_lRunIndex));
+  
+  //
+  // Initialize the line buffers.
+  for (i = 0; i < m_ucCount; i++) {
+    memset(m_Top[i].m_pData,      0, (2 + m_ulWidth[i]) * sizeof(LONG));
+    memset(m_AboveTop[i].m_pData, 0, (2 + m_ulWidth[i]) * sizeof(LONG));
+  }
 #endif
 }
 ///

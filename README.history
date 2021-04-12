@@ -505,4 +505,13 @@ been found:
 - The code did not handle EOF conditions in the frame header
   gracefully.
 
+--------------------------------------------------------------------------
+
+Release 1.59:
+
+This release addresses a defect in the MCU handling for JPEG LS scans.
+The previous code forgot to reset the JPEG LS state variables on MCU
+scan boundaries, thus defeating the independent decodability of MCUs
+if restart markers are inserted into the stream. Thanks to Spyros for
+detecting this defect.
 
