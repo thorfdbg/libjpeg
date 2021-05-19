@@ -41,7 +41,7 @@
 #** Configuration script for the jpeg project,
 #** THOR Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.14 2020/08/31 07:50:39 thor Exp $
+#** $Id: configure.in,v 1.15 2021/05/19 13:32:36 thor Exp $
 #**
 #** In this module: autoconf script for libjpeg
 #**********************************************************************************/
@@ -80,7 +80,14 @@ else
 fi
 AC_SUBST(COMPILER,${CXX})
 AC_SUBST(CC_ONLY,${CC})
-AC_SUBST(PREFIX,${ac_default_prefix})
+#
+# The following is a workaround for an autoconf expanding
+# $prefix too late.
+if test "$prefix" = "NONE"; then
+   AC_SUBST(PREFIX,${ac_default_prefix})
+else
+   AC_SUBST(PREFIX,${prefix})
+fi
 #
 # We first check in the C language as autoconf seems to expect that
 # the compiler accepts conflicting prototypes. Wierd.
