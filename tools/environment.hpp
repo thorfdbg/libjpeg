@@ -42,7 +42,7 @@
 /*
 ** Definition of the Environment.
 ** 
-** $Id: environment.hpp,v 1.11 2015/03/25 08:45:43 thor Exp $
+** $Id: environment.hpp,v 1.12 2021/07/22 13:18:36 thor Exp $
 **
 ** The environment holds structures for exception management without
 ** exceptions, and for memory management without a global new.
@@ -584,7 +584,7 @@ public:
   // A copy-constructor: Beware, this makes the copied object unusable!
   Environ(class Environ &env)  
     : m_First(), m_Root(&m_First), m_WarnRoot(&m_First), 
-      m_pParent(NULL)
+      m_pParent(NULL), m_bSuppressMultiple(true)
   {
     *this = env;
   }

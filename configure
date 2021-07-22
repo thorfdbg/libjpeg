@@ -4285,8 +4285,16 @@ COMPILER=${CXX}
 
 CC_ONLY=${CC}
 
-PREFIX=${ac_default_prefix}
+#
+# The following is a workaround for an autoconf expanding
+# $prefix too late.
+if test "$prefix" = "NONE"; then
+   PREFIX=${ac_default_prefix}
 
+else
+   PREFIX=${prefix}
+
+fi
 #
 # We first check in the C language as autoconf seems to expect that
 # the compiler accepts conflicting prototypes. Wierd.

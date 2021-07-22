@@ -413,6 +413,14 @@ detecting this defect.
 
 --------------------------------------------------------------------------
 
+Release 1.60:
+
+A specially crafted bitstream depending on line-based JPEG processes
+could trigger a segfault because source data the reconstruction
+process depended upon were not available. This has been fixed.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 

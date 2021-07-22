@@ -43,7 +43,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: linebitmaprequester.cpp,v 1.35 2017/11/28 16:13:54 thor Exp $
+** $Id: linebitmaprequester.cpp,v 1.36 2021/07/22 13:18:36 thor Exp $
 **
 */
 
@@ -250,7 +250,8 @@ void LineBitmapRequester::Next8Lines(UBYTE c)
   int cnt = 8;
   do {
     struct Line *row = *m_pppImage[c];
-    assert(row);
+    if (!row)
+      break;
     m_pppImage[c] = &(row->m_pNext);
   } while(--cnt && *m_pppImage[c]);
 }
@@ -473,7 +474,11 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgregion,con
         for(by = blocks.ra_MinY;by <= blocks.ra_MaxY;by++) {
           for(bx = blocks.ra_MinX;bx <= blocks.ra_MaxX;bx++) {
             LONG dst[64];
-            FetchRegion(bx,*m_pppImage[i],dst);
+            if (*m_pppImage[i]) {
+              FetchRegion(bx,*m_pppImage[i],dst);
+            } else {
+              memset(dst,0,sizeof(dst));
+            }
             up->DefineRegion(bx,by,dst);
           }
           Next8Lines(i);
@@ -509,8 +514,10 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgregion,con
                 // Upsampled case, take from the upsampler, transform
                 // into the color buffer.
                 m_ppUpsampler[i]->UpsampleRegion(r,m_ppCTemp[i]);
-              } else {
+              } else if (*m_pppImage[i]) {
                 FetchRegion(x,*m_pppImage[i],m_ppCTemp[i]);
+              } else {
+                memset(m_ppCTemp[0],0,sizeof(LONG) * 64);
               }
             } else {
               // Not requested, zero the buffer.

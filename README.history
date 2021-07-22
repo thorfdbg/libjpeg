@@ -515,3 +515,10 @@ scan boundaries, thus defeating the independent decodability of MCUs
 if restart markers are inserted into the stream. Thanks to Spyros for
 detecting this defect.
 
+--------------------------------------------------------------------------
+
+Release 1.60:
+
+A specially crafted bitstream depending on line-based JPEG processes
+could trigger a segfault because source data the reconstruction
+process depended upon were not available. This has been fixed.
