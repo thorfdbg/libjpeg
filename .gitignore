@@ -11,8 +11,17 @@
 *.la
 *.a
 
-# Objects from the makefile
+# configure artifacts
+autoconfig.h
+automakefile
+config.log
+config.status
+
+# make artifacts
+autom4te.cache
+jpeg
 *.list
+*.d
 
 # CVS repositories
 CVS
@@ -22,10 +31,11 @@ CVS
 *.jls
 *.ppm
 *.pgm
+*.pfm
 *.out
 
 # core dumps
 core
 
-#Editor temporaries
+# Editor temporaries
 *~
