@@ -43,7 +43,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.72 2020/08/31 07:50:43 thor Exp $
+** $Id: image.cpp,v 1.73 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -563,7 +563,7 @@ class Frame *Image::CreateFrameBuffer(class ByteStream *io,ScanType type)
       LONG marker;
       //
       // This is just the DHP header. Another frame header and more tables are coming.
-      m_pTables->ParseTables(io,NULL);
+      m_pTables->ParseTables(io,NULL,false,false);
       //
       // Now again, the next try. This must now be the real frame.
       marker = io->GetWord();
@@ -1277,7 +1277,7 @@ class Frame *Image::ParseResidualStream(class DataBox *box)
     // Start parsing its header.
     // And parse the tables following the SOI.
     // This is the residual stream. It is not checksummed.
-    m_pResidual->TablesOf()->ParseTables(sio,NULL);
+    m_pResidual->TablesOf()->ParseTables(sio,NULL,false,false);
     //
     // And start the parsing of the frame header so
     // we can check its dimensions.
@@ -1354,7 +1354,7 @@ class Frame *Image::ParseAlphaChannel(class DataBox *box)
     // Start parsing its header.
     // And parse the tables following the SOI.
     // This is the alpha stream. It is not checksummed.
-    m_pAlphaChannel->TablesOf()->ParseTables(sio,NULL);
+    m_pAlphaChannel->TablesOf()->ParseTables(sio,NULL,false,false);
     //
     // And start the parsing of the frame header so
     // we can check its dimensions.

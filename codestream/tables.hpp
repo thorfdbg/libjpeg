@@ -42,7 +42,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.hpp,v 1.94 2017/11/28 13:08:07 thor Exp $
+** $Id: tables.hpp,v 1.95 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -248,17 +248,19 @@ public:
   // comment, huffman tables or quantization tables.
   // If the checksum is non-NULL, all data except boxes and comments
   // are checksummed.
-  void ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp = false);
+  void ParseTables(class ByteStream *io,class Checksum *chk,
+                   bool allowexp,bool isls);
   //
   // Prepare reading an incremental part of the tables. This here must be called first
   // before continuing with one or multiple ParseTableIncremental calls.
-  void ParseTablesIncrementalInit(bool allowexp = false);
+  void ParseTablesIncrementalInit(bool allowexp);
   //
   // Read an incremental part of the tables, namely the next marker.
   // Returns true in case the tables/misc section is not yet complete,
   // and this function should be called again. Returns false in case
   // the tables/misc section is complete.
-  bool ParseTablesIncremental(class ByteStream *io,class Checksum *chk,bool allowexp = false);
+  bool ParseTablesIncremental(class ByteStream *io,class Checksum *chk,
+                              bool allowexp,bool isls);
   //
   // Write the tables to the codestream.
   void WriteTables(class ByteStream *io);
@@ -427,7 +429,7 @@ public:
   //
   // Return the currently active restart interval in MCUs or zero
   // in case restart markers are disabled.
-  UWORD RestartIntervalOf(void) const;
+  ULONG RestartIntervalOf(void) const;
   //
   // Return the effective color transformation for the L-transformation.
   // The argument is the number of components.

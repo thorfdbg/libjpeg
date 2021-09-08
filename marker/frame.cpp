@@ -42,7 +42,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.130 2020/08/31 07:50:44 thor Exp $
+** $Id: frame.cpp,v 1.131 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -803,7 +803,7 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
     //
     // De-activate unless re-activated on the next scan/trailer.
     // The refinement scans are not checksummed.
-    m_pTables->ParseTables(stream,NULL);
+    m_pTables->ParseTables(stream,NULL,false,(m_Type == JPEG_LS)?true:false);
     m_bBuildRefinement = false;
     if (ScanForScanHeader(stream)) {
       class Scan *scan = AttachScan();
@@ -813,13 +813,13 @@ class Scan *Frame::StartParseScan(class ByteStream *io,class Checksum *chk)
   } else {
     // Regular scan.
     if (m_bStartedTables) {
-      if (m_pTables->ParseTablesIncremental(io,chk)) {
+      if (m_pTables->ParseTablesIncremental(io,chk,false,(m_Type == JPEG_LS)?true:false)) {
         // Re-iterate the scan header parsing, not yet done.
         return NULL;
       }
     } else {
       // Indicate that we currently do not yet have a scan, neither an EOF.
-      m_pTables->ParseTablesIncrementalInit();
+      m_pTables->ParseTablesIncrementalInit(false);
       m_bStartedTables = true;
       return NULL;
     }
@@ -1112,7 +1112,7 @@ bool Frame::ParseTrailer(class ByteStream *io)
         // continue parsing here until we know what we have.
         assert(m_pTables);
         // This might include EXP if we are hierarchical.
-        m_pTables->ParseTables(io,NULL,m_pParent->isHierarchical());
+        m_pTables->ParseTables(io,NULL,m_pParent->isHierarchical(),(m_Type == JPEG_LS)?true:false);
       }
     }
   } while(true);

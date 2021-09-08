@@ -41,7 +41,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.cpp,v 1.38 2017/11/28 16:07:22 thor Exp $
+** $Id: encodec.cpp,v 1.39 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -76,7 +76,7 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
              int colortrafo,bool lossless,bool progressive,
              bool residual,bool optimize,bool accoding,
              bool rsequential,bool rprogressive,bool raccoding,
-             bool qscan,UBYTE levels,bool pyramidal,bool writednl,UWORD restart,double gamma,
+             bool qscan,UBYTE levels,bool pyramidal,bool writednl,ULONG restart,double gamma,
              int lsmode,bool noiseshaping,bool serms,bool losslessdct,
              bool openloop,bool deadzone,bool lagrangian,bool dering,
              bool xyz,bool cxyz,

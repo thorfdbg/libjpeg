@@ -41,7 +41,7 @@
 /*
 ** This class keeps the restart interval size in MCUs.
 **
-** $Id: restartintervalmarker.cpp,v 1.7 2014/09/30 08:33:17 thor Exp $
+** $Id: restartintervalmarker.cpp,v 1.8 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -52,8 +52,8 @@
 ///
 
 /// RestartIntervalMarker::RestartIntervalMarker
-RestartIntervalMarker::RestartIntervalMarker(class Environ *env)
-  : JKeeper(env), m_usRestartInterval(0)
+RestartIntervalMarker::RestartIntervalMarker(class Environ *env,bool extended)
+  : JKeeper(env), m_ulRestartInterval(0), m_bExtended(extended)
 {
 }
 ///
@@ -62,8 +62,16 @@ RestartIntervalMarker::RestartIntervalMarker(class Environ *env)
 // Write the marker (without the marker id) to the stream.
 void RestartIntervalMarker::WriteMarker(class ByteStream *io) const
 {
-  io->PutWord(0x04); // size of the marker.
-  io->PutWord(m_usRestartInterval);
+  if (m_ulRestartInterval >> 24) {
+    io->PutWord(0x06); // 32 bit restart interval required.
+    io->PutWord(m_ulRestartInterval >> 16);
+  } else if (m_ulRestartInterval >> 16) {
+    io->PutWord(0x05); // 24 bit restart interval required.
+    io->Put(m_ulRestartInterval >> 16);
+  } else {
+    io->PutWord(0x04); // size of the marker.
+  }
+  io->PutWord(m_ulRestartInterval);
 }
 ///
 
@@ -71,18 +79,26 @@ void RestartIntervalMarker::WriteMarker(class ByteStream *io) const
 // Parse the marker from the stream.
 void RestartIntervalMarker::ParseMarker(class ByteStream *io)
 {
-  LONG len = io->GetWord();
+  LONG  len = io->GetWord();
+  ULONG restart = 0;
 
-  if (len != 4)
+  if (len < 4 || len > (m_bExtended?6:4))
     JPG_THROW(MALFORMED_STREAM,"RestartIntervalMarker::ParseMarker",
               "DRI restart interval definition marker size is invalid");
+
+  // No need to check for the EOF here, it persists to the next call.
+  if (len == 6) {
+    restart = io->GetWord() << 16;
+  } else if (len == 5) {
+    restart = io->Get() << 16;
+  }
 
   len = io->GetWord();
   if (len == ByteStream::EOF)
     JPG_THROW(UNEXPECTED_EOF,"RestartIntervalMarker::ParseMarker",
               "DRI restart interval definition marker run out of data");
 
-  m_usRestartInterval = UWORD(len);
+  m_ulRestartInterval = UWORD(len) | restart;
 }
 ///
 

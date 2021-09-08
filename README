@@ -421,12 +421,22 @@ process depended upon were not available. This has been fixed.
 
 --------------------------------------------------------------------------
 
+Release 1.61:
+
+The restart interval for JPEG LS streams, specifically, is allowed to
+be larger than 2^16. Modified the DRI marker accordingly. Unfortunately,
+as the initial tables section of a codestream of JPEG and JPEG LS is
+identical, JPEG files with an invalid DRI marker size will also be
+accepted as valid.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 
 Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart and Fraunhofer IIS for sponsoring this project.
 
-Thomas Richter, April 2021
+Thomas Richter, September 2021
 
 -------------------------------------------------------------------------------------

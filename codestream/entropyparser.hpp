@@ -43,7 +43,7 @@
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.hpp,v 1.21 2016/10/28 13:58:53 thor Exp $
+** $Id: entropyparser.hpp,v 1.22 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -74,7 +74,7 @@ class Checksum;
 class EntropyParser : public JKeeper {
   // 
   // The restart interval in MCUs
-  UWORD                 m_usRestartInterval;
+  ULONG                 m_ulRestartInterval;
   //
   // The next restart marker expected or to be written.
   UWORD                 m_usNextRestartMarker;
@@ -82,7 +82,7 @@ class EntropyParser : public JKeeper {
   // Number of MCUs to be handled before the next MCU
   // is to be written. If this becomes zero before a MCU
   // the restart marker will be written.
-  UWORD                 m_usMCUsToGo;
+  ULONG                 m_ulMCUsToGo;
   //
   // Boolean indicator whether the next entropy coded segment
   // up to the next restart marker or SOF/SOS is valid. If true,
@@ -132,11 +132,11 @@ protected:
   // is emitted.
   void BeginWriteMCU(class ByteStream *io)
   {
-    if (m_usRestartInterval) {
-      if (m_usMCUsToGo == 0) {
+    if (m_ulRestartInterval) {
+      if (m_ulMCUsToGo == 0) {
         WriteRestartMarker(io);
       }
-      m_usMCUsToGo--;
+      m_ulMCUsToGo--;
     }
   }
   //
@@ -150,11 +150,11 @@ protected:
       if (ParseDNLMarker(io))
         return false;
     }
-    if (m_usRestartInterval) {
-      if (m_usMCUsToGo == 0) {
+    if (m_ulRestartInterval) {
+      if (m_ulMCUsToGo == 0) {
         ParseRestartMarker(io);
       }
-      m_usMCUsToGo--;
+      m_ulMCUsToGo--;
     } 
     return m_bSegmentIsValid;
   }

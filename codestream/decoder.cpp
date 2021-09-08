@@ -41,7 +41,7 @@
 /*
 ** This class parses the markers and holds the decoder together.
 **
-** $Id: decoder.cpp,v 1.28 2017/11/28 13:08:06 thor Exp $
+** $Id: decoder.cpp,v 1.29 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -80,7 +80,9 @@ class Image *Decoder::ParseHeaderIncremental(class ByteStream *io)
   if (m_pImage) {
     //
     // Continue parsing the header.
-    if (m_pImage->TablesOf()->ParseTablesIncremental(io,NULL) == false) {
+    // At this stage, we may not yet know what type of image we have, so
+    // be conservative and allow also JPEG LS markers.
+    if (m_pImage->TablesOf()->ParseTablesIncremental(io,NULL,false,true) == false) {
       //
       // Parsing the header is done, return the image. All remaining
       // parsing is done by the image.
@@ -96,7 +98,7 @@ class Image *Decoder::ParseHeaderIncremental(class ByteStream *io)
     m_pImage  = new(m_pEnviron) class Image(m_pEnviron);
     //
     // The checksum is not going over the headers but starts at the SOF.
-    m_pImage->TablesOf()->ParseTablesIncrementalInit();
+    m_pImage->TablesOf()->ParseTablesIncrementalInit(false);
   }
   //
   return NULL;

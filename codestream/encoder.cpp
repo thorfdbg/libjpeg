@@ -41,7 +41,7 @@
 /*
 ** This class parses the markers and holds the decoder together.
 **
-** $Id: encoder.cpp,v 1.54 2020/04/08 10:05:41 thor Exp $
+** $Id: encoder.cpp,v 1.55 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -351,7 +351,7 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
   if (levels > 32)
     JPG_THROW(OVERFLOW_PARAMETER,"Encoder::CreateImage","number of resolution levels must be between 0 and 32");
 
-  if (restart > MAX_UWORD)
+  if ((frametype & 0x07) != JPGFLAG_JPEG_LS && restart > MAX_UWORD)
     JPG_THROW(OVERFLOW_PARAMETER,"Encoder::CreateImage","restart interval must be between 0 and 65535");
   
   if (maxerror > 255)
@@ -441,7 +441,7 @@ class Image *Encoder::CreateImage(const struct JPG_TagItem *tags)
     if (ascale)
       JPG_WARN(NOT_IN_PROFILE,"Encoder::CreateImage",
                "hierarchical coding of the alpha channel is not covered by the standard");
-    if (arestart > MAX_UWORD)
+    if ((frametype & 0x07) != JPGFLAG_JPEG_LS && arestart > MAX_UWORD)
       JPG_THROW(OVERFLOW_PARAMETER,"Encoder::CreateImage","restart interval must be between 0 and 65535");
 
     if (amaxerror > 255)

@@ -42,7 +42,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.204 2020/04/08 10:05:41 thor Exp $
+** $Id: tables.cpp,v 1.205 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -385,7 +385,8 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
   }
 
   if (restart) {
-    m_pRestart      = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron);
+    bool isls       = ((frametype & 0x07) == JPGFLAG_JPEG_LS)?true:false;
+    m_pRestart      = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron,isls);
     m_pRestart->InstallDefaults(restart);
   }
 
@@ -961,7 +962,8 @@ void Tables::WriteTables(class ByteStream *io)
 // Parse off tables, including an application marker,
 // comment, huffman tables or quantization tables.
 // Returns on the first unknown marker.
-void Tables::ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp)
+void Tables::ParseTables(class ByteStream *io,class Checksum *chk,
+                         bool allowexp,bool isls)
 {
   bool repeat;
   //
@@ -970,7 +972,7 @@ void Tables::ParseTables(class ByteStream *io,class Checksum *chk,bool allowexp)
   do {
     // Continue reading markers until the end of the
     // tables/misc section has been found.
-    repeat = ParseTablesIncremental(io,chk,allowexp);
+    repeat = ParseTablesIncremental(io,chk,allowexp,isls);
   } while(repeat);
 }
 ///
@@ -996,7 +998,8 @@ void Tables::ParseTablesIncrementalInit(bool allowexp)
 // Returns true in case the tables/misc section is not yet complete,
 // and this function should be called again. Returns false in case
 // the tables/misc section is complete.
-bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,bool allowexp)
+bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,
+                                    bool allowexp,bool isls)
 {
    LONG marker = io->PeekWord();
    
@@ -1039,7 +1042,7 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,boo
      break;
    case 0xffdd: // DRI
      if (m_pRestart == NULL)
-       m_pRestart = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron);
+       m_pRestart = new(m_pEnviron) class RestartIntervalMarker(m_pEnviron,isls);
      if (chk && ChecksumTables()) {
        class ChecksumAdapter csa(io,chk,false);
        csa.GetWord();
@@ -1066,7 +1069,7 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,boo
      }
      break; 
    case 0xfff8: // LSE: JPEG LS extensions marker.
-     { // Not part of a XT stream, thus checksumming is not required.
+     if (isls) { // Not part of a XT stream, thus checksumming is not required.
        io->GetWord();
        LONG len = io->GetWord();
        if (len > 3) {
@@ -1101,6 +1104,8 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,boo
        //
        // Just skip the contents. For now. More later on.
        io->SkipBytes(len - 2);
+     } else {
+       JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","found LSE marker outside of JPEG LS stream");
      }
      break;
    case 0xffe0: // APP0: Maybe the JFIF marker.
@@ -1884,7 +1889,7 @@ class DCT *Tables::BuildDCT(class Component *comp,UBYTE count,UBYTE precision) c
 /// Tables::RestartIntervalOf
 // Return the currently active restart interval in MCUs or zero
 // in case restart markers are disabled.
-UWORD Tables::RestartIntervalOf(void) const
+ULONG Tables::RestartIntervalOf(void) const
 {
   if (m_pRestart)
     return m_pRestart->RestartIntervalOf();

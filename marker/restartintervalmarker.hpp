@@ -41,7 +41,7 @@
 /*
 ** This class keeps the restart interval size in MCUs.
 **
-** $Id: restartintervalmarker.hpp,v 1.7 2014/09/30 08:33:17 thor Exp $
+** $Id: restartintervalmarker.hpp,v 1.8 2021/09/08 10:30:06 thor Exp $
 **
 */
 
@@ -62,25 +62,32 @@ class RestartIntervalMarker : public JKeeper {
   //
   // The restart interval size in MCUs, or zero if restart markers
   // are disabled.
-  UWORD     m_usRestartInterval;
+  ULONG     m_ulRestartInterval;
+  //
+  // This boolean is set in case the restart interval marker is allowed
+  // to be 5 or 6 bytes long as well. This only holds for JPEG LS.
+  bool      m_bExtended;
   //
 public:
-  RestartIntervalMarker(class Environ *env);
+  RestartIntervalMarker(class Environ *env,bool extended);
   //
   ~RestartIntervalMarker(void)
   {
   }
   //
   // Install the defaults, namely the interval.
-  void InstallDefaults(UWORD inter)
+  void InstallDefaults(ULONG inter)
   {
-    m_usRestartInterval = inter;
+    if (inter > 0xffff && !m_bExtended)
+      JPG_THROW(OVERFLOW_PARAMETER,"RestartIntervalMarker::InstallDefaults",
+                "the restart interval is allowed to be at most 65535 for JPEG (ISO/IEC 10918-1)");
+    m_ulRestartInterval = inter;
   }
   //
   // Return the currently active restart interval.
-  UWORD RestartIntervalOf(void) const
+  ULONG RestartIntervalOf(void) const
   {
-    return m_usRestartInterval;
+    return m_ulRestartInterval;
   }
   //
   // Write the marker (without the marker id) to the stream.
