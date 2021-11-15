@@ -431,6 +431,17 @@ accepted as valid.
 
 --------------------------------------------------------------------------
 
+Release 1.62:
+
+The quantization table could contain entries larger than 255 for the 8-bit
+DCT process, even though the standard prohibits this. Now the quantization
+table entries are clipped to the allowed range.
+Added an option -bl to force encoding in the baseline sequential process.
+Added options to read the quantization tables from files rather than using
+the built-in defaults.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 

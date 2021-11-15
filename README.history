@@ -522,3 +522,24 @@ Release 1.60:
 A specially crafted bitstream depending on line-based JPEG processes
 could trigger a segfault because source data the reconstruction
 process depended upon were not available. This has been fixed.
+
+--------------------------------------------------------------------------
+
+Release 1.61:
+
+The restart interval for JPEG LS streams, specifically, is allowed to
+be larger than 2^16. Modified the DRI marker accordingly. Unfortunately,
+as the initial tables section of a codestream of JPEG and JPEG LS is
+identical, JPEG files with an invalid DRI marker size will also be
+accepted as valid.
+
+--------------------------------------------------------------------------
+
+Release 1.62:
+
+The quantization table could contain entries larger than 255 for the 8-bit
+DCT process, even though the standard prohibits this. Now the quantization
+table entries are clipped to the allowed range.
+Added an option -bl to force encoding in the baseline sequential process.
+Added options to read the quantization tables from files rather than using
+the built-in defaults.

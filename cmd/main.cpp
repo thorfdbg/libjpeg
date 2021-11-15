@@ -44,7 +44,7 @@
 ** It is here to serve as an entry point for the command line image
 ** compressor.
 **
-** $Id: main.cpp,v 1.217 2021/04/12 10:01:22 thor Exp $
+** $Id: main.cpp,v 1.219 2021/11/15 08:59:59 thor Exp $
 **
 */
 
@@ -240,6 +240,7 @@ void PrintUsage(const char *progname)
           "-a         : use arithmetic coding instead of Huffman coding\n"
           "             available for all coding schemes (-p,-v,-l and default)\n"
 #endif
+          "-bl        : force encoding in the baseline process, default is extended sequential\n"
           "-v         : use progressive instead of sequential encoding\n"
           "             available for all coding schemes (-r,-a,-l and default)\n"
           "-qv        : use a simplified scan pattern for progressive that only\n"
@@ -298,7 +299,9 @@ void PrintUsage(const char *progname)
           "                   A visual detection model for DCT coefficient quantization (1993)\n"
           "             n = 8 the table from Peterson, Ahumada and Watson:\n"
           "                   An improved detection model for DCT coefficient quantization (1993)\n"
+          "-qtf file  : read the quantization steps from a file, 64*2 integers (luma & chroma)\n"
           "-rqt n     : defines the quantization table for the residual stream in the same way\n"
+          "-rqtf file : read the residual quantization steps from a file\n"
           "-al file   : specifies a one-component pgm/pfm file that contains an alpha component\n"
           "             or the code will write the alpha component to.\n"
           "             This demo code DOES NOT implement compositing of alpha and background\n"
@@ -320,7 +323,9 @@ void PrintUsage(const char *progname)
           "-aq qu     : specify a quality for the alpha base channel (usually the only one)\n"
           "-aQ qu     : specify a quality for the alpha extension layer\n"
           "-aqt n     : specify the quantization table for the alpha channel\n"
+          "-aqtf file : read the alpha quantization tables from a file\n"
           "-arqt n    : specify the quantization table for residual alpha\n"
+          "-arqtf file: read the residual alhpa quantization tables from a file\n"
           "-aquality q: specify a combined quality for both\n"
 #if ACCUSOFT_CODE
           "-ra        : enable arithmetic coding for residual image (*NOT SPECIFIED*)\n"
@@ -365,6 +370,7 @@ int main(int argc,char **argv)
   bool pyramidal    = false;
   bool residuals    = false;
   int  colortrafo   = JPGFLAG_MATRIX_COLORTRANSFORMATION_YCBCR;
+  bool baseline     = false;
   bool lossless     = false;
   bool optimize     = false;
   bool accoding     = false;
@@ -413,7 +419,10 @@ int main(int argc,char **argv)
   int alphatt           = 0;
   int residualalphatt   = 0;
   int smooth            = 0; // histogram smoothing
-
+  const char *quantsteps         = NULL;
+  const char *residualquantsteps = NULL;
+  const char *alphasteps         = NULL;
+  const char *residualalphasteps = NULL;
   PrintLicense();
   fflush(stdout);
 
@@ -541,6 +550,10 @@ int main(int argc,char **argv)
       qscan       = true;
       argv++;
       argc--;
+    } else if (!strcmp(argv[1],"-bl")) {
+      baseline    = true;
+      argv++;
+      argc--;
     } else if (!strcmp(argv[1],"-v")) {
       progressive = true;
       argv++;
@@ -606,12 +619,28 @@ int main(int argc,char **argv)
 #endif      
     } else if (!strcmp(argv[1],"-qt")) {
       tabletype = ParseInt(argc,argv);
+    } else if (!strcmp(argv[1],"-qtf")) {
+      quantsteps = argv[2];
+      argv += 2;
+      argc -= 2;
     } else if (!strcmp(argv[1],"-rqt")) {
       residualtt = ParseInt(argc,argv);
+    } else if (!strcmp(argv[1],"-rqtf")) {
+      residualquantsteps = argv[2];
+      argv += 2;
+      argc -= 2;
     } else if (!strcmp(argv[1],"-aqt")) {
       alphatt = ParseInt(argc,argv);
+    } else if (!strcmp(argv[1],"-aqtf")) {
+      alphasteps = argv[2];
+      argv += 2;
+      argc -= 2;
     } else if (!strcmp(argv[1],"-arqt")) {
       residualalphatt = ParseInt(argc,argv);
+    } else if (!strcmp(argv[1],"-arqtf")) {
+      residualalphasteps = argv[2];
+      argv += 2;
+      argc -= 2;
     } else if (!strcmp(argv[1],"-aol")) {
       aopenloop = true;
       argv++;
@@ -730,7 +759,7 @@ int main(int argc,char **argv)
         residuals = true;
       EncodeC(argv[1],ldrsource,argv[2],lsource,quality,hdrquality,
               tabletype,residualtt,maxerror,
-              colortrafo,lossless,progressive,
+              colortrafo,baseline,lossless,progressive,
               residuals,optimize,accoding,
               rsequential,rprogressive,raccoding,
               qscan,levels,pyramidal,writednl,restart,
@@ -746,7 +775,9 @@ int main(int argc,char **argv)
               alphatt,residualalphatt,
               ahiddenbits,ariddenbits,aresprec,
               aopenloop,adeadzone,alagrangian,adering,
-              aserms,abypass);
+              aserms,abypass,
+              quantsteps,residualquantsteps,
+              alphasteps,residualalphasteps);
       break;
     }
   }

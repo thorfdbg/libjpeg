@@ -43,7 +43,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.cpp,v 1.89 2020/08/31 07:50:44 thor Exp $
+** $Id: sequentialscan.cpp,v 1.90 2021/11/15 07:39:43 thor Exp $
 **
 */
 
@@ -72,10 +72,10 @@
 /// SequentialScan::SequentialScan
 SequentialScan::SequentialScan(class Frame *frame,class Scan *scan,
                                UBYTE start,UBYTE stop,UBYTE lowbit,UBYTE,
-                               bool differential,bool residual,bool large)
+                               bool differential,bool residual,bool large,bool baseline)
   : EntropyParser(frame,scan), m_pBlockCtrl(NULL), 
     m_ucScanStart(start), m_ucScanStop(stop), m_ucLowBit(lowbit),
-    m_bDifferential(differential), m_bResidual(residual), m_bLargeRange(large)
+    m_bDifferential(differential), m_bResidual(residual), m_bLargeRange(large), m_bBaseline(baseline)
 {  
   UBYTE hidden = m_pFrame->TablesOf()->HiddenDCTBitsOf();
   m_ucCount    = scan->ComponentsInScan();
@@ -782,8 +782,10 @@ void SequentialScan::WriteFrameType(class ByteStream *io)
       io->PutWord(0xffc5);
     } else if (m_bLargeRange) {
       io->PutWord(0xffb3);
+    } else if (m_bBaseline) {
+      io->PutWord(0xffc0);
     } else {
-      io->PutWord(0xffc1); // not baseline, but sequential. Could check that...
+      io->PutWord(0xffc1);
     }
   }
 }

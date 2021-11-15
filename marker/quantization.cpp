@@ -41,7 +41,7 @@
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.cpp,v 1.36 2016/10/28 13:58:54 thor Exp $
+** $Id: quantization.cpp,v 1.37 2021/11/15 07:39:43 thor Exp $
 **
 */
 
@@ -254,7 +254,7 @@ void Quantization::WriteMarker(class ByteStream *io)
 // table if the table selector is custom.
 void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortrafo,
                                      bool addresidual,bool forresidual,bool rct,
-                                     LONG tableselector,
+                                     LONG tableselector,UBYTE precision,
                                      const LONG customluma[64],
                                      const LONG customchroma[64])
 {
@@ -351,7 +351,10 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
               "an invalid quantization matrix type has been specified");
     break;
   }
-  
+
+  //
+  // There are only two tables populated by default, which is consistent
+  // with baseline requirements.
   for(i = 0;i < 4;i++) {
     switch(i) {
     case 0:
@@ -415,6 +418,10 @@ void Quantization::InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortr
           // Luma is also extended by one bit, can even be stripped off for lossless.
           delta <<= 1;
         }
+        // thor fix: if the quantization tables are part of an 8-bit stream,
+        // the table entries shall be byte-sized.
+        if (precision < 12 && delta > 255)
+          delta = 255;
         deltas[j] = delta;
       }
       if (m_pTables[i] == NULL)

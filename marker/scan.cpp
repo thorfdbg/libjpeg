@@ -42,7 +42,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.116 2020/08/31 07:50:44 thor Exp $
+** $Id: scan.cpp,v 1.117 2021/11/15 07:39:43 thor Exp $
 **
 */
 
@@ -340,6 +340,12 @@ void Scan::CreateParser(void)
   //
   switch(type) {
   case Baseline:
+    m_pParser = new(m_pEnviron) class SequentialScan(m_pFrame,this,
+                                                     m_ucScanStart,m_ucScanStop,
+                                                     m_ucLowBit + m_ucHiddenBits,
+                                                     m_ucHighBit + m_ucHiddenBits,
+                                                     false,false,false,true);
+    break;
   case Sequential:
     m_pParser = new(m_pEnviron) class SequentialScan(m_pFrame,this,
                                                      m_ucScanStart,m_ucScanStop,
@@ -654,6 +660,7 @@ void Scan::InstallDefaults(UBYTE depth,ULONG tagoffset,const struct JPG_TagItem 
   m_ucHiddenBits   = m_pFrame->TablesOf()->HiddenDCTBitsOf();
   //
   // Install the Huffman table specifications
+  // There are only two tables used here, thus this is always fine for baseline.
   for(UBYTE i = 0;i < depth;i++) {
     UBYTE c = m_ucComponent[i]; // get the component.
 

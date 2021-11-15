@@ -41,7 +41,7 @@
 /*
 ** This class represents the quantization tables.
 **
-** $Id: quantization.hpp,v 1.15 2016/10/28 13:58:54 thor Exp $
+** $Id: quantization.hpp,v 1.16 2021/11/15 07:39:43 thor Exp $
 **
 */
 
@@ -90,7 +90,7 @@ public:
   // table if the table selector is custom.
   void InitDefaultTables(UBYTE quality,UBYTE hdrquality,bool colortrafo,
                          bool addresidual,bool forresidual,bool rct,
-                         LONG tableselector,
+                         LONG tableselector,UBYTE precision,
                          const LONG customluma[64],
                          const LONG customchroma[64]);
   //

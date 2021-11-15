@@ -41,7 +41,7 @@
 /*
 ** Parameter definition and encoding for profile B.
 **
-** $Id: encodeb.hpp,v 1.21 2016/10/28 13:58:52 thor Exp $
+** $Id: encodeb.hpp,v 1.23 2021/11/15 08:59:59 thor Exp $
 **
 */
 

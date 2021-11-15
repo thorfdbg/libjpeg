@@ -42,7 +42,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.205 2021/09/08 10:30:06 thor Exp $
+** $Id: tables.cpp,v 1.207 2021/11/15 09:00:03 thor Exp $
 **
 */
 
@@ -288,15 +288,13 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
     if (rtrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE) {
       // No longer make this decision depending on the DCT.
       // DCT works now also in the lossless mode.
-      {
-        // DCT is off in the residual domain.
-        if (dopart8) {
-          if (depth == 3 && tags->GetTagData(JPGTAG_RESIDUAL_DCT,false) == false) {
-            // Note that we cannot use the range extension if the DCT is on because
-            // it is not exactly linear, due to approximations, which would
-            // create loss.
-            rct     = true;
-          }
+      // DCT is off in the residual domain.
+      if (dopart8) {
+        if (depth == 3 && tags->GetTagData(JPGTAG_RESIDUAL_DCT,false) == false) {
+          // Note that we cannot use the range extension if the DCT is on because
+          // it is not exactly linear, due to approximations, which would
+          // create loss.
+          rct     = true;
         }
       }
     }
@@ -305,19 +303,19 @@ void Tables::InstallDefaultTables(UBYTE precision,UBYTE rangebits,const struct J
                                      JPGTAG_RESIDUALQUANT_MATRIX:
                                      JPGTAG_QUANTIZATION_MATRIX ,JPGFLAG_QUANTIZATION_ANNEX_K);
       const LONG *lumatable = (const LONG *)tags->GetTagPtr((m_pParent)?
-                                                            JPGTAG_QUANTIZATION_LUMATABLE:
-                                                            JPGTAG_RESIDUALQUANT_LUMATABLE, NULL);
+                                                            JPGTAG_RESIDUALQUANT_LUMATABLE:
+                                                            JPGTAG_QUANTIZATION_LUMATABLE, NULL);
       const LONG *chromatable = (const LONG *)tags->GetTagPtr((m_pParent)?
-                                                              JPGTAG_QUANTIZATION_CHROMATABLE:
-                                                              JPGTAG_RESIDUALQUANT_CHROMATABLE,NULL);
+                                                              JPGTAG_RESIDUALQUANT_CHROMATABLE:
+                                                              JPGTAG_QUANTIZATION_CHROMATABLE,NULL);
       if (m_pParent) {
         m_pQuant->InitDefaultTables(quality,hdrquality,
                                     rtrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
-                                    false,true,rct,matrix,lumatable,chromatable);
+                                    false,true,rct,matrix,precision,lumatable,chromatable);
       } else {
         m_pQuant->InitDefaultTables(quality,hdrquality,
                                     colortrafo != JPGFLAG_MATRIX_COLORTRANSFORMATION_NONE,
-                                    false,false,rct,matrix,lumatable,chromatable);
+                                    false,false,rct,matrix,precision,lumatable,chromatable);
       }
     }
     break;

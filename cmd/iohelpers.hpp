@@ -41,7 +41,7 @@
 /*
 ** Several helper functions that are related to native IO of pixel values
 **
-** $Id: iohelpers.hpp,v 1.7 2015/03/17 12:32:21 thor Exp $
+** $Id: iohelpers.hpp,v 1.8 2021/11/15 08:59:59 thor Exp $
 **
 */
 
@@ -182,6 +182,8 @@ extern FILE *OpenPNMFile(const char *file,int &width,int &height,int &depth,int 
 extern FILE *PrepareAlphaForRead(const char *alpha,int width,int height,int &prec,bool &flt,bool &big,
                                  bool alpharesidual,int &hiddenbits,
                                  UWORD ldrtohdr[65536]);
+// Parse a quantization matrix from a file
+extern bool ParseQuantizationSteps(LONG lumamatrix[64],LONG chromamatrix[64],const char *filename);
 ///
 
 ///

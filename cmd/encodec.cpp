@@ -41,7 +41,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.cpp,v 1.39 2021/09/08 10:30:06 thor Exp $
+** $Id: encodec.cpp,v 1.41 2021/11/15 08:59:59 thor Exp $
 **
 */
 
@@ -73,7 +73,7 @@
 void EncodeC(const char *source,const char *ldrsource,const char *target,const char *ltable,
              int quality,int hdrquality,
              int tabletype,int residualtt,int maxerror,
-             int colortrafo,bool lossless,bool progressive,
+             int colortrafo,bool baseline,bool lossless,bool progressive,
              bool residual,bool optimize,bool accoding,
              bool rsequential,bool rprogressive,bool raccoding,
              bool qscan,UBYTE levels,bool pyramidal,bool writednl,ULONG restart,double gamma,
@@ -89,7 +89,9 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
              int alphatt,int residualalphatt,
              int ahiddenbits,int ariddenbits,int aresprec,
              bool aopenloop,bool adeadzone,bool alagrangian,bool adering,
-             bool aserms,bool abypass)
+             bool aserms,bool abypass,
+             const char *quantsteps,const char *residualquantsteps,
+             const char *alphasteps,const char *residualalphasteps)
 { 
   struct JPG_TagItem pscan1[] = { // standard progressive scan, first scan.
     JPG_ValueTag(JPGTAG_SCAN_SPECTRUM_START,0),
@@ -203,6 +205,10 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
   const UWORD *tonemapping = NULL; // points to the above if used.
   UBYTE subx[4],suby[4];
   UBYTE ressubx[4],ressuby[4];
+  LONG qntmatrix[64],qntmatrixchroma[64];
+  LONG residualmatrix[64],residualmatrixchroma[64];
+  LONG alphamatrix[64],alphamatrixchroma[64];
+  LONG residualalphamatrix[64],residualalphamatrixchroma[64];
   memset(subx,1,sizeof(subx));
   memset(suby,1,sizeof(suby));
   memset(ressubx,1,sizeof(ressubx));
@@ -213,6 +219,23 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
   }
   if (ressub) {
     ParseSubsamplingFactors(ressubx,ressuby,ressub,4);
+  }
+
+  if (quantsteps) {
+    if (ParseQuantizationSteps(qntmatrix,qntmatrixchroma,quantsteps)) 
+      tabletype       = JPGFLAG_QUANTIZATION_CUSTOM;
+  }
+  if (residualquantsteps) {
+    if (ParseQuantizationSteps(residualmatrix,residualmatrixchroma,residualquantsteps))
+      residualtt      = JPGFLAG_QUANTIZATION_CUSTOM;
+  }
+  if (alphasteps) {
+    if (ParseQuantizationSteps(alphamatrix,alphamatrixchroma,alphasteps))
+      alphatt         = JPGFLAG_QUANTIZATION_CUSTOM;
+  }
+  if (residualalphasteps) {
+    if (ParseQuantizationSteps(residualalphamatrix,residualalphamatrixchroma,residualalphasteps))
+      residualalphatt = JPGFLAG_QUANTIZATION_CUSTOM;
   }
 
   {
@@ -346,7 +369,9 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
         int residualtype = JPGFLAG_RESIDUAL;
         int aframetype;
         int arestype;
-        if (lossless) {
+        if (baseline) {
+          frametype = JPGFLAG_BASELINE;
+        } else if (lossless) {
           frametype = JPGFLAG_LOSSLESS;
         } else if (progressive) {
           frametype = JPGFLAG_PROGRESSIVE;
@@ -415,6 +440,10 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
                          alphahdrquality),
             JPG_ValueTag(JPGTAG_QUANTIZATION_MATRIX,alphatt),
             JPG_ValueTag(JPGTAG_RESIDUALQUANT_MATRIX,residualalphatt),
+            JPG_PointerTag((alphatt == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_QUANTIZATION_LUMATABLE:JPGTAG_TAG_IGNORE,alphamatrix),
+            JPG_PointerTag((alphatt == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_QUANTIZATION_CHROMATABLE:JPGTAG_TAG_IGNORE,alphamatrixchroma),
+            JPG_PointerTag((residualalphatt == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_RESIDUALQUANT_LUMATABLE:JPGTAG_TAG_IGNORE,residualalphamatrix),
+            JPG_PointerTag((residualalphatt == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_RESIDUALQUANT_CHROMATABLE:JPGTAG_TAG_IGNORE,residualalphamatrixchroma),
             JPG_ValueTag(JPGTAG_IMAGE_RESOLUTIONLEVELS,levels),
             JPG_ValueTag(JPGTAG_IMAGE_WRITE_DNL,writednl),
             JPG_ValueTag(JPGTAG_IMAGE_RESTART_INTERVAL,restart),
@@ -487,6 +516,10 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
                          hdrquality),
             JPG_ValueTag(JPGTAG_QUANTIZATION_MATRIX,tabletype),
             JPG_ValueTag(JPGTAG_RESIDUALQUANT_MATRIX,residualtt),
+            JPG_PointerTag((tabletype == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_QUANTIZATION_LUMATABLE:JPGTAG_TAG_IGNORE,qntmatrix),
+            JPG_PointerTag((tabletype == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_QUANTIZATION_CHROMATABLE:JPGTAG_TAG_IGNORE,qntmatrixchroma),
+            JPG_PointerTag((residualtt == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_RESIDUALQUANT_LUMATABLE:JPGTAG_TAG_IGNORE,residualmatrix),
+            JPG_PointerTag((residualtt == JPGFLAG_QUANTIZATION_CUSTOM)?JPGTAG_RESIDUALQUANT_CHROMATABLE:JPGTAG_TAG_IGNORE,residualmatrixchroma),
             JPG_ValueTag(JPGTAG_IMAGE_ERRORBOUND,maxerror),
             JPG_ValueTag(JPGTAG_IMAGE_RESOLUTIONLEVELS,levels),
             JPG_ValueTag(JPGTAG_MATRIX_LTRAFO,xyz?JPGFLAG_MATRIX_COLORTRANSFORMATION_FREEFORM:colortrafo),
