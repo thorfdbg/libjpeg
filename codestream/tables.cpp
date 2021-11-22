@@ -1349,7 +1349,7 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,
    case 0xffd9: // EOI
    case 0xffda: // Start of scan.
    case 0xffde: // DHP
-   case 0xfff7: // JPEG LS SOS
+   case 0xfff7: // JPEG LS SOF55
      return false;
    case 0xffff: // A filler byte followed by a marker. Skip.
      io->Get();
