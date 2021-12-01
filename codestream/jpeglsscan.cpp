@@ -206,7 +206,7 @@ void JPEGLSScan::FindComponentDimensions(void)
 // Write the marker that indicates the frame type fitting to this scan.
 void JPEGLSScan::WriteFrameType(class ByteStream *io)
 {
-  io->PutWord(0xfff7); // JPEG LS
+  io->PutWord(0xfff7); // JPEG LS SOF55
 }
 ///
 

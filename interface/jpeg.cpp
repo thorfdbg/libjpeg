@@ -567,7 +567,7 @@ JPG_LONG JPEG::InternalPeekMarker(struct JPG_TagItem *) const
   case 0xffd9: // EOI
   case 0xffda: // Start of scan.
   case 0xffde: // DHP
-  case 0xfff7: // JPEG LS SOS
+  case 0xfff7: // JPEG LS SOF55
     // These are all markers that cannot be handled externally in any case.
     return 0;
   }

@@ -1032,7 +1032,7 @@ bool Frame::ParseTrailer(class ByteStream *io)
     case 0xffc9:
     case 0xffca:
     case 0xffcb:
-    case 0xfff7: // JPEG LS SOS
+    case 0xfff7: // JPEG LS SOF55
       // All non-differential frames, may not appear in a hierarchical process.
       JPG_WARN(MALFORMED_STREAM,"Frame::ParseTrailer",
                "found a non-differential frame start behind the initial frame");
