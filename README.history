@@ -543,3 +543,15 @@ table entries are clipped to the allowed range.
 Added an option -bl to force encoding in the baseline sequential process.
 Added options to read the quantization tables from files rather than using
 the built-in defaults.
+
+--------------------------------------------------------------------------
+
+Release 1.63:
+
+In case the decoder was started with an image containing an alpha channel,
+i.e. a 18477-9 image, and no output file for the alpha channel was
+provided, the decoder crashed. This issue was fixed, the alpha channel is
+now in this case simply disregarded. Note that you can define the output
+file for the alpha channel with the "-al" command line option.
+
+--------------------------------------------------------------------------

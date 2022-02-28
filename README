@@ -442,12 +442,22 @@ the built-in defaults.
 
 --------------------------------------------------------------------------
 
+Release 1.63:
+
+In case the decoder was started with an image containing an alpha channel,
+i.e. a 18477-9 image, and no output file for the alpha channel was
+provided, the decoder crashed. This issue was fixed, the alpha channel is
+now in this case simply disregarded. Note that you can define the output
+file for the alpha channel with the "-al" command line option.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 
 Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart and Fraunhofer IIS for sponsoring this project.
 
-Thomas Richter, September 2021
+Thomas Richter, February 2022
 
 -------------------------------------------------------------------------------------

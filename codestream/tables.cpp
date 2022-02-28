@@ -42,7 +42,7 @@
 ** This class keeps all the coding tables, huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.207 2021/11/15 09:00:03 thor Exp $
+** $Id: tables.cpp,v 1.208 2021/12/01 11:14:12 thor Exp $
 **
 */
 

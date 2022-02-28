@@ -42,7 +42,7 @@
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.cpp,v 1.26 2021/04/12 10:01:22 thor Exp $
+** $Id: jpeglsscan.cpp,v 1.27 2021/12/01 11:14:12 thor Exp $
 **
 */
 
