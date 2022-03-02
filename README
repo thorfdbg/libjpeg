@@ -142,7 +142,9 @@ that, use the command line option -ls:
 $ jpeg -ls -c infile.ppm out.jpg
 
 The "-c" command line switch is necessary to disable the color transformation
-as JPEG LS typically encodes in RGB and not YCbCr space.
+as JPEG LS typically encodes in RGB and not YCbCr space. This will introduce an
+application data marker Adobe 14 to indicate the RGB color space in the output
+stream.
 
 Optionally, you may specify the JPEG LS "near" parameter (maximum error) with
 the -m command line switch:
@@ -193,10 +195,10 @@ or, for floating point images:
 $ jpeg infile.jpg out.pfm
 
 
-If you want to decode a JPEG LS image, then you may want to tell the
-decoder explicitly to disable the color transformation even though the
-corresponding marker signalling coding in RGB space is typically missing
-for JPEG LS:
+If you want to decode a JPEG LS image, even one containing a SPIFF header with
+rgb colorspace, then you may want to tell the decoder explicitly to disable the
+color transformation even though the corresponding marker signalling coding in
+RGB space is typically missing for JPEG LS:
 
 $ jpeg -c infile.jpg out.ppm
 
