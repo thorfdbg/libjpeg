@@ -41,7 +41,7 @@
 #** Configuration script for the jpeg project,
 #** THOR Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.15 2021/05/19 13:32:36 thor Exp $
+#** $Id: configure.in,v 1.16 2022/03/07 15:54:33 thor Exp $
 #**
 #** In this module: autoconf script for libjpeg
 #**********************************************************************************/
@@ -276,6 +276,31 @@ AC_MSG_CHECKING([for the -Wimplicit-fallthrough compiler switch])
 CFLAGS="-Wimplicit-fallthrough=1 $save_CFLAGS"
 AC_TRY_COMPILE([],[],[ac_have_implicit_fallthrough='yes';AC_SUBST(WARN_OPTS,"-Wimplicit-fallthrough=1")],[ac_have_implicit_fallthrough='no';AC_SUBST(WARN_OPTS,"")])
 AC_MSG_RESULT($ac_have_implicit_fallthrough)
+#
+# Check whether the compiler supports -Wno-class-memaccess as option. This allows mem-setting
+# entire classes to zero.
+#
+save_CXXFLAGS="$CXXFLAGS"
+AC_LANG(C++)
+AC_MSG_CHECKING([for the -Wno-class-memaccess compiler switch])
+CXXFLAGS="-Werror -Wno-class-memaccess $save_CXXFLAGS"
+AC_TRY_COMPILE([],[],[ac_have_no_class_memaccess='yes';AC_SUBST(WARN_MEM_OPTS,"-Wno-class-memaccess")],[ac_have_no_class_memaccess='no';AC_SUBST(WARN_MEM_OPTS,"")])
+AC_MSG_RESULT($ac_have_no_class_memaccess)
+CXXFLAGS="$save_CXXFLAGS"
+AC_LANG(C)
+#
+# Check whether we can turn off the deprecation warning of the register keyword.
+AC_MSG_CHECKING([for the -Wno-deprecated-register compiler switch])
+CFLAGS="-Werror -Wno-deprecated-register $save_CFLAGS"
+AC_TRY_COMPILE([],[],[ac_have_no_deprecated_register='yes';AC_SUBST(WARN_REG_OPTS,"-Wno-deprecated-register")],[ac_have_no_deprecated_register='no';AC_SUBST(WARN_REG_OPTS,"")])
+AC_MSG_RESULT($ac_have_no_deprecated_register)
+#
+# Check whether we can generate position-independent code. This is sometimes required for
+# library building
+AC_MSG_CHECKING([for the -fPIC compiler switch])
+CFLAGS="-fPIC $save_CFLAGS"
+AC_TRY_COMPILE([],[],[ac_have_fpic='yes';AC_SUBST(LIB_PICOPTS,"-fPIC")],[ac_have_fpic='no'])
+AC_MSG_RESULT($ac_have_fpic)
 #
 # The test for llseek and lseek64 does not seem to work properly unless we try to compile...
 # yuck!

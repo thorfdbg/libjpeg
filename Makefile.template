@@ -7,7 +7,7 @@
 #* the Computing Center of the University of Stuttgart                  **
 #*************************************************************************
 ##
-## $Id: Makefile.template,v 1.14 2018/04/14 21:59:35 thor Exp $
+## $Id: Makefile.template,v 1.15 2022/03/07 15:54:33 thor Exp $
 ##
 ## This makefile template is included by all sub-directories
 ## to shorten the apropriate sub-makefiles to the minimum
@@ -145,9 +145,14 @@ suball		:	$(OBJECTS) $(XOBJECTS) $(ASMOBJECTS)
 	@ $(AR) $(AROPTS) $(LIBNAME) $(OBJECTS) $(XOBJECTS) $(ASMOBJECTS)
 	@ $(ECHO) >objects.list $(SUBOBJECTLIST) $(SUBXOBJECTLIST)
 
+ifneq ($(strip $(ASMOBJECTS)),)
 subliball	:	$(OBJECTS) $(ASMOBJECTS)
 	@ $(AR) $(AROPTS) $(SLIBNAME) $(OBJECTS) $(ASMOBJECTS)
 	@ $(ECHO) >libobjects.list $(SUBOBJECTLIST)
+else
+subliball	:	$(OBJECTS) $(ASMOBJECTS)
+	@ $(ECHO) >libobjects.list $(SUBOBJECTLIST)
+endif
 
 subdebug	:	
 	@ $(MAKE) -f $(MAKEFILE) suball SUPER="../" \

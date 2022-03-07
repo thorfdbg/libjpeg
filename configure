@@ -628,11 +628,13 @@ ASSEMBLY_FLAG
 PTHREAD_CFLAGS
 PTHREAD_LIBS
 PTHREAD_CC
-LIB_PICOPTS
 LIB_OPTS
 FPU_OPTS
 MALLOC_LIB
 LGCCS_OPTS
+LIB_PICOPTS
+WARN_REG_OPTS
+WARN_MEM_OPTS
 WARN_OPTS
 LIBOBJS
 TUNE
@@ -5560,6 +5562,101 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_have_implicit_fallthrough" >&5
 $as_echo "$ac_have_implicit_fallthrough" >&6; }
 #
+# Check whether the compiler supports -Wno-class-memaccess as option. This allows mem-setting
+# entire classes to zero.
+#
+save_CXXFLAGS="$CXXFLAGS"
+ac_ext=cpp
+ac_cpp='$CXXCPP $CPPFLAGS'
+ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for the -Wno-class-memaccess compiler switch" >&5
+$as_echo_n "checking for the -Wno-class-memaccess compiler switch... " >&6; }
+CXXFLAGS="-Werror -Wno-class-memaccess $save_CXXFLAGS"
+
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  ac_have_no_class_memaccess='yes';WARN_MEM_OPTS="-Wno-class-memaccess"
+
+else
+  ac_have_no_class_memaccess='no';WARN_MEM_OPTS=""
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_have_no_class_memaccess" >&5
+$as_echo "$ac_have_no_class_memaccess" >&6; }
+CXXFLAGS="$save_CXXFLAGS"
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+#
+# Check whether we can turn off the deprecation warning of the register keyword.
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for the -Wno-deprecated-register compiler switch" >&5
+$as_echo_n "checking for the -Wno-deprecated-register compiler switch... " >&6; }
+CFLAGS="-Werror -Wno-deprecated-register $save_CFLAGS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_have_no_deprecated_register='yes';WARN_REG_OPTS="-Wno-deprecated-register"
+
+else
+  ac_have_no_deprecated_register='no';WARN_REG_OPTS=""
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_have_no_deprecated_register" >&5
+$as_echo "$ac_have_no_deprecated_register" >&6; }
+#
+# Check whether we can generate position-independent code. This is sometimes required for
+# library building
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for the -fPIC compiler switch" >&5
+$as_echo_n "checking for the -fPIC compiler switch... " >&6; }
+CFLAGS="-fPIC $save_CFLAGS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_have_fpic='yes';LIB_PICOPTS="-fPIC"
+
+else
+  ac_have_fpic='no'
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_have_fpic" >&5
+$as_echo "$ac_have_fpic" >&6; }
+#
 # The test for llseek and lseek64 does not seem to work properly unless we try to compile...
 # yuck!
 ac_ext=cpp
@@ -5570,7 +5667,6 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for llseek" >&5
 $as_echo_n "checking for llseek... " >&6; }
-
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 

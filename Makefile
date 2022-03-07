@@ -1,7 +1,7 @@
 #! make
 #######################################################################
 ##
-## $Id: Makefile,v 1.16 2020/09/21 11:00:52 thor Exp $
+## $Id: Makefile,v 1.17 2022/03/07 15:54:33 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -176,7 +176,7 @@ linklib:
 		@ $(ECHO) "Linking..."
 		@ $(CAT) $(LIBOBJECTLIST) >libobjects.list
 		@ $(CC_ONLY) $(LDFLAGS) `cat libobjects.list | sed 's/std\/unistd.o//'` \
-		  $(LDLIBS) $(PTHREADLIBS) $(LD_OPTS) -shared --strip-all --no-undefined -o libjpeg.so
+		  $(LDLIBS) $(PTHREADLIBS) $(LD_OPTS) -shared -o libjpeg.so
 
 linklibstatic:
 		@ $(ECHO) "Linking..."
