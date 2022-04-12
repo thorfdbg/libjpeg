@@ -230,7 +230,7 @@ class ColorTrafo *ColorTransformerFactory::BuildColorTransformer(class Frame *fr
   if (specs) {
     ocflags |= ColorTrafo::Extended;
   } else if (ltrafo != MergingSpecBox::JPEG_LS) {
-    // Standard JPEG has clamping sematics, not wrap-around.
+    // Standard JPEG has clamping semantics, not wrap-around.
     ocflags |= ColorTrafo::ClampFlag;
   }
   

@@ -223,7 +223,7 @@ bool RectangleRequest::Contains(const struct RectangleRequest *sub) const
     return false;
   */
 
-  // Otherwise, the sub request is truely superfluous
+  // Otherwise, the sub request is truly superfluous
   // and need not to be issued again.
   return true;
 

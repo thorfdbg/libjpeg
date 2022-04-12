@@ -287,7 +287,7 @@ void HierarchicalBitmapRequester::AddImageScale(class Frame *frame,bool expandh,
     class LineMerger *merger;
     // Two things need to be build: The adapter to the new band, and the merger
     // that merges this band with the output and scales the result
-    // apropriately.
+    // appropriately.
     assert(m_pTempAdapter == NULL);
     // This object will pull out lines from the new high-pass...
     m_pTempAdapter   = frame->BuildLineAdapter();
@@ -624,7 +624,7 @@ void HierarchicalBitmapRequester::EncodeRegion(const RectAngle<LONG> &region)
       // Advance the quantized rows for the non-subsampled components,
       // downsampled components will be advanced later.
       for(i = 0;i < m_ucCount;i++) {
-        m_pulReadyLines[i]    += 8; // somehwere in the buffer.
+        m_pulReadyLines[i]    += 8; // somewhere in the buffer.
         if (m_ppDownsampler[i] == NULL) {
           Push8Lines(i);
         } else {

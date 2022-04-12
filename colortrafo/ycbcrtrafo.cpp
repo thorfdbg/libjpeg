@@ -673,7 +673,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::RGB2Residual(const RectAngle<LO
 ///
  
 /// YCbCrTrafo::YCbCr2RGB
-// Inverse transform a block from YCbCr to RGB, incuding a clipping operation and a dc level
+// Inverse transform a block from YCbCr to RGB, including a clipping operation and a dc level
 // shift.
 template<typename external,int count,UBYTE oc,int trafo,int rtrafo>
 void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG> &r,
@@ -1008,7 +1008,7 @@ void YCbCrTrafo<external,count,oc,trafo,rtrafo>::YCbCr2RGB(const RectAngle<LONG>
 }
 ///
 
-/// Explicit instanciations
+/// Explicit instantiations
 // One component
 template class YCbCrTrafo<UBYTE,1,ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;
 template class YCbCrTrafo<UWORD,1,ColorTrafo::ClampFlag,MergingSpecBox::Identity,MergingSpecBox::Zero>;

@@ -86,7 +86,7 @@ void BlockRow<T>::AllocateRow(ULONG coefficients)
 }
 ///
 
-/// Explicit template instanciation
+/// Explicit template instantiation
 template class BlockRow<LONG>;
 template class BlockRow<FLOAT>;
 ///

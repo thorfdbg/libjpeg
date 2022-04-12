@@ -1581,7 +1581,7 @@ UBYTE Tables::FractionalRBitsOf(UBYTE count,bool dct) const
 /// Tables::FractionalColorBitsOf
 // Check how many fractional bits the color transformation will use.
 // The DCT flag indicates whether a DCT is in the path. If so, more bits might be allocated
-// to accomodate fractional output bits of the DCT. Note that this
+// to accommodate fractional output bits of the DCT. Note that this
 // is an implementation detail.
 UBYTE Tables::FractionalColorBitsOf(UBYTE count,bool) const
 {  

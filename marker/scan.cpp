@@ -1257,7 +1257,7 @@ void Scan::OptimizeDCTBlock(LONG bx,LONG by,UBYTE compidx,DOUBLE lambda,
 
 /// Scan::OptimizeDC
 // Run a joint optimization of the R/D performance of all DC coefficients
-// within this scan. This requires a separate joint efford as DC coefficients
+// within this scan. This requires a separate joint effort as DC coefficients
 // are encoded dependently.
 void Scan::OptimizeDC(void)
 {

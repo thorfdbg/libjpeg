@@ -39,7 +39,7 @@
 
 *************************************************************************/
 /*
-** This class allows to read individual bits from a stream of bytes.
+** This class allows one to read individual bits from a stream of bytes.
 ** This class implements the bytestuffing as required.
 **
 ** $Id: bitstream.cpp,v 1.8 2014/11/12 14:16:17 thor Exp $
@@ -138,7 +138,7 @@ void BitStream<bitstuffing>::ReportError(void)
 }
 ///
 
-/// Explicit instanciations
+/// Explicit instantiations
 template class BitStream<true>;
 template class BitStream<false>;
 ///

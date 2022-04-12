@@ -173,7 +173,7 @@ void FileTypeBox::addCompatibility(ULONG compat)
 
 /// FileTypeBox::isCompatbileTo
 // Check whether this file is compatible to the listed profile ID.
-// It is always understood to be compatibile to the brand, otherwise reading
+// It is always understood to be compatible to the brand, otherwise reading
 // would fail.
 bool FileTypeBox::isCompatbileTo(ULONG compat) const
 {

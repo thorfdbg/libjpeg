@@ -239,7 +239,7 @@ class Environ &Environ::operator=(class Environ &env)
   // Copy the parent node over.
   m_pParent      = env.m_pParent;
   //
-  // Now carry the active exeption stack frames over
+  // Now carry the active exception stack frames over
   prev           = NULL;
   es             = env.m_Root.m_pActive;
   while(es->m_pPrevious) { 

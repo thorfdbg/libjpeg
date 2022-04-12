@@ -424,7 +424,7 @@ struct Line *LineMerger::AllocateLine(UBYTE comp)
 /// LineMerger::PushLine
 // Push the next line into the output buffer. If eight lines
 // are accumulated (or enough lines up to the end of the image)
-// these lines are automatically transfered to the input
+// these lines are automatically transferred to the input
 // buffer of the block based coding back-end.
 void LineMerger::PushLine(struct Line *line,UBYTE comp)
 {

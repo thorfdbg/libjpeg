@@ -16,7 +16,7 @@ The configure script that tested for the avail-
 ibility of setjmp did not work on those platforms
 where setjmp is a macro rather than a function.
 The test for setjmp is now omitted, depending solely
-on the availibility of longjmp.
+on the availability of longjmp.
 
 
 Revision 0.20
@@ -222,7 +222,7 @@ Release 0.92:
 
 This release improves the computation of the LDR to HDR inverse TMO computation for
 profile C and gains by that sometimes up to 2dB in PSNR. It also provides a "-sp"
-command line switch to use separate separate tables, one per component. This may
+command line switch to use separate tables, one per component. This may
 help in case the image contains some extreme colors.
 
 -------------------------------------------------------------------------------------
@@ -386,7 +386,7 @@ the denominator always remains smaller than 1.
 
 Release 1.51:
 
-If the JPEG-XT markers were delayed to the frame-header intead the global
+If the JPEG-XT markers were delayed to the frame-header instead the global
 header, the previous code did not built up the necessary infrastructure
 to compute the checksum and hence could not verify the checksum in such
 a condition. The 1.51 release fixes this problem.

@@ -247,7 +247,7 @@ const LONG *InverseToneMappingBox::InverseScaledTableOf(UBYTE dctbits,UBYTE spat
     // Nnot guaranteed that the mapping is surjective onto the output
     // range. There is nothing that says how to handle this case. We just define
     // "undefined" outputs to zero, and try our best to continue the missing parts
-    // continously along the output range. 
+    // continuously along the output range.
     memset(m_plInverseMapping,0,(1 << (spatialbits + spatialfract)) * sizeof(LONG));
     //
     // Loop over positive coefficients.
@@ -307,7 +307,7 @@ const LONG *InverseToneMappingBox::InverseScaledTableOf(UBYTE dctbits,UBYTE spat
     // thus lut[last] is not yet filled. j is now -1 and thus not
     // usable, lastj == 0, and there is no further point to extrapolate
     // to. Thus, set to the exact end-point.
-    if (lastfilled == false || lastj == 0) /* make the zero exactly reproducable */
+    if (lastfilled == false || lastj == 0) /* make the zero exactly reproducible */
       m_plInverseMapping[last] = lastj;
     //
     // Fixup the ends of the table. If the start or the end of the LUT have a very low slope,

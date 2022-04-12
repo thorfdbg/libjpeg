@@ -209,7 +209,7 @@
 // #endif
 // #undef JPG_LIL_ENDIAN
 //
-// Default header availibility
+// Default header availability
 #define HAVE_CTYPE_H 1
 #define HAVE_ISSPACE 1
 #define HAVE_MATH_H 1

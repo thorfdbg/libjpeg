@@ -39,7 +39,7 @@
 
 *************************************************************************/
 /*
- * Defininition of the ImageBitMap structure, used to specify
+ * Definition of the ImageBitMap structure, used to specify
  * rectangular memory blocks for image representation.
  * 
  * $Id: imagebitmap.cpp,v 1.10 2022/02/28 11:12:05 thor Exp $
