@@ -555,3 +555,14 @@ now in this case simply disregarded. Note that you can define the output
 file for the alpha channel with the "-al" command line option.
 
 --------------------------------------------------------------------------
+
+Release 1.64:
+
+The lossless scan, the arithmetically coded lossless scan and the
+arithmetically coded sequential scan could run into cases where an
+out-of-bounds symbol triggered and out-of-bounds array access and could
+have crashed the decoder. The code is now more carefully changing the
+validity of the symbols and aborts with an error if it finds illegal
+codes.
+
+--------------------------------------------------------------------------

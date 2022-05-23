@@ -42,7 +42,7 @@
 **
 ** Represents the scan including the scan header.
 **
-** $Id: losslessscan.cpp,v 1.50 2015/03/25 08:45:43 thor Exp $
+** $Id: losslessscan.cpp,v 1.51 2022/05/23 05:56:51 thor Exp $
 **
 */
 
@@ -377,6 +377,9 @@ void LosslessScan::ParseMCU(struct Line **prev,struct Line **top)
           v = 0;
         } else if (symbol == 16) {
           v = -32768;
+        } else if (symbol > 16) {
+          JPG_THROW(MALFORMED_STREAM,"LosslessScan::ParseMCU",
+                    "received an out-of-bounds symbol in a lossless JPEG scan");
         } else {
           LONG thre = 1L << (symbol - 1);
           LONG diff = m_Stream.Get(symbol); // get the number of bits 

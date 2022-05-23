@@ -42,7 +42,7 @@
 **
 ** Represents the scan including the scan header.
 **
-** $Id: acsequentialscan.cpp,v 1.51 2016/10/28 13:58:53 thor Exp $
+** $Id: acsequentialscan.cpp,v 1.52 2022/05/23 05:56:51 thor Exp $
 **
 */
 
@@ -582,8 +582,7 @@ void ACSequentialScan::DecodeBlock(LONG *block,
         
         while(m_Coder.Get(m_Context[dc].DCMagnitude.X[i])) {
           m <<= 1;
-          i++;
-          if (m == 0) 
+          if(++i >= QMContextSet::DCContextMagnitudeSet::MagnitudeContexts)
             JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
                       "QMDecoder is out of sync");
         }
@@ -653,8 +652,7 @@ void ACSequentialScan::DecodeBlock(LONG *block,
           
           while(m_Coder.Get(acm.X[i])) {
             m <<= 1;
-            i++;
-            if (m == 0)
+            if(++i >= QMContextSet::ACContextMagnitudeSet::MagnitudeContexts)
               JPG_THROW(MALFORMED_STREAM,"ACSequentialScan::DecodeBlock",
                         "QMDecoder is out of sync");
           }

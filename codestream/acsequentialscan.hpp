@@ -43,7 +43,7 @@
 ** Represents the scan including the scan header for the
 ** arithmetic coding procedure.
 **
-** $Id: acsequentialscan.hpp,v 1.38 2016/10/28 13:58:53 thor Exp $
+** $Id: acsequentialscan.hpp,v 1.39 2022/05/23 05:56:51 thor Exp $
 **
 */
 
@@ -120,13 +120,17 @@ class ACSequentialScan : public EntropyParser {
     //
     // The DC Magnitude coding contexts.
     struct DCContextMagnitudeSet {
-      QMContext X[19];
-      QMContext M[19];
+      enum {
+        MagnitudeContexts = 19
+      };
+      //
+      QMContext X[MagnitudeContexts];
+      QMContext M[MagnitudeContexts];
       //
       // Initialize
       void Init(void)
       {
-        for(int i = 0;i < 19;i++) {
+        for(int i = 0;i < MagnitudeContexts;i++) {
 #ifdef DEBUG_QMCODER
           char string[5] = "X0  ";
           string[1] = (i / 10) + '0';
@@ -171,14 +175,17 @@ class ACSequentialScan : public EntropyParser {
     //
     // The AC Magnitude coder.
     struct ACContextMagnitudeSet {
-      QMContext X[18];
-      QMContext M[18];
+      enum {
+        MagnitudeContexts = 18
+      };
       //
-
+      QMContext X[MagnitudeContexts];
+      QMContext M[MagnitudeContexts];
+      //
 #ifdef DEBUG_QMCODER
       void Init(bool hi) 
       {
-        for(int i = 0;i < 18;i++) {
+        for(int i = 0;i < MagnitudeContexts;i++) {
           char string[5] = "xl00";
           string[1] = (hi)?('h'):('l');
           string[2] = (i / 10) + '0';
@@ -191,7 +198,7 @@ class ACSequentialScan : public EntropyParser {
 #else
       void Init(void)
       {
-        for(int i = 0;i < 18;i++) {
+        for(int i = 0;i < MagnitudeContexts;i++) {
           X[i].Init();
           M[i].Init();
         }

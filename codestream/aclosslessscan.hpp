@@ -43,7 +43,7 @@
 ** Represents the lossless scan - lines are coded directly with predictive
 ** coding, though here residuals are encoded with the arithmetic encoder.
 **
-** $Id: aclosslessscan.hpp,v 1.28 2014/11/16 15:49:58 thor Exp $
+** $Id: aclosslessscan.hpp,v 1.29 2022/05/23 05:56:51 thor Exp $
 **
 */
 
@@ -111,12 +111,16 @@ class ACLosslessScan : public PredictiveScan {
     //
     // The Magnitude/refinement coding contexts.
     struct MagnitudeSet {
-      QMContext X[15];
-      QMContext M[15];
+      enum {
+        MagnitudeContexts = 15
+      };
+      //
+      QMContext X[MagnitudeContexts];
+      QMContext M[MagnitudeContexts];
       //
       void Init(void)
       {
-        for(int i = 0;i < 15;i++) {
+        for(int i = 0;i < MagnitudeContexts;i++) {
           X[i].Init();
           M[i].Init();
         }

@@ -42,7 +42,7 @@
 **
 ** Represents the scan including the scan header.
 **
-** $Id: aclosslessscan.cpp,v 1.42 2020/08/31 07:50:43 thor Exp $
+** $Id: aclosslessscan.cpp,v 1.43 2022/05/23 05:56:51 thor Exp $
 **
 */
 
@@ -359,7 +359,9 @@ void ACLosslessScan::ParseMCU(struct Line **prev,struct Line **top)
             //
             while(m_Coder.Get(mset.X[i])) {
               m <<= 1;
-              i++;
+              if (++i >= QMContextSet::MagnitudeSet::MagnitudeContexts)
+                JPG_THROW(MALFORMED_STREAM,"ACLosslessScan::ParseMCU",
+                          "received an out-of-bounds signal while parsing an AC-coded lossless symbol");
             }
             //
             m >>= 1;

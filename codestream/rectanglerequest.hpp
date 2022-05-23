@@ -42,7 +42,7 @@
  * Definition of how to request a given rectangle for display,
  * for load or for checking for a necessary update.
  * 
- * $Id: rectanglerequest.hpp,v 1.12 2017/11/28 13:08:07 thor Exp $
+ * $Id: rectanglerequest.hpp,v 1.13 2022/05/23 05:56:51 thor Exp $
  *
  */
 
@@ -105,19 +105,29 @@ struct RectangleRequest : public JObject, private Explicit {
   RectangleRequest(const struct RectangleRequest &req)
     : Explicit()
   {
-    // Not nice, but this is really faster and simpler
-    memcpy(this,&req,sizeof(struct RectangleRequest));
     // Not linked in any way if this is new.
-    rr_pNext = NULL;
+    rr_pNext            = NULL;
+    rr_Request          = req.rr_Request;
+    rr_usFirstComponent = req.rr_usFirstComponent;
+    rr_usLastComponent  = req.rr_usLastComponent;
+    rr_cPriority        = req.rr_cPriority;
+    rr_bIncludeAlpha    = req.rr_bIncludeAlpha;
+    rr_bUpsampling      = req.rr_bUpsampling;
+    rr_bColorTrafo      = req.rr_bColorTrafo;
   }
   //
   // Assignment operator.
   RectangleRequest &operator=(const struct RectangleRequest &req)
   { 
-    // Not nice, but this is really faster and simpler
-    memcpy(this,&req,sizeof(struct RectangleRequest));
-    // Not linked in any way if this is new.
-    rr_pNext = NULL;
+   // Not linked in any way if this is new.
+    rr_pNext            = NULL;
+    rr_Request          = req.rr_Request;
+    rr_usFirstComponent = req.rr_usFirstComponent;
+    rr_usLastComponent  = req.rr_usLastComponent;
+    rr_cPriority        = req.rr_cPriority;
+    rr_bIncludeAlpha    = req.rr_bIncludeAlpha;
+    rr_bUpsampling      = req.rr_bUpsampling;
+    rr_bColorTrafo      = req.rr_bColorTrafo;
     //
     return *this;
   }
