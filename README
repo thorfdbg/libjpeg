@@ -460,6 +460,8 @@ out-of-bounds symbol triggered and out-of-bounds array access and could
 have crashed the decoder. The code is now more carefully changing the
 validity of the symbols and aborts with an error if it finds illegal
 codes.
+The code now also checks the consistency of the MCU sizes in the
+hierarchical process and fails if they differ across levels.
 
 --------------------------------------------------------------------------
 

@@ -45,7 +45,7 @@
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.42 2020/04/08 10:05:41 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.43 2022/05/24 05:42:35 thor Exp $
 **
 */
 
@@ -244,6 +244,16 @@ void HierarchicalBitmapRequester::PrepareForDecoding(void)
       class Component *comp = m_pFrame->ComponentOf(i);
       UBYTE sx = comp->SubXOf();
       UBYTE sy = comp->SubYOf();
+
+      if (m_pLargestScale) {
+        class Frame *frame = m_pLargestScale->FrameOf();
+        while(frame) {
+          if (frame->ComponentOf(i)->SubXOf() != sx || frame->ComponentOf(i)->SubYOf() != sy)
+            JPG_THROW(MALFORMED_STREAM,"HierarchicalBitmapRequester::PrepareForDecoding",
+                      "component subsampling is inconsistent across hierarchical levels");
+          frame = frame->NextOf();
+        }
+      }
 
       if (sx > 1 || sy > 1) {
         m_ppUpsampler[i] = UpsamplerBase::CreateUpsampler(m_pEnviron,sx,sy,
