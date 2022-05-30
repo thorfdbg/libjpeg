@@ -43,7 +43,7 @@
 ** command line interface. It doesn't do much except
 ** calling libjpeg.
 **
-** $Id: reconstruct.cpp,v 1.8 2017/11/28 13:08:03 thor Exp $
+** $Id: reconstruct.cpp,v 1.9 2022/05/30 10:19:53 thor Exp $
 **
 */
 
@@ -227,7 +227,8 @@ void Reconstruct(const char *infile,const char *outfile,
             bmm.bmm_bWritePGX = writepgx;
 
             if (writepgx) {
-              for(int i = 0;i < depth;i++) {
+              int i;
+              for(i = 0;i < depth;i++) {
                 char headername[256],rawname[256];
                 FILE *hdr;
                 sprintf(headername,"%s_%d.h",outfile,i);
@@ -240,8 +241,18 @@ void Reconstruct(const char *infile,const char *outfile,
                           (width  + subx[i] - 1) / subx[i],
                           (height + suby[i] - 1) / suby[i]);
                   fclose(hdr);
+                } else {
+                  perror("cannot create output file");
+                  break;
                 }
-                bmm.bmm_PGXFiles[i] = fopen(rawname,"wb");
+                if (!(bmm.bmm_PGXFiles[i] = fopen(rawname,"wb"))) {
+                  perror("cannot create output file");
+                  break;
+                }
+              }
+              if (i < depth) {
+                fclose(bmm.bmm_pTarget);
+                bmm.bmm_pTarget = NULL;
               }
             }
 
@@ -321,12 +332,11 @@ void Reconstruct(const char *infile,const char *outfile,
                   y  = lastline;
                 } while(y < height && ok);
               }
+              fclose(bmm.bmm_pTarget);
             } else {
               perror("failed to open the output file");
             }
 
-            fclose(bmm.bmm_pTarget);
-            
             if (bmm.bmm_pAlphaTarget)
               fclose(bmm.bmm_pAlphaTarget);
             
