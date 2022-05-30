@@ -43,7 +43,7 @@
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.cpp,v 1.24 2021/09/08 10:30:06 thor Exp $
+** $Id: entropyparser.cpp,v 1.25 2022/05/30 14:05:58 thor Exp $
 **
 */
 
@@ -62,7 +62,7 @@ EntropyParser::EntropyParser(class Frame *frame,class Scan *scan)
 {
   m_ucCount = scan->ComponentsInScan();
 
-  // The residual scan uses all components here, not just for, but
+  // The residual scan uses all components here, not just four, but
   // it does not require the component count either.
   for(volatile UBYTE i = 0;i < m_ucCount && i < 4;i++) {
     JPG_TRY {

@@ -42,7 +42,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.117 2021/11/15 07:39:43 thor Exp $
+** $Id: scan.cpp,v 1.118 2022/05/30 14:06:11 thor Exp $
 **
 */
 
@@ -337,6 +337,14 @@ void Scan::CreateParser(void)
   ScanType type = m_pFrame->ScanTypeOf();
   //
   assert(m_pParser == NULL);
+  //
+  // Check whether all components are there.
+  for(UBYTE i = 0;i < m_ucCount && i < 4;i++) {
+    if (ComponentOf(i) == NULL) {
+      JPG_THROW(MALFORMED_STREAM,"Scan::CreateParser",
+                "found a component ID in a scan that does not exist");
+    }
+  }
   //
   switch(type) {
   case Baseline:
