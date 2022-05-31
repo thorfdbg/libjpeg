@@ -43,7 +43,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: linebitmaprequester.cpp,v 1.36 2021/07/22 13:18:36 thor Exp $
+** $Id: linebitmaprequester.cpp,v 1.37 2022/05/31 10:16:52 thor Exp $
 **
 */
 
@@ -562,7 +562,11 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgregion,con
           LONG *dst = m_ppCTemp[i];
           if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
             ExtractBitmap(m_ppTempIBM[i],r,i);
-            FetchRegion(x,*m_pppImage[i],dst);
+            if (*m_pppImage[i]) {
+              FetchRegion(x,*m_pppImage[i],dst);
+            } else {
+              memset(dst,0,sizeof(LONG) * 64);
+            }
           } else {
             memset(dst,0,sizeof(LONG) * 64);
           }
