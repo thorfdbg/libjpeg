@@ -41,7 +41,7 @@
 /*
 ** A JPEG LS scan covering only a single component.
 **
-** $Id: singlecomponentlsscan.cpp,v 1.18 2014/11/14 15:41:32 thor Exp $
+** $Id: singlecomponentlsscan.cpp,v 1.19 2022/06/08 10:54:55 thor Exp $
 **
 */
 
@@ -96,8 +96,9 @@ bool SingleComponentLSScan::ParseMCU(void)
   }
   if (m_pFrame->HeightOf() > 0)
     m_ulRemaining[0] -= lines;
-  
-  assert(lines > 0);
+
+  if (lines == 0)
+    return false;
 
   // Loop over lines and columns
   do {

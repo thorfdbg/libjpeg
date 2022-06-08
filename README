@@ -40,7 +40,7 @@ Standard JPEG compression, with 444 (aka "no") subsampling:
 
 $ jpeg -q <quality> infile.ppm outfile.jpg
 
-Standard JPEG compression, with 422 subsampling:
+Standard JPEG compression, with 420 subsampling:
 
 $ jpeg -q <quality> -s 1x1,2x2,2x2 infile.ppm outfile.jpg
 

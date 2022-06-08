@@ -42,7 +42,7 @@
 ** A JPEG LS scan interleaving samples of several components,
 ** sample by sample.
 **
-** $Id: sampleinterleavedlsscan.cpp,v 1.15 2014/11/14 15:41:32 thor Exp $
+** $Id: sampleinterleavedlsscan.cpp,v 1.16 2022/06/08 10:54:55 thor Exp $
 **
 */
 
@@ -112,9 +112,12 @@ bool SampleInterleavedLSScan::ParseMCU(void)
   if (lines > 8) {
     lines = 8;
   }
+
+  if (lines == 0)
+    return false;
+  
   if (m_pFrame->HeightOf() > 0)
     m_ulRemaining[0] -= lines;
-  assert(lines > 0);
   assert(m_ucCount < 4);
 
   //
