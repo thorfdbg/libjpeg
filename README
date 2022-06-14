@@ -282,7 +282,7 @@ the denominator always remains smaller than 1.
 
 Release 1.51:
 
-If the JPEG-XT markers were delayed to the frame-header intead the global
+If the JPEG-XT markers were delayed to the frame-header instead the global
 header, the previous code did not built up the necessary infrastructure
 to compute the checksum and hence could not verify the checksum in such
 a condition. The 1.51 release fixes this problem.

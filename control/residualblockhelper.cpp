@@ -374,7 +374,7 @@ void ResidualBlockHelper::AllocateBuffers(void)
         }
       }
     } else {
-      // Code should actually not go in here. How wierd.
+      // Code should actually not go in here. How weird.
       for(i = 0;i < depth;i++) {
         m_bNoiseShaping[i]  = false;
         m_pDCT[i]           = NULL;

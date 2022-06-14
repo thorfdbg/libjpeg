@@ -238,7 +238,7 @@ void Frame::ComputeMCUSizes(void)
   } 
   //
   // Check whether the scm is actually part of the MCU sizes written. If not,
-  // then JPEG cannot support this subsampling setting. Wierd.
+  // then JPEG cannot support this subsampling setting. Weird.
   for(i = 0;i < m_ucDepth;i++) {
     if (m_ppComponent[i]->SubXOf() != m_ucMaxMCUWidth  / m_ppComponent[i]->MCUWidthOf() ||
         m_ppComponent[i]->SubYOf() != m_ucMaxMCUHeight / m_ppComponent[i]->MCUHeightOf())

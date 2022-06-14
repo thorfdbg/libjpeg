@@ -885,7 +885,7 @@ class Frame *Image::StartMeasureFrame(void)
   current = m_pCurrent->ImageOf();
   assert(current->m_pDimensions);
   //
-  // Check whether this is a hierachical scan. If so, we must first
+  // Check whether this is a hierarchical scan. If so, we must first
   // generate the next higher resolution level if we are not at the lowest
   // level.
   if (current->m_pSmallest) {

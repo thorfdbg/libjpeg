@@ -40,7 +40,7 @@
 *************************************************************************/
 /*
  * Type definition: Some system independent type definitions
- * (thor's pecularities)
+ * (thor's peculiarities)
  * $Id: types.cpp,v 1.7 2014/09/30 08:33:17 thor Exp $
  *
  * The following header defines basic types to be used in the J2K interface

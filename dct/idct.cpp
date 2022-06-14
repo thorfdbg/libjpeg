@@ -367,7 +367,7 @@ DOUBLE IDCT<preshift,T,deadzone,optimize>::EstimateCriticalSlope(void)
 }
 ///
 
-/// Instanciate the classes
+/// Instantiate the classes
 template class IDCT<0,LONG,false,false>;
 template class IDCT<1,LONG,false,false>; // For the RCT output
 template class IDCT<ColorTrafo::COLOR_BITS,LONG,false,false>;

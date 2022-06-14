@@ -243,7 +243,7 @@ struct Line *BlockLineAdapter::AllocateLine(UBYTE comp)
 /// BlockLineAdapter::PushLine
 // Push the next line into the output buffer. If eight lines
 // are accumulated (or enough lines up to the end of the image)
-// these lines are automatically transfered to the input
+// these lines are automatically transferred to the input
 // buffer of the block based coding back-end.
 void BlockLineAdapter::PushLine(struct Line *,UBYTE comp)
 { 

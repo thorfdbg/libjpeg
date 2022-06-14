@@ -148,7 +148,7 @@ void Encoder::FindScanTypes(const struct JPG_TagItem *tags,LONG defaultscan,UBYT
   case JPGFLAG_RESIDUALDCT:
     restype = ResidualDCT;
     if (accoding || raccoding)
-      restype = ACResidualDCT; // inofficial.
+      restype = ACResidualDCT; // unofficial.
     break;
   case JPGFLAG_RESIDUALPROGRESSIVE:
     restype = ResidualProgressive;

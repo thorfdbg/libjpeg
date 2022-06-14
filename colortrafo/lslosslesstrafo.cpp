@@ -367,7 +367,7 @@ void LSLosslessTrafo<external,count>::RGB2Residual(const RectAngle<LONG> &,const
 ///
 
 /// LSLosslessTrafo::YCbCr2RGB
-// Inverse transform a block from YCbCr to RGB, incuding a clipping operation and a dc level
+// Inverse transform a block from YCbCr to RGB, including a clipping operation and a dc level
 // shift.
 template<typename external,int count>
 void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
@@ -536,8 +536,8 @@ void LSLosslessTrafo<external,count>::YCbCr2RGB(const RectAngle<LONG> &r,
 }
 ///
 
-/// Explicit instanciations
-// Actually, more instanciations would be possible,
+/// Explicit instantiations
+// Actually, more instantiations would be possible,
 // but I don't really care at this time...
 template class LSLosslessTrafo<UBYTE,3>;
 template class LSLosslessTrafo<UWORD,3>;

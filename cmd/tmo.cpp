@@ -74,7 +74,7 @@ void InvertTable(UWORD input[65536],UWORD output[65536],UBYTE inbits,UBYTE outbi
   // Nnot guaranteed that the mapping is surjective onto the output
   // range. There is nothing that says how to handle this case. We just define
   // "undefined" outputs to zero, and try our best to continue the missing parts
-  // continously along the output range. 
+  // continuously along the output range.
   memset(output,0,(1 << outbits) * sizeof(UWORD));
   //
   // Loop over positive coefficients.

@@ -183,7 +183,7 @@ void TrivialTrafo<internal,external,count>::RGB2YCbCr(const RectAngle<LONG> &r,c
 ///
 
 /// TrivialTrafo::YCbCr2RGB
-// Inverse transform a block from YCbCr to RGB, incuding a clipping operation and a dc level
+// Inverse transform a block from YCbCr to RGB, including a clipping operation and a dc level
 // shift.
 template<typename internal,typename external,int count>
 void TrivialTrafo<internal,external,count>::YCbCr2RGB(const RectAngle<LONG> &r,const struct ImageBitMap *const *dest,
@@ -302,7 +302,7 @@ void TrivialTrafo<internal,external,count>::YCbCr2RGB(const RectAngle<LONG> &r,c
 }
 ///
 
-/// Explicit instanciations
+/// Explicit instantiations
 template class TrivialTrafo<LONG,UBYTE,1>;
 template class TrivialTrafo<LONG,UWORD,1>;
 template class TrivialTrafo<LONG,UBYTE,2>;

@@ -325,7 +325,7 @@ void PrintUsage(const char *progname)
           "-aqt n     : specify the quantization table for the alpha channel\n"
           "-aqtf file : read the alpha quantization tables from a file\n"
           "-arqt n    : specify the quantization table for residual alpha\n"
-          "-arqtf file: read the residual alhpa quantization tables from a file\n"
+          "-arqtf file: read the residual alpha quantization tables from a file\n"
           "-aquality q: specify a combined quality for both\n"
 #if ACCUSOFT_CODE
           "-ra        : enable arithmetic coding for residual image (*NOT SPECIFIED*)\n"

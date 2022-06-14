@@ -273,7 +273,7 @@ void SequentialScan::Restart(void)
 void SequentialScan::Flush(bool)
 {
   if (m_ucScanStop && m_bProgressive) {
-    // Progressive, AC band. It looks wierd to code the remaining
+    // Progressive, AC band. It looks weird to code the remaining
     // block skips right here. However, AC bands in spectral selection
     // are always coded in isolated scans, thus only one component
     // per scan and no interleaving. Hence, no problem.
@@ -907,7 +907,7 @@ void SequentialScan::OptimizeBlock(LONG,LONG,UBYTE,double,class DCT *,LONG[64])
       // This coefficient may profit from an amplitude change. Actually, we may
       // consider more than one amplitude change, but in reality, it rately makes
       // sense to change the amplitude by more than one bucket. Thus, we only keep
-      // two possibilites here (or actually three, namely set the coefficient to
+      // two possibilities here (or actually three, namely set the coefficient to
       // zero completely).
       // The rate is only reduced if we change the amplitude category by one.
       // (or, theoretically, by more).

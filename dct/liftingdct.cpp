@@ -289,7 +289,7 @@ void LiftingDCT<preshift,T,deadzone,optimize>::TransformBlock(const LONG *source
     z21 = pmul_tan2(z11)  + z01;
     // Compute the x3 vector: z20,-z10,z21,-z11,zc0,zc1,zc2,zc3
     // Not needed here, instead go ahead directly.
-    // Instead, compute x4 directly. The first four componets
+    // Instead, compute x4 directly. The first four components
     // are identical to x3, zc2 = x63
     // Upper part of last matrix is identity
     // Upper part of A_4(1) is identity
@@ -519,7 +519,7 @@ DOUBLE LiftingDCT<preshift,T,deadzone,optimize>::EstimateCriticalSlope(void)
 }
 ///
 
-/// Instanciate the classes
+/// Instantiate the classes
 template class LiftingDCT<0,LONG,false,false>;
 template class LiftingDCT<1,LONG,false,false>;
 template class LiftingDCT<ColorTrafo::COLOR_BITS,LONG,false,false>;
