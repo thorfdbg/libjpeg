@@ -42,7 +42,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.132 2021/12/01 11:14:42 thor Exp $
+** $Id: frame.cpp,v 1.133 2022/06/14 06:18:30 thor Exp $
 **
 */
 

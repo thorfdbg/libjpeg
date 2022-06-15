@@ -41,7 +41,7 @@
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: ycbcrtrafo.cpp,v 1.77 2020/04/08 10:05:41 thor Exp $
+** $Id: ycbcrtrafo.cpp,v 1.78 2022/06/14 06:18:30 thor Exp $
 **
 */
 

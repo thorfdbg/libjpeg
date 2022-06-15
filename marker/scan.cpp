@@ -42,7 +42,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.118 2022/05/30 14:06:11 thor Exp $
+** $Id: scan.cpp,v 1.119 2022/06/14 06:18:30 thor Exp $
 **
 */
 

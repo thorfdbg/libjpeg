@@ -240,7 +240,7 @@ void JPG_TagItem::ClearTagSets()
 // tag list, a tag list of defaults and a new taglist that
 // should better be large enough. It takes the defaults,
 // moves them to the new taglist and overrides its setting
-// with that of this taglist. It returns the length of the
+// with that of this taglist. It returns the lenght of the
 // new taglist. If the target taglist is NULL, it is not
 // filled in, but tags are just counted.
 JPG_LONG JPG_TagItem::FilterTags(struct JPG_TagItem *target,const struct JPG_TagItem *source,

@@ -43,7 +43,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: linebitmaprequester.cpp,v 1.37 2022/05/31 10:16:52 thor Exp $
+** $Id: linebitmaprequester.cpp,v 1.38 2022/06/14 06:18:30 thor Exp $
 **
 */
 

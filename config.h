@@ -1,6 +1,6 @@
 /*
 ** Config file for jpeg, defines some static rules for jpeg generation
-** $Id: config.h,v 1.8 2014/09/30 08:26:08 thor Exp $
+** $Id: config.h,v 1.9 2022/06/14 06:18:26 thor Exp $
 **
 */
 

@@ -41,7 +41,7 @@
 /*
 ** This file provides the trival transformation from RGB to RGB
 **
-** $Id: trivialtrafo.cpp,v 1.20 2020/04/08 09:18:07 thor Exp $
+** $Id: trivialtrafo.cpp,v 1.21 2022/06/14 06:18:30 thor Exp $
 **
 */
 

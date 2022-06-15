@@ -43,7 +43,7 @@
 ** This class merges the two sources of a differential frame together,
 ** expanding its non-differential source.
 **
-** $Id: linemerger.cpp,v 1.27 2015/06/03 15:37:25 thor Exp $
+** $Id: linemerger.cpp,v 1.28 2022/06/14 06:18:30 thor Exp $
 **
 */
 

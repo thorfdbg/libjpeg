@@ -43,7 +43,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.cpp,v 1.90 2021/11/15 07:39:43 thor Exp $
+** $Id: sequentialscan.cpp,v 1.92 2022/06/15 06:03:13 thor Exp $
 **
 */
 
@@ -828,12 +828,12 @@ void SequentialScan::OptimizeBlock(LONG,LONG,UBYTE,double,class DCT *,LONG[64])
   // Create the DC buffer if we do not yet have it.
   if (m_plDCBuffer[component] == NULL) {
     class Component *comp       = m_pComponent[component];
-    ULONG width                 = m_pFrame->WidthOf();
-    ULONG height                = m_pFrame->HeightOf();
-    UBYTE subx                  = comp->SubXOf();
-    UBYTE suby                  = comp->SubYOf();
-    ULONG blockwidth            = (((width  + subx - 1) / subx) + 7) >> 3;
-    ULONG blockheight           = (((height + suby - 1) / suby) + 7) >> 3;
+    const ULONG width           = m_pFrame->WidthOf();
+    const ULONG height          = m_pFrame->HeightOf();
+    const UBYTE subx            = comp->SubXOf();
+    const UBYTE suby            = comp->SubYOf();
+    const ULONG blockwidth      = (((width  + subx - 1) / subx) + 7) >> 3;
+    const ULONG blockheight     = (((height + suby - 1) / suby) + 7) >> 3;
     // Allocate now the DC buffer
     m_ulBlockWidth[component]   = blockwidth;
     m_ulBlockHeight[component]  = blockheight;
@@ -1072,8 +1072,7 @@ void SequentialScan::OptimizeDC(void)
   
   for(c = 0;c < m_ucCount;c++) {
     class Component *comp  = m_pComponent[c];
-    class QuantizedRow *qr = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
-    class QuantizedRow *q;
+    const class QuantizedRow *volatile qr = m_pBlockCtrl->CurrentQuantizedRow(comp->IndexOf());
     DOUBLE critical        = m_dCritical[c];
     struct BackTrace {
       LONG  *bt_plData;         // Points to the original DC data we want to modify.
@@ -1081,8 +1080,8 @@ void SequentialScan::OptimizeDC(void)
       int    bt_iPrev[3];       // backtrace: The ideal predicessor for the current DC value.
       DOUBLE bt_dFunctional[3]; // the various values for the J functional J = R + \lambda D
     } *btr                 = NULL;
-    volatile UBYTE mcux    = (m_ucCount > 1)?(comp->MCUWidthOf() ):(1);
-    volatile UBYTE mcuy    = (m_ucCount > 1)?(comp->MCUHeightOf()):(1);
+    volatile const UBYTE mcux = (m_ucCount > 1)?(comp->MCUWidthOf() ):(1);
+    volatile const UBYTE mcuy = (m_ucCount > 1)?(comp->MCUHeightOf()):(1);
     ULONG blockwidth       = m_ulBlockWidth[c];
     ULONG blockheight      = m_ulBlockHeight[c];
     ULONG xmcu,ymcu;
@@ -1091,6 +1090,7 @@ void SequentialScan::OptimizeDC(void)
     double weight          = 8.0 / dcdelta;
     //
     JPG_TRY {
+      const class QuantizedRow *volatile q;
       struct BackTrace *bt = (struct BackTrace *)m_pEnviron->AllocVec(sizeof(struct BackTrace) * 
                                                                       (blockwidth * blockheight + 1));
       // Keep the pointer to the start of the array.

@@ -41,8 +41,8 @@
 
 /*
 ** Type definition: Some system independent type definitions
-** (thor's pecularities)
-** $Id: types.hpp,v 1.8 2014/09/30 08:33:17 thor Exp $
+** (thor's peculiarities)
+** $Id: types.hpp,v 1.9 2022/06/14 06:18:30 thor Exp $
 **
 ** The following header defines basic types to be used in the JPG interface
 ** routines. Especially, this file must be adapted if your compiler has

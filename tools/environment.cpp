@@ -42,7 +42,7 @@
 /*
 ** Definition of the Environment.
 ** 
-** $Id: environment.cpp,v 1.10 2020/04/08 10:05:41 thor Exp $
+** $Id: environment.cpp,v 1.11 2022/06/14 06:18:30 thor Exp $
 **
 ** The environment holds structures for exception management without
 ** exceptions, and for memory management without a global new.

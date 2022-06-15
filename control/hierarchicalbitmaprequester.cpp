@@ -45,7 +45,7 @@
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.43 2022/05/24 05:42:35 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.44 2022/06/14 06:18:30 thor Exp $
 **
 */
 

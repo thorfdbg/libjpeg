@@ -42,7 +42,7 @@
 ** This class builds the proper color transformer from the information
 ** in the MergingSpecBox
 **
-** $Id: colortransformerfactory.cpp,v 1.77 2019/08/21 10:09:57 thor Exp $
+** $Id: colortransformerfactory.cpp,v 1.78 2022/06/14 06:18:30 thor Exp $
 **
 */
 

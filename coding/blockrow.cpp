@@ -43,7 +43,7 @@
 ** This class represents one row of quantized data of coefficients, i.e. one
 ** row of 8x8 blocks.
 **
-** $Id: blockrow.cpp,v 1.7 2014/09/30 08:33:16 thor Exp $
+** $Id: blockrow.cpp,v 1.8 2022/06/14 06:18:30 thor Exp $
 **
 */
 

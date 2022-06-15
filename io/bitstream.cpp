@@ -39,10 +39,10 @@
 
 *************************************************************************/
 /*
-** This class allows one to read individual bits from a stream of bytes.
+** This class allows to read individual bits from a stream of bytes.
 ** This class implements the bytestuffing as required.
 **
-** $Id: bitstream.cpp,v 1.8 2014/11/12 14:16:17 thor Exp $
+** $Id: bitstream.cpp,v 1.9 2022/06/14 06:18:30 thor Exp $
 **
 */
 

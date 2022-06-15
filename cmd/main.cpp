@@ -44,7 +44,7 @@
 ** It is here to serve as an entry point for the command line image
 ** compressor.
 **
-** $Id: main.cpp,v 1.219 2021/11/15 08:59:59 thor Exp $
+** $Id: main.cpp,v 1.220 2022/06/14 06:18:30 thor Exp $
 **
 */
 

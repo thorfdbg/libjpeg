@@ -46,7 +46,7 @@
 ** downsampling filter for the hierarchical mode. This class does not
 ** implement a color transformer or a upsampling filter (in the usual sense)
 **
-** $Id: blocklineadapter.cpp,v 1.26 2017/08/17 13:24:01 thor Exp $
+** $Id: blocklineadapter.cpp,v 1.27 2022/06/14 06:18:30 thor Exp $
 **
 */
 

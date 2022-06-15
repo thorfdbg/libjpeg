@@ -509,7 +509,7 @@ void BlockBitmapRequester::AdvanceQRows(void)
   // Advance the quantized rows for the non-subsampled components,
   // downsampled components will be advanced later.
   for(i = 0;i < m_ucCount;i++) {
-    m_pulReadyLines[i]    += 8; // somewhere in the buffer.
+    m_pulReadyLines[i]    += 8; // somehwere in the buffer.
     if (m_ppDownsampler[i] == NULL) { 
       // Residual coding should always have downsamplers that act as
       // image buffers.

@@ -41,7 +41,7 @@
 /*
 ** Several helper functions that are related to native IO of pixel values
 **
-** $Id: iohelpers.hpp,v 1.8 2021/11/15 08:59:59 thor Exp $
+** $Id: iohelpers.hpp,v 1.9 2022/06/15 06:03:09 thor Exp $
 **
 */
 
@@ -81,7 +81,7 @@ double inline HalfToDouble(UWORD h)
 UWORD inline DoubleToHalf(double v)
 {
   bool sign = (v < 0.0)?(true):(false);
-  int  exponent;
+  int  exponent = 0; // Silence the compiler
   int  mantissa;
 
   if (v < 0.0) v = -v;

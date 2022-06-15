@@ -42,7 +42,7 @@
 ** This box keeps an inverse tone mapping curve, as required for the
 ** R and L transformations.
 **
-** $Id: inversetonemappingbox.cpp,v 1.23 2015/06/27 09:52:29 thor Exp $
+** $Id: inversetonemappingbox.cpp,v 1.24 2022/06/14 06:18:30 thor Exp $
 **
 */
 
@@ -247,7 +247,7 @@ const LONG *InverseToneMappingBox::InverseScaledTableOf(UBYTE dctbits,UBYTE spat
     // Nnot guaranteed that the mapping is surjective onto the output
     // range. There is nothing that says how to handle this case. We just define
     // "undefined" outputs to zero, and try our best to continue the missing parts
-    // continuously along the output range.
+    // continuously along the output range. 
     memset(m_plInverseMapping,0,(1 << (spatialbits + spatialfract)) * sizeof(LONG));
     //
     // Loop over positive coefficients.

@@ -42,7 +42,7 @@
  * Definition of how to request a given rectangle for display,
  * for load or for checking for a necessary update.
  * 
- * $Id: rectanglerequest.cpp,v 1.15 2017/11/28 13:08:06 thor Exp $
+ * $Id: rectanglerequest.cpp,v 1.16 2022/06/14 06:18:30 thor Exp $
  *
  */
 
@@ -193,35 +193,6 @@ bool RectangleRequest::Contains(const struct RectangleRequest *sub) const
   
   if (sub->rr_usLastComponent < rr_usLastComponent)
     return false;
-
-  /*
-  ** currently disabled, doesn't make much sense
-  ** here...
-  // Layers must be equal. If sub would request less layers
-  // than the larger, the difference would be visible. Same
-  // if the sub rectangle requests a deeper layer.
-  if (sub->rr_usUpToLayer != rr_usUpToLayer)
-    return false;
-
-  // If the thumnail size of the sub request is smaller than
-  // that of the supposed to be parent, then the sub request
-  // requests more code blocks than my rectangle and we must
-  // issue it.
-  if (sub->rr_ucThumbSize < rr_ucThumbSize)
-    return false;
-
-  if (sub->rr_ucZThumbSize < rr_ucZThumbSize)
-    return false;
-  **
-  **
-  */
-
-  /*
-  // If the sub-request checks for dirty but the parent does
-  // not, the sub request is not superfluous either.
-  if (sub->rr_ucUpsampling == rr_ucUpsampling)
-    return false;
-  */
 
   // Otherwise, the sub request is truly superfluous
   // and need not to be issued again.

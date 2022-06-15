@@ -42,7 +42,7 @@
 **
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.cpp,v 1.43 2020/08/31 07:50:43 thor Exp $
+** $Id: refinementscan.cpp,v 1.44 2022/06/14 06:18:30 thor Exp $
 **
 */
 

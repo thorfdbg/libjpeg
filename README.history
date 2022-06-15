@@ -220,10 +220,11 @@ compression efficiency, and a wrong computation in the residual bits.
 
 Release 0.92:
 
-This release improves the computation of the LDR to HDR inverse TMO computation for
-profile C and gains by that sometimes up to 2dB in PSNR. It also provides a "-sp"
-command line switch to use separate tables, one per component. This may
-help in case the image contains some extreme colors.
+This release improves the computation of the LDR to HDR inverse TMO
+computation for profile C and gains by that sometimes up to 2dB in
+PSNR. It also provides a "-sp" command line switch to use separate
+tables, one per component. This may help in case the image contains
+some extreme colors.
 
 -------------------------------------------------------------------------------------
 

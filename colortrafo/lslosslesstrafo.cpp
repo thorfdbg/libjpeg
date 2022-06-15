@@ -41,7 +41,7 @@
 /*
 ** This file provides the transformation from RGB to YCbCr
 **
-** $Id: lslosslesstrafo.cpp,v 1.23 2020/04/08 10:05:41 thor Exp $
+** $Id: lslosslesstrafo.cpp,v 1.24 2022/06/14 06:18:30 thor Exp $
 **
 */
 

@@ -43,7 +43,7 @@
 ** R and L transformations. This is the version that takes floating
 ** point values.
 **
-** $Id: floattonemappingbox.cpp,v 1.6 2015/10/29 08:07:50 thor Exp $
+** $Id: floattonemappingbox.cpp,v 1.7 2022/06/14 06:18:30 thor Exp $
 **
 */
 
@@ -255,7 +255,7 @@ const LONG *FloatToneMappingBox::InverseScaledTableOf(UBYTE dctbits,UBYTE spatia
     // Not guaranteed that the mapping is surjective onto the output
     // range. There is nothing that says how to handle this case. We just define
     // "undefined" outputs to zero, and try our best to continue the missing parts
-    // continuously along the output range.
+    // continuously along the output range. 
     memset(m_plInverseMapping,0,(1 << (spatialbits + spatialfract)) * sizeof(LONG));
     //
     // Loop over positive coefficients.
