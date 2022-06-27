@@ -43,7 +43,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.74 2022/06/14 06:18:30 thor Exp $
+** $Id: image.cpp,v 1.75 2022/06/27 05:32:10 thor Exp $
 **
 */
 
@@ -618,16 +618,18 @@ class Frame *Image::ParseFrameHeader(class ByteStream *io)
   LONG marker;
   
   do {
-    marker = io->GetWord();
+    marker = io->PeekWord();
     switch(marker) {
     case ByteStream::EOF:
       JPG_THROW(MALFORMED_STREAM,"Image::ParseFrameHeader","unexpected EOF while parsing the image");
       break;
     case 0xffd9: // EOI
-      return NULL;
+      JPG_THROW(MALFORMED_STREAM,"Image::ParseFrameHeader","unexpected EOI marker while parsing the image");
+      break;
     default:
       // Collect the frame type.
-      type = FrameMarkerToScanType(marker);
+      marker = io->GetWord();
+      type   = FrameMarkerToScanType(marker);
       //
       // For non-differential-types: Just create the dimension/frame
       if (m_pChecksum && m_pMaster == NULL && m_pParent == NULL && TablesOf()->ChecksumTables()) {
@@ -665,11 +667,13 @@ class Frame *Image::StartParseFrame(class ByteStream *io)
   if (m_bReceivedFrameHeader == false) {
     assert(m_pTables);
     m_pCurrent = ParseFrameHeader(io);
-    // Create the checksum if it is needed.
-    CreateChecksumWhenNeeded(m_pChecksum);
-    //
-    // Is now there.
-    m_bReceivedFrameHeader = true;
+    if (m_pCurrent) {
+      // Create the checksum if it is needed.
+      CreateChecksumWhenNeeded(m_pChecksum);
+      //
+      // Is now there.
+      m_bReceivedFrameHeader = true;
+    }
   }
   //
   // Otherwise, the frame header has already been parsed off and need not to be
