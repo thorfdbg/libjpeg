@@ -39,10 +39,10 @@
 
 *************************************************************************/
 /*
-** This class keeps all the coding tables, huffman, AC table, quantization
+** This class keeps all the coding tables, Huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.209 2022/06/14 06:18:30 thor Exp $
+** $Id: tables.cpp,v 1.211 2022/08/03 08:58:01 thor Exp $
 **
 */
 
@@ -1326,6 +1326,19 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,
        m_bVerticalExpansion   = (evv)?true:false;
      }
      break;
+   case 0xffc8: // The JPEG Extensions marker
+     {
+       LONG len;
+       
+       io->GetWord(); // remove the marker
+       len = io->GetWord();
+       if (len < 2)
+         JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
+       //
+       // Just skip the contents. For now. The JPEG Extensions marker is not in use.
+       io->SkipBytes(len - 2);
+     }
+     break;
    case 0xffc0:
    case 0xffc1:
    case 0xffc2:
@@ -1333,7 +1346,6 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,
    case 0xffc5:
    case 0xffc6:
    case 0xffc7:
-   case 0xffc8:
    case 0xffc9:
    case 0xffca:
    case 0xffcb:
@@ -1411,7 +1423,7 @@ class HuffmanTemplate *Tables::FindDCHuffmanTable(UBYTE idx,ScanType type,
   class HuffmanTemplate *t;
 
   if (m_pHuffman == NULL)
-    JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindDCHuffmanTable","DHT marker missing for huffman encoded scan");
+    JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindDCHuffmanTable","DHT marker missing for Huffman encoded scan");
 
   t = m_pHuffman->DCTemplateOf(idx,type,depth,hidden,scan);
   if (t == NULL)
@@ -1428,7 +1440,7 @@ class HuffmanTemplate *Tables::FindACHuffmanTable(UBYTE idx,ScanType type,
   class HuffmanTemplate *t;
 
   if (m_pHuffman == NULL)
-    JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindACHuffmanTable","DHT marker missing for huffman encoded scan");
+    JPG_THROW(OBJECT_DOESNT_EXIST,"Tables::FindACHuffmanTable","DHT marker missing for Huffman encoded scan");
 
   t = m_pHuffman->ACTemplateOf(idx,type,depth,hidden,scan);
   if (t == NULL)

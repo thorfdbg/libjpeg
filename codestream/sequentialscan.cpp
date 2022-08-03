@@ -43,7 +43,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.cpp,v 1.92 2022/06/15 06:03:13 thor Exp $
+** $Id: sequentialscan.cpp,v 1.93 2022/08/03 08:49:34 thor Exp $
 **
 */
 
@@ -115,12 +115,18 @@ void SequentialScan::StartParseScan(class ByteStream *io,class Checksum *chk,cla
   for(i = 0;i < m_ucCount;i++) {
     if (m_ucScanStart == 0) {
       m_pDCDecoder[i]  = m_pScan->DCHuffmanDecoderOf(i);
+      if (m_pDCDecoder[i] == NULL)
+        JPG_THROW(MALFORMED_STREAM,"SequentialScan::StartParseScan",
+                  "Huffman decoder not specified for all components included in scan");
     } else {
       m_pDCDecoder[i]  = NULL; // not required, is AC only.
     }
     if (m_ucScanStop) {
       m_pACDecoder[i]  = m_pScan->ACHuffmanDecoderOf(i);
-    } else {
+      if (m_pACDecoder[i] == NULL)
+        JPG_THROW(MALFORMED_STREAM,"SequentialScan::StartParseScan",
+                  "Huffman decoder not specified for all components included in scan");
+   } else {
       m_pACDecoder[i]  = NULL; // not required, is DC only.
     }
     m_lDC[i]           = 0; 

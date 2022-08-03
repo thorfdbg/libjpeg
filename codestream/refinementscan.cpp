@@ -42,7 +42,7 @@
 **
 ** A subsequent (refinement) scan of a progressive scan.
 **
-** $Id: refinementscan.cpp,v 1.44 2022/06/14 06:18:30 thor Exp $
+** $Id: refinementscan.cpp,v 1.45 2022/08/03 08:49:34 thor Exp $
 **
 */
 
@@ -103,6 +103,10 @@ void RefinementScan::StartParseScan(class ByteStream *io,class Checksum *chk,cla
   for(i = 0;i < m_ucCount;i++) {
     if (m_ucScanStop || m_bResidual) {
       m_pACDecoder[i]  = m_pScan->ACHuffmanDecoderOf(i);
+      if (m_pACDecoder[i] == NULL)
+        JPG_THROW(MALFORMED_STREAM,"SequentialScan::StartParseScan",
+                  "Huffman decoder not specified for all components included in scan");
+
     } else {
       m_pACDecoder[i]  = NULL; // not required, is DC only.
     }

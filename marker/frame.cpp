@@ -42,7 +42,7 @@
 **
 ** This class represents a single frame and the frame dimensions.
 **
-** $Id: frame.cpp,v 1.133 2022/06/14 06:18:30 thor Exp $
+** $Id: frame.cpp,v 1.134 2022/08/03 12:19:58 thor Exp $
 **
 */
 
@@ -110,6 +110,7 @@ Frame::~Frame(void)
 /// Frame::ParseMarker
 void Frame::ParseMarker(class ByteStream *io)
 {
+  class Frame *first = ImageOf()->FirstFrameOf();
   LONG len = io->GetWord();
   LONG data;
   int i;
@@ -203,6 +204,11 @@ void Frame::ParseMarker(class ByteStream *io)
   //
   // Now complete the components: Subsampling requires maximum.
   for(i = 0;i < m_ucDepth;i++) {
+    // Ensure the MCU dimensions are consistent throughout the hierarchical process.
+    // Note that "first" may, in fact, be identical to this very class.
+    if (first->ComponentOf(i)->MCUWidthOf()  != m_ppComponent[i]->MCUWidthOf() ||
+        first->ComponentOf(i)->MCUHeightOf() != m_ppComponent[i]->MCUHeightOf())
+      JPG_THROW(MALFORMED_STREAM,"Frame::ParseMarker","MCU dimensions are not consistent throughout the process, cannot decode");
     m_ppComponent[i]->SetSubsampling(m_ucMaxMCUWidth,m_ucMaxMCUHeight);
   }
 }

@@ -42,7 +42,7 @@
 **
 ** Represents the scan including the scan header.
 **
-** $Id: losslessscan.cpp,v 1.51 2022/05/23 05:56:51 thor Exp $
+** $Id: losslessscan.cpp,v 1.52 2022/08/03 08:49:34 thor Exp $
 **
 */
 
@@ -112,6 +112,9 @@ void LosslessScan::StartParseScan(class ByteStream *io,class Checksum *chk,class
   
   for(i = 0;i < m_ucCount;i++) {
     m_pDCDecoder[i]       = m_pScan->DCHuffmanDecoderOf(i);
+    if (m_pDCDecoder[i] == NULL)
+      JPG_THROW(MALFORMED_STREAM,"LosslessScan::StartParseScan",
+                "Huffman decoder not specified for all components included in scan");
   }
   
   assert(ctrl->isLineBased());
