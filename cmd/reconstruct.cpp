@@ -43,7 +43,7 @@
 ** command line interface. It doesn't do much except
 ** calling libjpeg.
 **
-** $Id: reconstruct.cpp,v 1.9 2022/05/30 10:19:53 thor Exp $
+** $Id: reconstruct.cpp,v 1.10 2022/08/05 11:25:24 thor Exp $
 **
 */
 
@@ -172,8 +172,12 @@ void Reconstruct(const char *infile,const char *outfile,
             pixeltype     = CTYP_FLOAT;
           }
 
-          UBYTE alphabytesperpixel = sizeof(UBYTE);
-          UBYTE alphapixeltype     = CTYP_UBYTE; 
+          UBYTE alphabytesperpixel = 0;
+          UBYTE alphapixeltype     = 0;
+          if (aprec > 0) {
+            alphabytesperpixel = sizeof(UBYTE);
+            alphapixeltype     = CTYP_UBYTE;
+          }
           if (aprec > 8) {
             alphabytesperpixel = sizeof(UWORD);
             alphapixeltype     = CTYP_UWORD;
@@ -277,6 +281,7 @@ void Reconstruct(const char *infile,const char *outfile,
                     JPG_ValueTag(JPGTAG_MATRIX_LTRAFO,colortrafo),
                     JPG_ValueTag(JPGTAG_DECODER_MINCOMPONENT,comp),
                     JPG_ValueTag(JPGTAG_DECODER_MAXCOMPONENT,comp),
+                    JPG_ValueTag(JPGTAG_DECODER_INCLUDE_ALPHA,bmm.bmm_pAlphaTarget?true:false),
                     JPG_EndTag
                   };
                   
@@ -308,6 +313,7 @@ void Reconstruct(const char *infile,const char *outfile,
                   JPG_ValueTag(JPGTAG_DECODER_MAXY,y+7),
                   JPG_ValueTag(JPGTAG_DECODER_UPSAMPLE,upsample),
                   JPG_ValueTag(JPGTAG_MATRIX_LTRAFO,colortrafo),
+                  JPG_ValueTag(JPGTAG_DECODER_INCLUDE_ALPHA,bmm.bmm_pAlphaTarget?true:false),
                   JPG_EndTag
                 };
                 fprintf(bmm.bmm_pTarget,"P%c\n%d %d\n%d\n",

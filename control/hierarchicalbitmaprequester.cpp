@@ -45,7 +45,7 @@
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.44 2022/06/14 06:18:30 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.45 2022/08/05 11:25:28 thor Exp $
 **
 */
 
@@ -706,6 +706,9 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgre
 #if ACCUSOFT_CODE
   class ColorTrafo *ctrafo = ColorTrafoOf(false,!rr->rr_bColorTrafo);
   UBYTE i;
+
+  if (ctrafo == NULL)
+    return;
   
   if (m_bSubsampling && rr->rr_bUpsampling) { 
     for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {

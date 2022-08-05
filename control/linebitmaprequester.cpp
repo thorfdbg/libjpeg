@@ -43,7 +43,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: linebitmaprequester.cpp,v 1.38 2022/06/14 06:18:30 thor Exp $
+** $Id: linebitmaprequester.cpp,v 1.39 2022/08/05 11:25:28 thor Exp $
 **
 */
 
@@ -443,6 +443,9 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgregion,con
   class ColorTrafo *ctrafo = ColorTrafoOf(false,!rr->rr_bColorTrafo);
   UBYTE i;
 
+  if (ctrafo == NULL)
+    return;
+  
   if (m_bSubsampling && rr->rr_bUpsampling) { 
     for(i = rr->rr_usFirstComponent;i <= rr->rr_usLastComponent;i++) {
       class Component *comp = m_pFrame->ComponentOf(i);

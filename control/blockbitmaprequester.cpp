@@ -43,7 +43,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: blockbitmaprequester.cpp,v 1.74 2020/08/31 07:50:44 thor Exp $
+** $Id: blockbitmaprequester.cpp,v 1.75 2022/08/05 11:25:28 thor Exp $
 **
 */
 
@@ -1249,6 +1249,9 @@ void BlockBitmapRequester::ReconstructRegion(const RectAngle<LONG> &region,const
 {
   class ColorTrafo *ctrafo = ColorTrafoOf(false,!rr->rr_bColorTrafo);
 
+  if (ctrafo == NULL)
+    return;
+  
   if (m_bSubsampling && rr->rr_bUpsampling) {
     //
     // Feed data into the regular upsampler

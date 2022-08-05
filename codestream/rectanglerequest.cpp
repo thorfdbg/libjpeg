@@ -42,7 +42,7 @@
  * Definition of how to request a given rectangle for display,
  * for load or for checking for a necessary update.
  * 
- * $Id: rectanglerequest.cpp,v 1.16 2022/06/14 06:18:30 thor Exp $
+ * $Id: rectanglerequest.cpp,v 1.17 2022/08/05 11:25:28 thor Exp $
  *
  */
 
@@ -82,7 +82,7 @@ void RectangleRequest::ParseTags(const struct JPG_TagItem *tags,const class Imag
   */
   rr_cPriority          = 0;
   rr_bUpsampling        = true;
-  rr_bIncludeAlpha      = true;
+  rr_bIncludeAlpha      = false;
   rr_bColorTrafo        = true;
   //
   // Changed a bit the reaction on coordinates: We no longer throw

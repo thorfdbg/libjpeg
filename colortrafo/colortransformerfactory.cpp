@@ -42,7 +42,7 @@
 ** This class builds the proper color transformer from the information
 ** in the MergingSpecBox
 **
-** $Id: colortransformerfactory.cpp,v 1.78 2022/06/14 06:18:30 thor Exp $
+** $Id: colortransformerfactory.cpp,v 1.79 2022/08/05 11:25:28 thor Exp $
 **
 */
 
@@ -219,6 +219,9 @@ class ColorTrafo *ColorTransformerFactory::BuildColorTransformer(class Frame *fr
   if (m_pTrafo)
     return m_pTrafo;
 
+  if (etype == 0)
+    return NULL;
+  
   ltrafo = m_pTables->LTrafoTypeOf(count);
   rtrafo = m_pTables->RTrafoTypeOf(count);
   ctrafo = m_pTables->CTrafoTypeOf(count);
