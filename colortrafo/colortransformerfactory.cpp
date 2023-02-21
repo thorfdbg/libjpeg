@@ -42,7 +42,7 @@
 ** This class builds the proper color transformer from the information
 ** in the MergingSpecBox
 **
-** $Id: colortransformerfactory.cpp,v 1.79 2022/08/05 11:25:28 thor Exp $
+** $Id: colortransformerfactory.cpp,v 1.80 2023/02/21 10:17:46 thor Exp $
 **
 */
 
@@ -65,6 +65,7 @@
 #include "colortrafo/lslosslesstrafo.hpp"
 #include "colortrafo/multiplicationtrafo.hpp"
 #include "colortrafo/colortransformerfactory.hpp"
+#include "marker/lscolortrafo.hpp"
 #include "marker/frame.hpp"
 #define FIX_BITS ColorTrafo::FIX_BITS
 ///
@@ -630,6 +631,17 @@ class ColorTrafo *ColorTransformerFactory::BuildLSTransformation(UBYTE type,
       }
       break;
     case 3:
+      const class LSColorTrafo *marker = m_pTables->LSColorTrafoOf();
+      if (marker) {
+        if (marker->DepthOf() != 3) {
+          JPG_THROW(MALFORMED_STREAM,"ColorTransformerFactory::BuildLSTransformation",
+                    "JPEG LS color transformation component count does not match frame depth");
+          break;
+        }
+      } else {
+        assert(!"JPEG LS trafo indicated, but not included in the tables");
+        break;
+      }
       switch(type) {
       case CTYP_UBYTE:
         if (outmax > MAX_UBYTE) {

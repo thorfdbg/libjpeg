@@ -1,7 +1,7 @@
 #! make
 #######################################################################
 ##
-## $Id: Makefile,v 1.17 2022/03/07 15:54:33 thor Exp $
+## $Id: Makefile,v 1.18 2023/02/21 09:17:28 thor Exp $
 ##
 #######################################################################
 ## Makefile for the jpeg project,
@@ -358,7 +358,7 @@ ITUDistrib.zip	:	doc configure autoconfig.h.in
 	@ touch autoconfig.h.in
 	@ sleep 2
 	@ touch configure
-	@ rm *~
+	@ rm -f *~
 	@ $(MAKE) --no-print-directory $(DIRLIBS) TARGET="ituzip"
 	@ mv README.license README.license.back
 	@ cp README.license.itu README.license

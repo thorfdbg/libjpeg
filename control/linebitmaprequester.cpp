@@ -43,7 +43,7 @@
 ** This class pulls blocks from the frame and reconstructs from those
 ** quantized block lines or encodes from them.
 **
-** $Id: linebitmaprequester.cpp,v 1.39 2022/08/05 11:25:28 thor Exp $
+** $Id: linebitmaprequester.cpp,v 1.40 2023/02/21 09:17:33 thor Exp $
 **
 */
 
@@ -511,8 +511,11 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgregion,con
             r.ra_MaxX = orgregion.ra_MaxX;
           
           for(i = 0;i < m_ucCount;i++) {
+            // ExtractBitMap must go here, noting that the requested components
+            // correspond to transformed components in YUV space, not to components
+            // in RGB space.
+            ExtractBitmap(m_ppTempIBM[i],r,i);
             if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-              ExtractBitmap(m_ppTempIBM[i],r,i);
               if (m_ppUpsampler[i]) {
                 // Upsampled case, take from the upsampler, transform
                 // into the color buffer.
@@ -563,8 +566,8 @@ void LineBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgregion,con
 
         for(i = 0;i < m_ucCount;i++) {      
           LONG *dst = m_ppCTemp[i];
+          ExtractBitmap(m_ppTempIBM[i],r,i);
           if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-            ExtractBitmap(m_ppTempIBM[i],r,i);
             if (*m_pppImage[i]) {
               FetchRegion(x,*m_pppImage[i],dst);
             } else {

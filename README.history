@@ -569,3 +569,18 @@ The code now also checks the consistency of the MCU sizes in the
 hierarchical process and fails if they differ across levels.
 
 --------------------------------------------------------------------------
+
+Release 1.65:
+
+The components requested through DisplayRectangle() are always codestream
+component (i.e. Y, U, V) and not RGB components in the target image.
+This led to some confusion and lack of initialization of bitmap descriptors
+if less components were requested than present in the image.
+The large-range scan did not properly check whether the DCT precision exceeds
+the range decodable by the Huffman encoder. It now aborts faithfully if such
+coefficients are detected.
+The code did not check if the number of components present in a JPEG LS-2
+transformation are identical to the number of components indicated in the
+frame header. The code now aborts with an error if such a condition is
+detected.
+

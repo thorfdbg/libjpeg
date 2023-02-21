@@ -43,7 +43,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.cpp,v 1.93 2022/08/03 08:49:34 thor Exp $
+** $Id: sequentialscan.cpp,v 1.94 2023/02/21 10:17:41 thor Exp $
 **
 */
 
@@ -740,6 +740,11 @@ void SequentialScan::DecodeBlock(LONG *block,
               // take up the run.
               s = r + 15;          // This maps 16 into 16, 32 into 17 and so on.
               r = m_Stream.Get(4); // The run is decoded separately, without using Huffman.
+              // Check whether this is too large. As we have only 16 bit output at most,
+              // we should get away with most 16 here.
+              if (s >= 24)
+                JPG_THROW(NOT_IMPLEMENTED,"SequentialScan::DecodeBlock",
+                          "AC coefficient too large, cannot decode");
               // Continues with the regular case.
             } else {
               JPG_THROW(MALFORMED_STREAM,"SequentialScan::DecodeBlock",

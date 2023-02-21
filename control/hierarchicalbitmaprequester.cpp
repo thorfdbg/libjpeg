@@ -45,7 +45,7 @@
 ** decoding. It also keeps the top-level color transformer and the
 ** toplevel subsampling expander.
 **
-** $Id: hierarchicalbitmaprequester.cpp,v 1.45 2022/08/05 11:25:28 thor Exp $
+** $Id: hierarchicalbitmaprequester.cpp,v 1.46 2023/02/21 09:17:33 thor Exp $
 **
 */
 
@@ -775,8 +775,10 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgre
             r.ra_MaxX = orgregion.ra_MaxX;
           
           for(i = 0;i < m_ucCount;i++) {
+            // Component extraction must go here as the requested components
+            // refer to components in YUV space, not in RGB space.
+            ExtractBitmap(m_ppTempIBM[i],r,i);
             if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-              ExtractBitmap(m_ppTempIBM[i],r,i);
               if (m_ppUpsampler[i]) {
                 // Upsampled case, take from the upsampler, transform
                 // into the color buffer.
@@ -830,8 +832,8 @@ void HierarchicalBitmapRequester::ReconstructRegion(const RectAngle<LONG> &orgre
 
         for(i = 0;i < m_ucCount;i++) {      
           LONG *dst = m_ppCTemp[i];
+          ExtractBitmap(m_ppTempIBM[i],r,i);
           if (i >= rr->rr_usFirstComponent && i <= rr->rr_usLastComponent) {
-            ExtractBitmap(m_ppTempIBM[i],r,i);
             FetchRegion(x,m_ppDecodingMCU + (i << 3),dst);
           } else {
             memset(dst,0,sizeof(LONG) * 64);
