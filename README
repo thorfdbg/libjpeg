@@ -465,12 +465,50 @@ hierarchical process and fails if they differ across levels.
 
 --------------------------------------------------------------------------
 
+Release 1.65:
+
+The components requested through DisplayRectangle() are always codestream
+component (i.e. Y, U, V) and not RGB components in the target image.
+This led to some confusion and lack of initialization of bitmap descriptors
+if less components were requested than present in the image.
+The large-range scan did not properly check whether the DCT precision exceeds
+the range decodable by the Huffman encoder. It now aborts faithfully if such
+coefficients are detected.
+The code did not check if the number of components present in a JPEG LS-2
+transformation are identical to the number of components indicated in the
+frame header. The code now aborts with an error if such a condition is
+detected.
+
+--------------------------------------------------------------------------
+
+Release 1.66:
+
+Previous releases had no means to signal an error from within the BitMapHook.
+Now the return code of the BitMapHook call back function, if non-zero, is
+used as an error, and such an error is then reported upstream to the caller.
+
+Note that the supplied bitmap hook in the "cmd" directory is only an example
+and does not validate inputs. The encoder, in particular, operates on a
+"garbadge-in garbadge-out" basis. If the samples in the bitmap hook exceed
+the range indicated to the library, bad things will happen. That is, if the
+encoder is supposed to operate within an unknown environment with unknown
+input data, input validation is required within the bitmap hook.
+
+THE SAMPLE CODE DOES NOT ATTEMPT TO VALIDATE INPUT
+
+Similar restrictions applies to the "PNM" helper code (or any code) in the
+cmd directory. It does not attempt to validate input. At least some
+minimal attempts to ensure that input files are valid is now in place, but
+real life deployment of the code should contain more checks.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 
 Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart and Fraunhofer IIS for sponsoring this project.
 
-Thomas Richter, February 2022
+Thomas Richter, July 2023
 
--------------------------------------------------------------------------------------
+---------------------------------------------------------------------------

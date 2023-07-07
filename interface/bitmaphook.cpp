@@ -41,7 +41,7 @@
 /*
  * Member functions of the bitmap hook class
  * 
- * $Id: bitmaphook.cpp,v 1.10 2015/03/16 08:55:33 thor Exp $
+ * $Id: bitmaphook.cpp,v 1.11 2023/07/07 12:19:54 thor Exp $
  *
  */
 
@@ -192,8 +192,11 @@ void BitMapHook::Request(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pi
   tags[22].ti_Data.ti_lData = 0;
   //
   // Now call the hook if it exists
-  if (hook)
-    hook->CallLong(tags);
+  if (hook) {
+    LONG result = hook->CallLong(tags);
+    if (result < 0)
+      comp->EnvironOf()->Throw(result,"BitmapHook::Request",__LINE__,__FILE__,"BitMapHook signalled an error");
+  }
 
   // and now, finally, scan what we got back
   ibm->ibm_pData           = tags[1].ti_Data.ti_pPtr;
@@ -235,8 +238,12 @@ void BitMapHook::Release(struct JPG_Hook *hook,struct JPG_TagItem *tags,UBYTE pi
     tags[20].ti_Data.ti_lData = (rect.ra_MaxY + comp->SubYOf() + 1 - 1) / comp->SubYOf() - 1;
     tags[21].ti_Data.ti_lData = 0;
     tags[22].ti_Data.ti_lData = 0;
-    
-    hook->CallLong(tags);
+
+    if (hook) {
+      LONG result = hook->CallLong(tags);
+      if (result < 0)
+        comp->EnvironOf()->Throw(result,"BitmapHook::Release",__LINE__,__FILE__,"BitMapHook signalled an error");
+    }
   }
 }
 ///

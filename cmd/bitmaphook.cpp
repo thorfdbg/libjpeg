@@ -42,7 +42,7 @@
 ** This header provides the interface for the bitmap hook that 
 ** delivers the bitmap data to the core library.
 **
-** $Id: bitmaphook.cpp,v 1.16 2022/02/28 11:11:32 thor Exp $
+** $Id: bitmaphook.cpp,v 1.17 2023/07/07 12:19:11 thor Exp $
 **
 */
 
@@ -160,8 +160,10 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
           if (bmm->bmm_pLDRSource && bmm->bmm_pLDRMemPtr) {
             // A designated LDR source is available. Read from here rather than using
             // our primitive tone mapper.
-            fread(bmm->bmm_pLDRMemPtr,sizeof(UBYTE),width * height * bmm->bmm_usDepth,
-                  bmm->bmm_pLDRSource);
+            ssize_t cnt = fread(bmm->bmm_pLDRMemPtr,sizeof(UBYTE),width * height * bmm->bmm_usDepth,
+                                bmm->bmm_pLDRSource);
+            if (cnt != width * height * bmm->bmm_usDepth)
+              return JPGERR_UNEXPECTED_EOF;
           }
           //
           if (bmm->bmm_pSource) {
@@ -203,8 +205,10 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                 } while(--count);
               }
             } else {
-              fread(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-                    width * height * bmm->bmm_usDepth,bmm->bmm_pSource);
+              ssize_t cnt = fread(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
+                                  width * height * bmm->bmm_usDepth,bmm->bmm_pSource);
+              if (cnt != width * height * bmm->bmm_usDepth)
+                return JPGERR_UNEXPECTED_EOF;
 #ifdef JPG_LIL_ENDIAN
               // On those bloddy little endian machines, an endian swap is necessary
               // as PNM is big-endian.
@@ -440,8 +444,10 @@ JPG_LONG AlphaHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                 } while(--count);
               }
             } else {
-              fread(bmm->bmm_pAlphaPtr,bmm->bmm_ucAlphaType & CTYP_SIZE_MASK,
-                    bmm->bmm_ulWidth * height,bmm->bmm_pAlphaSource);
+              ssize_t cnt = fread(bmm->bmm_pAlphaPtr,bmm->bmm_ucAlphaType & CTYP_SIZE_MASK,
+                                  bmm->bmm_ulWidth * height,bmm->bmm_pAlphaSource);
+              if (cnt != bmm->bmm_ulWidth * height)
+                return JPGERR_UNEXPECTED_EOF;
 #ifdef JPG_LIL_ENDIAN
               // On those bloddy little endian machines, an endian swap is necessary
               // as PNM is big-endian.
