@@ -42,7 +42,7 @@
 ** This header provides the interface for the bitmap hook that 
 ** delivers the bitmap data to the core library.
 **
-** $Id: bitmaphook.cpp,v 1.17 2023/07/07 12:19:11 thor Exp $
+** $Id: bitmaphook.cpp,v 1.18 2024/01/15 06:47:15 thor Exp $
 **
 */
 
@@ -160,8 +160,8 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
           if (bmm->bmm_pLDRSource && bmm->bmm_pLDRMemPtr) {
             // A designated LDR source is available. Read from here rather than using
             // our primitive tone mapper.
-            ssize_t cnt = fread(bmm->bmm_pLDRMemPtr,sizeof(UBYTE),width * height * bmm->bmm_usDepth,
-                                bmm->bmm_pLDRSource);
+            size_t cnt = fread(bmm->bmm_pLDRMemPtr,sizeof(UBYTE),width * height * bmm->bmm_usDepth,
+                               bmm->bmm_pLDRSource);
             if (cnt != width * height * bmm->bmm_usDepth)
               return JPGERR_UNEXPECTED_EOF;
           }
@@ -205,8 +205,8 @@ JPG_LONG BitmapHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                 } while(--count);
               }
             } else {
-              ssize_t cnt = fread(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
-                                  width * height * bmm->bmm_usDepth,bmm->bmm_pSource);
+              size_t cnt = fread(bmm->bmm_pMemPtr,bmm->bmm_ucPixelType & CTYP_SIZE_MASK,
+                                 width * height * bmm->bmm_usDepth,bmm->bmm_pSource);
               if (cnt != width * height * bmm->bmm_usDepth)
                 return JPGERR_UNEXPECTED_EOF;
 #ifdef JPG_LIL_ENDIAN
@@ -444,8 +444,8 @@ JPG_LONG AlphaHook(struct JPG_Hook *hook, struct JPG_TagItem *tags)
                 } while(--count);
               }
             } else {
-              ssize_t cnt = fread(bmm->bmm_pAlphaPtr,bmm->bmm_ucAlphaType & CTYP_SIZE_MASK,
-                                  bmm->bmm_ulWidth * height,bmm->bmm_pAlphaSource);
+              size_t cnt = fread(bmm->bmm_pAlphaPtr,bmm->bmm_ucAlphaType & CTYP_SIZE_MASK,
+                                 bmm->bmm_ulWidth * height,bmm->bmm_pAlphaSource);
               if (cnt != bmm->bmm_ulWidth * height)
                 return JPGERR_UNEXPECTED_EOF;
 #ifdef JPG_LIL_ENDIAN
