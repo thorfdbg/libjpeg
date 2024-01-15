@@ -43,7 +43,7 @@
 ** command line interface. It doesn't do much except
 ** calling libjpeg.
 **
-** $Id: reconstruct.cpp,v 1.10 2022/08/05 11:25:24 thor Exp $
+** $Id: reconstruct.cpp,v 1.11 2024/01/15 06:38:22 thor Exp $
 **
 */
 
@@ -119,7 +119,10 @@ void Reconstruct(const char *infile,const char *outfile,
       tags->SetTagData(JPGTAG_DECODER_STOP,0);
 #endif      
       if (ok && jpeg->Read(tags)) {
-        UBYTE subx[4],suby[4];
+        // Note that this is really lazy. In reality, the code
+        // should first obtain the number of components and then
+        // allocate the subsampling array.
+        UBYTE subx[256],suby[256];
         struct JPG_TagItem atags[] = {
           JPG_ValueTag(JPGTAG_IMAGE_PRECISION,0),
           JPG_ValueTag(JPGTAG_IMAGE_IS_FLOAT,false),
