@@ -42,7 +42,7 @@
  * Base class for all IO support functions, the abstract ByteStream
  * class.
  *
- * $Id: bytestream.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
+ * $Id: bytestream.cpp,v 1.9 2024/03/25 18:42:33 thor Exp $
  *
  */
 
@@ -51,6 +51,7 @@
 #include "interface/parameters.hpp"
 #include "interface/tagitem.hpp"
 #include "tools/debug.hpp"
+#include "std/assert.hpp"
 ///
 
 /// ByteStream::Read
@@ -64,6 +65,7 @@ LONG ByteStream::Read(UBYTE *buffer,ULONG size)
     assert(m_pucBufPtr <= m_pucBufEnd);
     
     if (avail) {
+      assert(m_pucBufPtr >= buffer + avail || buffer >= m_pucBufPtr + avail);
       memcpy(buffer,m_pucBufPtr,avail); // copy all data over
       m_pucBufPtr  += avail;         // required for correct fill
       bytesread    += avail;
@@ -83,6 +85,7 @@ LONG ByteStream::Read(UBYTE *buffer,ULONG size)
   // only a partial read from the buffer
   // now is size <= avail, guaranteed.
   if (size) {
+    assert(m_pucBufPtr >= buffer + avail || buffer >= m_pucBufPtr + avail);
     memcpy(buffer,m_pucBufPtr,size);
     m_pucBufPtr  += size;
     // buffer    += size;  // not needed

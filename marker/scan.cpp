@@ -42,7 +42,7 @@
 **
 ** Represents all data in a single scan, and hence is the SOS marker.
 **
-** $Id: scan.cpp,v 1.119 2022/06/14 06:18:30 thor Exp $
+** $Id: scan.cpp,v 1.120 2024/03/25 18:42:33 thor Exp $
 **
 */
 
@@ -919,6 +919,9 @@ void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl 
     case Sequential: 
     case Progressive:
       ParseMarker(io,Progressive);
+      if (m_ucHighBit != m_ucLowBit + 1)
+        JPG_THROW(MALFORMED_STREAM,"Scan::ParseMarker",
+                  "SOS high bit is invalid, hidden refinement must refine by one bit per scan");
       m_pParser = new(m_pEnviron) RefinementScan(m_pFrame,this,
                                                  m_ucScanStart,m_ucScanStop,
                                                  m_ucLowBit,m_ucHighBit,
@@ -928,6 +931,9 @@ void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl 
     case ACProgressive:
 #if ACCUSOFT_CODE
       ParseMarker(io,ACProgressive);
+      if (m_ucHighBit != m_ucLowBit + 1)
+        JPG_THROW(MALFORMED_STREAM,"Scan::StartParseHiddenRefinementScan",
+                  "SOS high bit is invalid, hidden refinement must refine by one bit per scan");
       m_pParser = new(m_pEnviron) ACRefinementScan(m_pFrame,this,
                                                    m_ucScanStart,m_ucScanStop,
                                                    m_ucLowBit,m_ucHighBit,
@@ -943,6 +949,9 @@ void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl 
       // fall through
     case ResidualDCT:
       ParseMarker(io,ResidualProgressive);
+      if (m_ucHighBit != m_ucLowBit + 1)
+        JPG_THROW(MALFORMED_STREAM,"Scan::StartParseHiddenRefinementScan",
+                  "SOS high bit is invalid, hidden refinement must refine by one bit per scan");
       m_pParser  = new(m_pEnviron) RefinementScan(m_pFrame,this,
                                                   m_ucScanStart,m_ucScanStop,
                                                   m_ucLowBit,m_ucHighBit,
@@ -955,6 +964,9 @@ void Scan::StartParseHiddenRefinementScan(class ByteStream *io,class BufferCtrl 
     case ACResidualDCT:
 #if ACCUSOFT_CODE
       ParseMarker(io,ACResidualProgressive);
+      if (m_ucHighBit != m_ucLowBit + 1)
+        JPG_THROW(MALFORMED_STREAM,"Scan::StartParseHiddenRefinementScan",
+                  "SOS high bit is invalid, hidden refinement must refine by one bit per scan");
       m_pParser  = new(m_pEnviron) ACRefinementScan(m_pFrame,this, 
                                                     m_ucScanStart,m_ucScanStop,
                                                     m_ucLowBit,m_ucHighBit,

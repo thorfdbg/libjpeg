@@ -42,7 +42,7 @@
 ** This class keeps the namespaces together and finds boxes according
 ** to the priorities defined in the standard.
 **
-** $Id: namespace.hpp,v 1.4 2014/11/11 09:49:12 thor Exp $
+** $Id: namespace.hpp,v 1.5 2024/03/25 18:42:06 thor Exp $
 **
 */
 
@@ -87,15 +87,22 @@ public:
   // Define the primary lookup namespace.
   void DefinePrimaryLookup(class Box **boxlist)
   {
-    assert(m_ppPrimaryList == NULL);
+    assert(m_ppPrimaryList == NULL || boxlist == m_ppPrimaryList);
     m_ppPrimaryList = boxlist;
   }
   //
   // Define the secondary lookup namespace.
   void DefineSecondaryLookup(class Box **boxlist)
   {
-    assert(m_ppSecondaryList == NULL);
+    assert(m_ppSecondaryList == NULL || boxlist == m_ppSecondaryList);
     m_ppSecondaryList = boxlist;
+  }
+  //
+  // Check whether the primary namespace (aka merging spec box)
+  // is already present.
+  bool hasPrimaryLookup(void) const
+  {
+    return (m_ppPrimaryList != NULL)?true:false;
   }
   //
   // Find the tone mapping box of the given table index, or NULL

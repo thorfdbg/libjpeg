@@ -42,7 +42,7 @@
 ** A couple of generic TMO related functions: Estimate TMO from LDR and HDR
 ** image pair, build a gamma mapping.
 **
-** $Id: tmo.cpp,v 1.19 2022/06/14 06:18:30 thor Exp $
+** $Id: tmo.cpp,v 1.20 2024/03/25 18:42:33 thor Exp $
 **
 */
 
@@ -52,6 +52,7 @@
 #include "std/stdlib.hpp"
 #include "std/string.hpp"
 #include "std/math.hpp"
+#include "std/assert.hpp"
 ///
 
 /// Defines
@@ -70,7 +71,10 @@ void InvertTable(UWORD input[65536],UWORD output[65536],UBYTE inbits,UBYTE outbi
   LONG outmax = (1L << outbits) - 1;
   LONG inmax  = (1L << inbits)  - 1;
   bool lastfilled;
-    
+
+  assert(outbits <= 16);
+  assert(inbits  <= 16);
+  
   // Not guaranteed that the mapping is surjective onto the output
   // range. There is nothing that says how to handle this case. We just define
   // "undefined" outputs to zero, and try our best to continue the missing parts

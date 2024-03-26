@@ -43,7 +43,7 @@
 ** extension mechanism for 10918-1. Boxes are used consistently for all
 ** types of extended data.
 **
-** $Id: box.hpp,v 1.17 2015/03/13 15:14:06 thor Exp $
+** $Id: box.hpp,v 1.18 2024/03/25 18:42:06 thor Exp $
 **
 */
 
@@ -167,6 +167,15 @@ public:
   class Box *NextOf(void) const
   {
     return m_pNext;
+  }
+  //
+  // Return whether all data of this box has been received
+  // already.
+  bool isComplete(void) const
+  {
+    if (m_uqParsedBytes >= m_uqBoxSize)
+      return true;
+    return false;
   }
 };
 ///

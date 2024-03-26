@@ -43,7 +43,7 @@
 ** extension mechanism for 10918-1. Boxes are used consistently for all
 ** types of extended data.
 **
-** $Id: box.cpp,v 1.28 2020/08/31 07:50:43 thor Exp $
+** $Id: box.cpp,v 1.29 2024/03/25 18:42:06 thor Exp $
 **
 */
 
@@ -62,6 +62,7 @@
 #include "boxes/checksumbox.hpp"
 #include "boxes/filetypebox.hpp"
 #include "boxes/alphabox.hpp"
+#include "std/assert.hpp"
 ///
 
 /// Box::Box
@@ -154,12 +155,15 @@ class Box *Box::ParseBoxMarker(class Tables *tables,class Box *&boxlist,class By
       if (box->m_uqBoxSize != lbox)
         JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
                   "box size is not consistent across APP11 markers");
-      assert(box->m_pInputStream);
+      if (box->m_pInputStream == NULL)
+        JPG_THROW(MALFORMED_STREAM,"Box::ParseBoxMarker","JPEG stream is malformed, "
+                  "received box data beyond box length");
       break;
     }
   }
   //
   // If no valid box has been found so far, create now a new one.
+  assert(box == NULL || box->InputStreamOf() != stream);
   if (box == NULL) {
     // This is the "virtual constructor"
     box                 = CreateBox(tables,boxlist,tbox);
@@ -399,7 +403,12 @@ class Box *Box::CreateBox(class Tables *tables,class Box *&boxlist,ULONG tbox)
   case DataBox::AlphaResidualRefinementType:
     return new(m_pEnviron) class DataBox(m_pEnviron,boxlist,tbox);
   case MergingSpecBox::SpecType:
+    if (tables->ImageNamespace()->hasPrimaryLookup())
+      JPG_THROW(OBJECT_EXISTS,"Box::CreateBox","found duplicate merging specification box");
+    return new(m_pEnviron) class MergingSpecBox(tables,boxlist,tbox);
   case MergingSpecBox::AlphaType:
+    if (tables->AlphaNamespace()->hasPrimaryLookup())
+      JPG_THROW(OBJECT_EXISTS,"Box::CreateBox","found duplicate merging specification box");
     return new(m_pEnviron) class MergingSpecBox(tables,boxlist,tbox);
   case InverseToneMappingBox::Type:
     return new(m_pEnviron) class InverseToneMappingBox(m_pEnviron,boxlist);

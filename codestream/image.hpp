@@ -43,7 +43,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.hpp,v 1.34 2016/10/28 13:58:53 thor Exp $
+** $Id: image.hpp,v 1.35 2024/03/26 10:04:47 thor Exp $
 **
 */
 
@@ -92,6 +92,11 @@ class Image : public JKeeper {
   //
   // The tables of this frame, i.e. huffman and quantization tables.
   class Tables          *m_pTables;
+  //
+  // The pointer that controls the life time of the tables. Not
+  // used for anything else. Residual tables and alpha tables are
+  // controlled in the table itself.
+  class Tables          *m_pTableOwner;
   //
   // This frame marker contains the image characteristics. In case the image
   // is non-hierachical, this is the frame representing the image itself.

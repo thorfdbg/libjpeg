@@ -41,7 +41,7 @@
 /*
 ** Several helper functions that are related to native IO of pixel values
 **
-** $Id: iohelpers.cpp,v 1.11 2023/07/07 12:19:11 thor Exp $
+** $Id: iohelpers.cpp,v 1.12 2024/03/25 18:42:33 thor Exp $
 **
 */
 
@@ -210,8 +210,7 @@ FILE *OpenPNMFile(const char *file,int &width,int &height,int &depth,int &precis
               precision++;
           }
         }
-
-        if (width > 0 && height > 0 && parms == 3) {
+        if (precision <= 16 && width > 0 && height > 0 && parms == 3) {
           return in;
         }
         fprintf(stderr,"unsupported or invalid PNM format\n");

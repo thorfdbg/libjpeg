@@ -43,7 +43,7 @@
 ** Encode a refinement scan with the arithmetic coding procedure from
 ** Annex G of ITU Recommendation T.81 (1992) | ISO/IEC 10918-1:1994.
 **
-** $Id: acrefinementscan.cpp,v 1.33 2018/07/27 06:56:42 thor Exp $
+** $Id: acrefinementscan.cpp,v 1.34 2024/03/25 18:42:33 thor Exp $
 **
 */
 
@@ -81,6 +81,7 @@ ACRefinementScan::ACRefinementScan(class Frame *frame,class Scan *scan,
 {
 #if ACCUSOFT_CODE
   m_ucCount = scan->ComponentsInScan();
+  assert(m_ucHighBit == m_ucLowBit + 1);
 #else
   NOREF(start);
   NOREF(stop);

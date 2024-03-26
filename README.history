@@ -606,4 +606,20 @@ cmd directory. It does not attempt to validate input. At least some
 minimal attempts to ensure that input files are valid is now in place, but
 real life deployment of the code should contain more checks.
 
+--------------------------------------------------------------------------
 
+Release 1.67:
+
+- Fixed a potential memory leak where the code did not release residual
+or alpha tables on some error conditions.
+- Fixed missing valiation for hidden residual DCT scans where start and
+stop bitplane must be one bitplane appart.
+- Fixed the box parser where boxes were attempted to be parsed that were
+not yet completely loaded.
+- Invalid PPM files that indicate a bitdepth > 16 are now detected and
+generate an early error condition.
+- Encoding images with an alpha channel was not working due to a lack
+of enabling the alpha channel with a suitable tag.
+- The Adobe marker with version 101 is now also decoded, though despite
+the color transformation, flags are disregarded. Smoothing is not
+supported by this implementation.

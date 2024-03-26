@@ -43,7 +43,7 @@
 ** in APP14. Used here to indicate the color space and to avoid a color
 ** transformation.
 **
-** $Id: adobemarker.cpp,v 1.10 2020/08/31 07:50:44 thor Exp $
+** $Id: adobemarker.cpp,v 1.11 2024/03/25 18:42:33 thor Exp $
 **
 */
 
@@ -102,7 +102,7 @@ void AdobeMarker::ParseMarker(class ByteStream *io,UWORD len)
     JPG_THROW(MALFORMED_STREAM,"AdobeMarker::ParseMarker","malformed Adobe marker");
 
   version = io->GetWord();
-  if (version != 100) // Includes EOF
+  if (version != 100 && version != 101) // Includes EOF
     JPG_THROW(MALFORMED_STREAM,"AdobeMarker::ParseMarker","Adobe marker version unrecognized");
 
   io->GetWord();

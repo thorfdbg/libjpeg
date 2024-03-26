@@ -42,7 +42,7 @@
 ** This class keeps all the coding tables, Huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.211 2022/08/03 08:58:01 thor Exp $
+** $Id: tables.cpp,v 1.213 2024/03/26 10:04:47 thor Exp $
 **
 */
 
@@ -131,6 +131,8 @@ Tables::~Tables(void)
   delete m_pCameraInfo;
   delete m_pColorFactory; // also deletes the transformation
   delete m_pRestart;
+  delete m_pResidualTables;
+  delete m_pAlphaTables;
 }
 ///
 
@@ -878,7 +880,9 @@ class DataBox *Tables::RefinementDataOf(UWORD index,ULONG boxtype) const
   while(box) {
     if (box->BoxTypeOf()    == boxtype &&
         box->EnumeratorOf() == index) {
-      return (DataBox *)(box);
+      class DataBox *dox = (DataBox *)(box);
+      if (dox->isComplete())
+        return dox;
     }
     box = box->NextOf();
   }

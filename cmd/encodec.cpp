@@ -41,7 +41,7 @@
 /*
 ** Parameter definition and encoding for profile C.
 **
-** $Id: encodec.cpp,v 1.41 2021/11/15 08:59:59 thor Exp $
+** $Id: encodec.cpp,v 1.42 2024/03/26 10:04:47 thor Exp $
 **
 */
 
@@ -510,6 +510,7 @@ void EncodeC(const char *source,const char *ldrsource,const char *target,const c
             JPG_ValueTag(JPGTAG_IMAGE_DEPTH,depth),      
             JPG_ValueTag(JPGTAG_IMAGE_PRECISION,prec),
             JPG_ValueTag(JPGTAG_IMAGE_FRAMETYPE,frametype),
+            JPG_ValueTag(JPGTAG_DECODER_INCLUDE_ALPHA,alpha?true:false),
             JPG_ValueTag(JPGTAG_RESIDUAL_FRAMETYPE,residualtype),
             JPG_ValueTag((quality >= 0)?JPGTAG_IMAGE_QUALITY:JPGTAG_TAG_IGNORE,quality),
             JPG_ValueTag((hdrquality >= 0)?JPGTAG_RESIDUAL_QUALITY:JPGTAG_TAG_IGNORE,

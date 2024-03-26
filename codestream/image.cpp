@@ -43,7 +43,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.75 2022/06/27 05:32:10 thor Exp $
+** $Id: image.cpp,v 1.76 2024/03/26 10:04:47 thor Exp $
 **
 */
 
@@ -96,7 +96,7 @@ Image::~Image(void)
   delete m_pAlphaChannel;
 
   delete m_pResidual;
-  delete m_pTables;
+  delete m_pTableOwner;
   delete m_pResidualImage;
   delete m_pImageBuffer;
   delete m_pAdapter;
@@ -174,6 +174,7 @@ class Tables *Image::TablesOf(void)
       m_pTables = m_pMaster->TablesOf()->CreateAlphaTables();
     } else {
       m_pTables = new(m_pEnviron) class Tables(m_pEnviron);
+      m_pTableOwner = m_pTables;
     }
   }
 

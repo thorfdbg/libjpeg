@@ -503,12 +503,30 @@ real life deployment of the code should contain more checks.
 
 --------------------------------------------------------------------------
 
+Release 1.67:
+
+- Fixed a potential memory leak where the code did not release residual
+or alpha tables on some error conditions.
+- Fixed missing valiation for hidden residual DCT scans where start and
+stop bitplane must be one bitplane appart.
+- Fixed the box parser where boxes were attempted to be parsed that were
+not yet completely loaded.
+- Invalid PPM files that indicate a bitdepth > 16 are now detected and
+generate an early error condition.
+- Encoding images with an alpha channel was not working due to a lack
+of enabling the alpha channel with a suitable tag.
+- The Adobe marker with version 101 is now also decoded, though despite
+the color transformation, flags are disregarded. Smoothing is not
+supported by this implementation.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 
 Finally, I want to thank Accusoft and the Computing Center of the University of
 Stuttgart and Fraunhofer IIS for sponsoring this project.
 
-Thomas Richter, July 2023
+Thomas Richter, March 2024
 
 ---------------------------------------------------------------------------
