@@ -42,7 +42,7 @@
 ** This class is responsible for parsing the huffman specific part of the
 ** DHT marker and generating the corresponding decoder classes.
 **
-** $Id: huffmantemplate.cpp,v 1.39 2017/06/06 10:51:41 thor Exp $
+** $Id: huffmantemplate.cpp,v 1.40 2024/05/22 13:41:39 thor Exp $
 **
 */
 
@@ -853,7 +853,11 @@ void HuffmanTemplate::BuildDecoder(void)
           if (last > MAX_UWORD + 1)
             JPG_THROW(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker",
                       "Huffman table corrupt - entry depends on more bits than available for the bit length");
-
+          // Check whether the code is all-1. This is not allowed.
+          if ((code >> (15 - i)) >= (1U << (i + 1)) - 1)
+            JPG_WARN(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker",
+                     "Found an all-1 Huffman code, this is not permitted. Proceeding anyhow.");
+          
           if (i < 8) { // code size is 8 bits or less, note that i + 1 is the code size
             assert(qcode < qlast);
             do {
@@ -899,7 +903,7 @@ void HuffmanTemplate::ParseMarker(class ByteStream *io)
   for(i = 0;i < 16U;i++) {
     LONG cnt = io->Get();
     if (cnt == ByteStream::EOF)
-      JPG_THROW(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker","huffman table marker run out of data");
+      JPG_THROW(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker","Huffman table marker run out of data");
     m_ucLengths[i] = cnt;
     total         += cnt;
   }
@@ -911,7 +915,7 @@ void HuffmanTemplate::ParseMarker(class ByteStream *io)
   for(i = 0;i < total;i++) {
     LONG v = io->Get();
     if (v == ByteStream::EOF)
-      JPG_THROW(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker","huffman table marker run out of data");
+      JPG_THROW(MALFORMED_STREAM,"HuffmanTemplate::ParseMarker","Huffman table marker run out of data");
     m_pucValues[i] = v;
   }
 }
