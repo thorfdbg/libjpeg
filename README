@@ -521,6 +521,12 @@ supported by this implementation.
 
 --------------------------------------------------------------------------
 
+Release 1.68:
+- Fixed a missing initialization of the table owner holder introduced
+  in 1.67.
+
+--------------------------------------------------------------------------
+
 For license conditions, please check the file README.license in this
 directory.
 

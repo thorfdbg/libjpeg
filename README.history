@@ -623,3 +623,9 @@ of enabling the alpha channel with a suitable tag.
 - The Adobe marker with version 101 is now also decoded, though despite
 the color transformation, flags are disregarded. Smoothing is not
 supported by this implementation.
+
+--------------------------------------------------------------------------
+
+Release 1.68:
+- Fixed a missing initialization of the table owner holder introduced
+  in 1.67.

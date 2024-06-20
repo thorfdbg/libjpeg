@@ -43,7 +43,7 @@
 ** This class represents the image as a whole, consisting either of a single
 ** or multiple frames.
 **
-** $Id: image.cpp,v 1.76 2024/03/26 10:04:47 thor Exp $
+** $Id: image.cpp,v 1.77 2024/06/20 13:13:36 thor Exp $
 **
 */
 
@@ -79,7 +79,7 @@ class Frame;
 // Create an image
 Image::Image(class Environ *env)
   : JKeeper(env), m_pResidual(NULL), m_pAlphaChannel(NULL), m_pParent(NULL), 
-    m_pMaster(NULL), m_pTables(NULL), m_pDimensions(NULL), m_pSmallest(NULL), 
+    m_pMaster(NULL), m_pTables(NULL), m_pTableOwner(NULL), m_pDimensions(NULL), m_pSmallest(NULL), 
     m_pLast(NULL), m_pCurrent(NULL), m_pImageBuffer(NULL), 
     m_pResidualImage(NULL), m_pChecksum(NULL), 
     m_pLegacyStream(NULL), m_pAdapter(NULL), m_pBoxList(NULL),
