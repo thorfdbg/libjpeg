@@ -629,3 +629,11 @@ supported by this implementation.
 Release 1.68:
 - Fixed a missing initialization of the table owner holder introduced
   in 1.67.
+  
+--------------------------------------------------------------------------
+
+Release 1.69:
+- The DC Huffman table for the lossless predictive process also contained
+  entries for symbols of 17 and above for unknown reasons that might have
+  confused some other implementations. As these symbols are never needed,
+  they have been removed.
