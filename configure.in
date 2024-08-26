@@ -69,13 +69,13 @@ AC_C_BIGENDIAN([AC_DEFINE(JPG_BIG_ENDIAN,[1],[Define to 1 for big endian])],[AC_
 # or a generic compiler
 if test "$ac_compiler_gnu" = "yes"; then
 # Define a couple of options concerning the compiler
-  ac_cccmd=`echo ${CC} | cut -f 1 -d ' ' | cut -f 1 -d '-'`
+  ac_cccmd=`echo ${CC} | cut -f 1 -d ' ' | sed "s/^$ac_tool_prefix//" | cut -f 1 -d '-'`
   if test "$ac_cccmd" = "icpc"; then
      ac_cccmd="icc"
   fi
   AC_SUBST(SETTINGS,${ac_cccmd})
 else
-  ac_cccmd=`echo ${CXX} | cut -f 1 -d ' '`
+  ac_cccmd=`echo ${CXX} | sed "s/^$ac_tool_prefix//" | cut -f 1 -d ' '`
   AC_SUBST(SETTINGS,${ac_cccmd})
 fi
 AC_SUBST(COMPILER,${CXX})
