@@ -235,6 +235,7 @@ bool EntropyParser::ParseDNLMarker(class ByteStream *io)
       JPG_THROW(MALFORMED_STREAM,"EntropyParser::ParseDNLMarker",
                 "frame height as indicated by the DNL marker is corrupt, must be > 0");
     
+    PostImageHeight(dt);
     m_pFrame->PostImageHeight(dt);
 
     m_bDNLFound = true;

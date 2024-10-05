@@ -467,7 +467,6 @@ bool ACLosslessScan::ParseMCU(void)
 
   // Loop over lines and columns
   do {
-    bool startofline = true;
     do {
       if (BeginReadMCU(m_Coder.ByteStreamOf())) {
         ParseMCU(prev,top);
@@ -475,15 +474,14 @@ bool ACLosslessScan::ParseMCU(void)
         // Only if this is not due to a DNL marker that has been detected.
         if (m_ulPixelHeight != 0 && !hasFoundDNL()) {
           ClearMCU(top);
-        } else if (!startofline) {
+        } else {
           // The problem is here that the DNL marker might have been detected, even though decoding
           // is not yet done completely. This may be because there are still just enough bits in the
           // AC coding engine present to run a single decode. Big Outch! Just continue decoding in
           // this case.
           ParseMCU(prev,top);
-        } else break;
+        }
       }
-      startofline = false;
     } while(AdvanceToTheRight());
     //
     // Reset conditioning to the left

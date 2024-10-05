@@ -206,6 +206,15 @@ void PredictiveScan::RestartOnMarker(void)
 }
 ///
 
+/// PredictiveScan::PostImageHeight
+// Post the height of the frame in lines. This happens
+// when the DNL marker is processed.
+void PredictiveScan::PostImageHeight(ULONG height)
+{
+  m_ulPixelHeight = height;
+}
+///
+
 /// PredictiveScan::OptimizeBlock
 // Make an R/D optimization for the given scan by potentially pushing
 // coefficients into other bins. 

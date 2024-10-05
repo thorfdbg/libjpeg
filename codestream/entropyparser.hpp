@@ -211,7 +211,11 @@ public:
   virtual bool ParseMCU(void) = 0;
   //
   // Write a single MCU in this scan.
-  virtual bool WriteMCU(void) = 0; 
+  virtual bool WriteMCU(void) = 0;
+  //
+  // Define the image size if it is not yet known here. This is
+  // called whenever the DNL marker is parsed in.
+  virtual void PostImageHeight(ULONG height) = 0;
   //
   // Make an R/D optimization for the given scan by potentially pushing
   // coefficients into other bins. This runs an optimization for a single

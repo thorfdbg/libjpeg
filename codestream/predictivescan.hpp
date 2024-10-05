@@ -196,6 +196,10 @@ protected:
   // of the restart interval.
   void RestartOnMarker(void);
   //
+  // Post the height of the frame in lines. This happens
+  // when the DNL marker is processed.
+  void PostImageHeight(ULONG height);
+  //
   // Start making an optimization run to adjust the coefficients.
   virtual void StartOptimizeScan(class BufferCtrl *ctrl);
   //
