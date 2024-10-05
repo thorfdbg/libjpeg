@@ -206,6 +206,10 @@ public:
   // Write a single MCU in this scan.
   virtual bool WriteMCU(void);
   //
+  // Post the height of the frame in lines. This happens
+  // when the DNL marker is processed.
+  virtual void PostImageHeight(ULONG) {}
+  //
   // Make an R/D optimization for the given scan by potentially pushing
   // coefficients into other bins. This runs an optimization for a single
   // block and requires external control to run over the blocks.
