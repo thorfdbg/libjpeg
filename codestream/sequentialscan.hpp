@@ -42,7 +42,7 @@
 ** A sequential scan, also the first scan of a progressive scan,
 ** Huffman coded.
 **
-** $Id: sequentialscan.hpp,v 1.59 2021/11/15 07:39:43 thor Exp $
+** $Id: sequentialscan.hpp,v 1.60 2024/11/05 06:39:25 thor Exp $
 **
 */
 
@@ -172,7 +172,6 @@ class SequentialScan : public EntropyParser {
   // Code any run of zero blocks here. This is only valid in
   // the progressive mode.
   void CodeBlockSkip(class HuffmanCoder *ac,UWORD &skip);
-  // 
   //
 public:
   // Create a sequential scan. The highbit is always ignored as this is

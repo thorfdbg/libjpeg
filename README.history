@@ -637,3 +637,14 @@ Release 1.69:
   entries for symbols of 17 and above for unknown reasons that might have
   confused some other implementations. As these symbols are never needed,
   they have been removed.
+
+--------------------------------------------------------------------------
+
+Release 1.70:
+- The decoding of predictive JPEGs aborted premature if the DNL marker was
+  found, but the AC or Huffman decoder contained sufficient state information
+  to cover at least one line of data. In such a case, the DNL marker was
+  hit before the end of the next line was hit, even though parts of the
+  current line and the next line were still covered by the data in the AC
+  or Huffman decoder. I want to thank Robert Ancell for reporting this defect
+  and providing a fix.

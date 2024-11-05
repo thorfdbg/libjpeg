@@ -44,7 +44,7 @@
 ** services useful to implement them such that the derived classes can
 ** focus on the actual algorithm.
 **
-** $Id: predictivescan.cpp,v 1.15 2016/10/28 13:58:53 thor Exp $
+** $Id: predictivescan.cpp,v 1.16 2024/11/05 06:39:25 thor Exp $
 **
 */
 
@@ -203,6 +203,15 @@ void PredictiveScan::RestartOnMarker(void)
     m_pLinePredict[i] = m_pPredictors[0];
   }
 #endif
+}
+///
+
+/// PredictiveScan::PostImageHeight
+// Post the height of the image in lines. This happens when the DNL
+// marker is processed.
+void PredictiveScan::PostImageHeight(ULONG height)
+{
+  m_ulPixelHeight = height;
 }
 ///
 

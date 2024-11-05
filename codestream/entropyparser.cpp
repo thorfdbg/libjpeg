@@ -43,7 +43,7 @@
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.cpp,v 1.25 2022/05/30 14:05:58 thor Exp $
+** $Id: entropyparser.cpp,v 1.26 2024/11/05 06:39:25 thor Exp $
 **
 */
 
@@ -234,7 +234,11 @@ bool EntropyParser::ParseDNLMarker(class ByteStream *io)
     if (dt == 0)
       JPG_THROW(MALFORMED_STREAM,"EntropyParser::ParseDNLMarker",
                 "frame height as indicated by the DNL marker is corrupt, must be > 0");
-    
+
+    //
+    // Let the parser itself know what the height is now.
+    PostImageHeight(dt);
+    // Forward to the frame.
     m_pFrame->PostImageHeight(dt);
 
     m_bDNLFound = true;

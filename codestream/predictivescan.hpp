@@ -44,7 +44,7 @@
 ** services useful to implement them such that the derived classes can
 ** focus on the actual algorithm.
 **
-** $Id: predictivescan.hpp,v 1.12 2016/10/28 13:58:53 thor Exp $
+** $Id: predictivescan.hpp,v 1.13 2024/11/05 06:39:25 thor Exp $
 **
 */
 
@@ -198,6 +198,10 @@ protected:
   //
   // Start making an optimization run to adjust the coefficients.
   virtual void StartOptimizeScan(class BufferCtrl *ctrl);
+  //
+  // Post the height of the image in lines. This happens when the DNL
+  // marker is processed.
+  virtual void PostImageHeight(ULONG height);
   //
   // Make an R/D optimization for the given scan by potentially pushing
   // coefficients into other bins. 

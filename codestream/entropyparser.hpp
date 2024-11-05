@@ -43,7 +43,7 @@
 ** This class represents the interface for parsing the
 ** entropy coded data in JPEG as part of a single scan.
 **
-** $Id: entropyparser.hpp,v 1.22 2021/09/08 10:30:06 thor Exp $
+** $Id: entropyparser.hpp,v 1.23 2024/11/05 06:39:25 thor Exp $
 **
 */
 
@@ -164,6 +164,12 @@ protected:
   {
     return m_bDNLFound;
   }
+  //
+  // Define the image size if it is not yet known here.
+  // This is called whenever the DNL marker is parsed in.
+  virtual void PostImageHeight(ULONG)
+  { }
+  //
   //
 public:
   //

@@ -42,7 +42,7 @@
 **
 ** Represents the scan including the scan header.
 **
-** $Id: losslessscan.cpp,v 1.52 2022/08/03 08:49:34 thor Exp $
+** $Id: losslessscan.cpp,v 1.53 2024/11/05 06:39:25 thor Exp $
 **
 */
 
@@ -432,7 +432,6 @@ bool LosslessScan::ParseMCU(void)
 
   // Loop over lines and columns
   do {
-    bool startofline = true;
     do {
       if (BeginReadMCU(m_Stream.ByteStreamOf())) {
         ParseMCU(prev,top);
@@ -440,14 +439,13 @@ bool LosslessScan::ParseMCU(void)
         // Only if this is not due to a DNL marker that has been detected.
         if (m_ulPixelHeight != 0 && !hasFoundDNL()) {
           ClearMCU(top);
-        } else if (!startofline) {
+        } else {
           // The problem is here that the DNL marker might have been detected, even though decoding
           // is not yet done completely. This may be because there are still just enough bits in the
           // bitream present to run a single decode. Big Outch! Just continue decoding in this case.
           ParseMCU(prev,top);
-        } else break;
+        }
       }
-      startofline = false;
     } while(AdvanceToTheRight());
     //
     // Advance to the next line.
