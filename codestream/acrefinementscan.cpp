@@ -292,7 +292,7 @@ bool ACRefinementScan::ParseMCU(void)
 ///
 
 /// ACRefinementScan::EncodeBlock
-// Encode a single block
+// Encode a single huffman block
 #if ACCUSOFT_CODE
 void ACRefinementScan::EncodeBlock(const LONG *block)
 {
@@ -384,7 +384,7 @@ void ACRefinementScan::EncodeBlock(const LONG *block)
 ///
 
 /// ACRefinementScan::DecodeBlock
-// Decode a single block.
+// Decode a single huffman block.
 #if ACCUSOFT_CODE
 void ACRefinementScan::DecodeBlock(LONG *block)
 {
