@@ -142,9 +142,9 @@ void JPEGLSScan::FindComponentDimensions(void)
   if (thres == NULL) {
     if (m_pDefaultThresholds == NULL)
       m_pDefaultThresholds = new(m_pEnviron) class Thresholds(m_pEnviron);
-    m_pDefaultThresholds->InstallDefaults(m_pFrame->PrecisionOf(),m_lNear);
     thres = m_pDefaultThresholds;
   }
+  thres->InstallDefaults(m_pFrame->PrecisionOf(),m_lNear);
 
   m_lMaxVal = thres->MaxValOf();
   m_lT1     = thres->T1Of();
