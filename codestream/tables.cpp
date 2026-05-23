@@ -1100,6 +1100,10 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,
            JPG_WARN(NOT_IMPLEMENTED,"Tables::ParseMarker",
                     "skipping over unknown JPEG LS extensions marker");
          }
+
+         // Skip contents of unknown extensions.
+         io->SkipBytes(len - 3);
+         break;
        }
        if (len <= 0x02)
          JPG_THROW(MALFORMED_STREAM,"Tables::ParseTables","marker size out of range");
