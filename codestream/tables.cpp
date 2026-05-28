@@ -42,7 +42,7 @@
 ** This class keeps all the coding tables, Huffman, AC table, quantization
 ** and other side information.
 **
-** $Id: tables.cpp,v 1.214 2025/08/15 09:06:39 thor Exp $
+** $Id: tables.cpp,v 1.215 2026/05/28 07:14:13 thor Exp $
 **
 */
 
@@ -1099,6 +1099,7 @@ bool Tables::ParseTablesIncremental(class ByteStream *io,class Checksum *chk,
          } else {
            JPG_WARN(NOT_IMPLEMENTED,"Tables::ParseMarker",
                     "skipping over unknown JPEG LS extensions marker");
+           len--;
          }
        }
        if (len <= 0x02)

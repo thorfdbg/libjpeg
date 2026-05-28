@@ -41,7 +41,7 @@
 /*
 ** This class contains the marker that defines the JPEG LS thresholds.
 **
-** $Id: thresholds.cpp,v 1.8 2014/09/30 08:33:17 thor Exp $
+** $Id: thresholds.cpp,v 1.9 2026/05/28 07:14:17 thor Exp $
 **
 */
 
@@ -98,31 +98,45 @@ void Thresholds::ParseMarker(class ByteStream *io,UWORD len)
 // Install the defaults for a given bits per pixel value.
 void Thresholds::InstallDefaults(UBYTE bpp,UWORD near)
 {
-  m_usMaxVal = (1 << bpp) - 1;
+  if (m_usMaxVal == 0)
+    m_usMaxVal = (1 << bpp) - 1;
   
   if (m_usMaxVal >= 128) {
     UWORD factor = m_usMaxVal;
     if (factor > 4095)
       factor = 4095;
     factor = (factor + 128) >> 8;
-    m_usT1 = factor * ( 3 - 2) + 2 + 3 * near;
-    if (m_usT1 > m_usMaxVal || m_usT1 < near + 1) m_usT1 = near + 1;
-    m_usT2 = factor * ( 7 - 3) + 3 + 5 * near;
-    if (m_usT2 > m_usMaxVal || m_usT2 < m_usT1  ) m_usT2 = m_usT1;
-    m_usT3 = factor * (21 - 4) + 4 + 7 * near;
-    if (m_usT3 > m_usMaxVal || m_usT3 < m_usT2  ) m_usT3 = m_usT2;
+    if (m_usT1 == 0) {
+      m_usT1 = factor * ( 3 - 2) + 2 + 3 * near;
+      if (m_usT1 > m_usMaxVal || m_usT1 < near + 1) m_usT1 = near + 1;
+    }
+    if (m_usT2 == 0) {
+      m_usT2 = factor * ( 7 - 3) + 3 + 5 * near;
+      if (m_usT2 > m_usMaxVal || m_usT2 < m_usT1  ) m_usT2 = m_usT1;
+    }
+    if (m_usT3 == 0) {
+      m_usT3 = factor * (21 - 4) + 4 + 7 * near;
+      if (m_usT3 > m_usMaxVal || m_usT3 < m_usT2  ) m_usT3 = m_usT2;
+    }
   } else {
     UWORD factor = 256 / (m_usMaxVal + 1);
-    m_usT1 = 3 / factor + 3 * near;
-    if (m_usT1 < 2) m_usT1 = 2;
-    if (m_usT1 > m_usMaxVal || m_usT1 < near + 1) m_usT1 = near + 1;
-    m_usT2 = 7 / factor + 5 * near;
-    if (m_usT2 < 3) m_usT2 = 3;
-    if (m_usT2 > m_usMaxVal || m_usT2 < m_usT1  ) m_usT2 = m_usT1;
-    m_usT3 = 21 / factor + 7 * near;
-    if (m_usT3 < 4) m_usT3 = 4;
-    if (m_usT3 > m_usMaxVal || m_usT3 < m_usT2  ) m_usT3 = m_usT2;
+    if (m_usT1 == 0) {
+      m_usT1 = 3 / factor + 3 * near;
+      if (m_usT1 < 2) m_usT1 = 2;
+      if (m_usT1 > m_usMaxVal || m_usT1 < near + 1) m_usT1 = near + 1;
+    }
+    if (m_usT2 == 0) {
+      m_usT2 = 7 / factor + 5 * near;
+      if (m_usT2 < 3) m_usT2 = 3;
+      if (m_usT2 > m_usMaxVal || m_usT2 < m_usT1  ) m_usT2 = m_usT1;
+    }
+    if (m_usT3 == 0) {
+      m_usT3 = 21 / factor + 7 * near;
+      if (m_usT3 < 4) m_usT3 = 4;
+      if (m_usT3 > m_usMaxVal || m_usT3 < m_usT2  ) m_usT3 = m_usT2;
+    }
   }
-  m_usReset  = 64;
+  if (m_usReset == 0)
+    m_usReset  = 64;
 }
 ///

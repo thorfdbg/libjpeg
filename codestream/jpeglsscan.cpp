@@ -42,7 +42,7 @@
 ** A JPEG LS scan. This is the base for all JPEG LS scan types, namely
 ** separate, line interleaved and sample interleaved.
 **
-** $Id: jpeglsscan.cpp,v 1.27 2021/12/01 11:14:12 thor Exp $
+** $Id: jpeglsscan.cpp,v 1.28 2026/05/28 07:14:13 thor Exp $
 **
 */
 
@@ -142,9 +142,9 @@ void JPEGLSScan::FindComponentDimensions(void)
   if (thres == NULL) {
     if (m_pDefaultThresholds == NULL)
       m_pDefaultThresholds = new(m_pEnviron) class Thresholds(m_pEnviron);
-    m_pDefaultThresholds->InstallDefaults(m_pFrame->PrecisionOf(),m_lNear);
     thres = m_pDefaultThresholds;
   }
+  m_pDefaultThresholds->InstallDefaults(m_pFrame->PrecisionOf(),m_lNear);
 
   m_lMaxVal = thres->MaxValOf();
   m_lT1     = thres->T1Of();
