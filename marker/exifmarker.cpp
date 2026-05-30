@@ -110,7 +110,7 @@ void EXIFMarker::WriteMarker(class ByteStream *io)
 ///
 
 /// EXIFMarker::ParseMarker
-// Parse the adobe marker from the stream
+// Parse the EXIF marker from the stream
 // This will throw in case the marker is not
 // recognized. The caller will have to catch
 // the exception.
