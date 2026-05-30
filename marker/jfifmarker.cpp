@@ -96,7 +96,7 @@ void JFIFMarker::WriteMarker(class ByteStream *io)
 ///
 
 /// JFIFMarker::ParseMarker
-// Parse the adobe marker from the stream
+// Parse the JFIF marker from the stream
 // This will throw in case the marker is not
 // recognized. The caller will have to catch
 // the exception.
