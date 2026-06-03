@@ -42,7 +42,7 @@
 ** This class represents the JFIF, placed in APP0. 
 ** This is only used to indicate a JFIF file and is otherwise unused.
 **
-** $Id: jfifmarker.cpp,v 1.8 2020/08/31 07:50:44 thor Exp $
+** $Id: jfifmarker.cpp,v 1.9 2026/06/03 14:40:17 thor Exp $
 **
 */
 
@@ -96,7 +96,7 @@ void JFIFMarker::WriteMarker(class ByteStream *io)
 ///
 
 /// JFIFMarker::ParseMarker
-// Parse the adobe marker from the stream
+// Parse the JFIF marker from the stream
 // This will throw in case the marker is not
 // recognized. The caller will have to catch
 // the exception.

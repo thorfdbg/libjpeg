@@ -42,7 +42,7 @@
 ** This class represents the EXIF marker, placed in APP1. This
 ** marker is currently only a dummy and not actually used. 
 **
-** $Id: exifmarker.cpp,v 1.7 2020/08/31 07:50:44 thor Exp $
+** $Id: exifmarker.cpp,v 1.8 2026/06/03 14:40:17 thor Exp $
 **
 */
 
@@ -110,7 +110,7 @@ void EXIFMarker::WriteMarker(class ByteStream *io)
 ///
 
 /// EXIFMarker::ParseMarker
-// Parse the adobe marker from the stream
+// Parse the EXIF marker from the stream
 // This will throw in case the marker is not
 // recognized. The caller will have to catch
 // the exception.
