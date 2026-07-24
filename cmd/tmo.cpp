@@ -42,7 +42,7 @@
 ** A couple of generic TMO related functions: Estimate TMO from LDR and HDR
 ** image pair, build a gamma mapping.
 **
-** $Id: tmo.cpp,v 1.20 2024/03/25 18:42:33 thor Exp $
+** $Id: tmo.cpp,v 1.21 2026/07/24 10:43:53 thor Exp $
 **
 */
 
@@ -471,11 +471,11 @@ void BuildToneMappingFromLDR(FILE *in,FILE *ldrin,int w,int h,int depth,int coun
       //
       // Build tables for each component.
       BuildIntermediateTable(hists,0,hdrcnt,ldrtohdr,hiddenbits,median,fullrange,flt,smooth);
-      //
-      // Release the temporary storage for the histogram.
-      for(i = 0;i < 256;i++) {
-        free(hists[i]);
-      }
+    }
+    //
+    // Release the temporary storage for the histogram.
+    for(i = 0;i < 256;i++) {
+      free(hists[i]);
     }
     free(hists);
   }

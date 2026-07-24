@@ -553,6 +553,12 @@ Release 1.71:
   allows to embed 3 quantization tables (and not just two). If HDR
   coding is used, however, one of the tables need to go as the two
   remaining tables are used for the HDR residual.
+  
+--------------------------------------------------------------------------
+
+Release 1.72:
+- Due to a misplaced bracket, an out-of-memory situation in the sample
+  TMO generator might have leaked memory.
 
 --------------------------------------------------------------------------
 
